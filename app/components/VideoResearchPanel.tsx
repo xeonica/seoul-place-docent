@@ -36,6 +36,7 @@ function Video({video}: {video: CatalogueVideo}) {
       <small>{r.file} / {r.sheet} / {r.row}행</small>
       <p>{[r.review, r.playback, r.urlStatus, r.rights, r.notes].filter(Boolean).join(' · ')}</p>
       {r.sourceUrl && <a href={r.sourceUrl} target="_blank" rel="noopener noreferrer">조사 출처 페이지 열기</a>}
+      {r.segmentNotes?.map(note => <p key={note}>영상 설명란 목차 참고 · {note}</p>)}
       {(r.segments || []).map((s, i) => <div className="video-segment" key={i}>
         <b>{s.startRaw}–{s.endRaw}</b><p>{s.evidence}</p><small>{s.sheet} / {s.row}행</small>
         {r.identity?.startsWith('youtube:') && r.url && s.startSeconds !== null &&

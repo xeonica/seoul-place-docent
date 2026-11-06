@@ -50,3 +50,11 @@ test('archive filters, candidate separation, and pagination share one catalogue'
   assert.ok(second.items.every(v => !first.items.some(p => p.id === v.id)));
   assert.equal((await search({district: '성북구', dong: '세곡동'})).total, 0);
 });
+
+test('publisher chapter notes remain evidence without becoming confirmed scene times', () => {
+  const record = data.records.find(r => r.segmentNotes?.some(note => note.includes('화양동 느티나무')));
+  assert.ok(record);
+  assert.ok(record.segmentNotes.some(note => note.includes('00:21:27')));
+  assert.ok((record.segments || []).every(s => s.startSeconds === null));
+  assert.equal(record.independentlyVerified, false);
+});

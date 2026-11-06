@@ -11,7 +11,7 @@ export type DistrictRecord = {
   places?: string; address?: string; legalDong?: string; administrativeDong?: string;
   dongCandidates?: string[]; broadCandidates?: string[]; locationBlocked?: boolean; url?: string; sourceUrl?: string; urlStatus: string;
   channel?: string; period?: string; description?: string; review?: string;
-  playback?: string; rights?: string; notes?: string; segments?: Segment[];
+  playback?: string; rights?: string; notes?: string; segmentNotes?: string[]; segments?: Segment[];
   file: string; sheet: string; row: number; independentlyVerified: false;
 };
 

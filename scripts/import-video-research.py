@@ -177,6 +177,9 @@ def run(source,out=ROOT):
       seconds=timecode(start);end_seconds=timecode(end)
       valid=seconds is not None and (not end or (end_seconds is not None and end_seconds>seconds))
       segments.append({'sheet':entry['sheet'],'row':entry['row'],'startRaw':start,'endRaw':end,'startSeconds':seconds if valid else None,'endSeconds':end_seconds if valid else None,'status':'조사표 표기·독립 검증 대기','evidence':field(v,'확인한내용','근거종류','관련구간설명','구간확인메모','확인 내용','관련구간 내용'),'independentlyVerified':False})
+    # Publisher chapter markers are evidence notes, not observed scene times.
+    segment_notes=[field(entry['values'],'관련구간목록','구간확인메모') for entry in segment_sources]
+    segment_notes=list(dict.fromkeys(note for note in segment_notes if re.search(r'\d{1,3}:\d{2}',note)))
     record={'id':rid,'sourceId':sid,'title':title,'district':district,'places':places,'legalDong':legal,'administrativeDong':admin,'dongCandidates':candidates,'broadCandidates':broad_candidates,
       'url':url,'identity':None if conflict else key,'urlStatus':'ID 충돌' if conflict else '형식 확인·접근 미검증' if url else 'URL 미확보',
       'sourceUrl':identity(source_url)[1], 'channel':field(values,'출처기관','기관명','제작·소장기관','제공기관·채널','제작기관','제작·생산기관','원본 채널/공식 기관'),
@@ -188,7 +191,7 @@ def run(source,out=ROOT):
       'locationBlocked':location_blocked,'address':field(values,'현재주소','현재 주소','주소','현재주소·지번'),
       'platform':field(values,'영상플랫폼','플랫폼'), 'duration':field(values,'전체재생시간','영상 길이'),
       'filmed':field(values,'촬영일'), 'published':field(values,'게시·발행일','게시일'),
-      'notes':notes,'segments':segments,'independentlyVerified':False,'original':sanitize(raw),'supporting':sanitize(supporting.get(sid,[])),'history':history}
+      'notes':notes,'segmentNotes':segment_notes,'segments':segments,'independentlyVerified':False,'original':sanitize(raw),'supporting':sanitize(supporting.get(sid,[])),'history':history}
     if rid in incoming and incoming[rid]['original']['values']!=record['original']['values']:
      raise ValueError(f'{basename} / {name}: 자료ID {sid} 중복 충돌')
     incoming[rid]=sanitize(record)
