@@ -6,7 +6,7 @@ import './video-research.css';
 
 export const metadata: Metadata = {
   title: '영상 조사자료 | 서울 장소 도슨트',
-  description: '역사 영상 204개와 장면 155개, 원문 링크와 후보·제외 분류를 함께 살펴봅니다.',
+  description: '서울 25개 자치구의 역사 영상, 장면과 조사 출처를 살펴봅니다.',
 };
 
 export default function VideoResearchPage() {

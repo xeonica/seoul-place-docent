@@ -104,7 +104,9 @@ export default function Home({language='ko'}:{language?:'ko'|'en'}){
  <article className="place-flow" aria-label="장소 통합 탐색 결과">
  {!en&&<AISummaryPanel key={'ai:'+(token||result.address.roadAddr)+':'+buildingId} auto token={token||undefined} regionId={token?undefined:selected?.id} buildingId={buildingId||undefined} onGenerated={setAiData}/>}
  <DocentStory key={result.address.admCd+result.address.roadAddr+result.address.jibunAddr} address={result.address} building={building} point={result.coordinates.data?.status==='verified'&&typeof result.coordinates.data.x==='number'&&typeof result.coordinates.data.y==='number'?{x:result.coordinates.data.x,y:result.coordinates.data.y}:undefined} language={language}/>
- <VideoResearchPanel key={result.address.sggNm+result.address.emdNm} district={result.address.sggNm} dong={result.address.emdNm}/>
+ <VideoResearchPanel key={result.address.roadAddr || result.address.jibunAddr} district={result.address.sggNm} dong={result.address.emdNm}
+  administrativeDong={result.coordinates.data?.administrativeDong} address={result.address.roadAddr} parcel={result.address.jibunAddr}
+  building={result.address.bdNm}/>
  <div className="docent-more-heading"><span className="overline">BEHIND THE STORY</span><h3>{en?'Learn more':'더 알아보기'}</h3><p>{en?'Original records, current building details, and how this story is assembled.':'이야기의 근거와 오늘의 장소 정보를 모았어요.'}</p></div>
  <details className="place-disclosure"><summary><FileText size={17}/><span>{en?'Documents & visual archive':'문헌·사진 원문 더 보기'}<small>{en?'Full research records in Korean':'전체 문헌, 간행물, 사진 기록'}</small></span><ChevronDown size={17}/></summary><div className="place-disclosure-content">
  <DocumentResearchPanel district={result.address.sggNm} dongs={[result.address.emdNm]} onLoaded={setDocumentData}/>
