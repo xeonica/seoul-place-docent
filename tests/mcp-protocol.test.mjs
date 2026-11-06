@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handleMcpMessage, MCP_VERSION, textResult} from '../lib/mcp-protocol.ts';
+import {handleMcpMessage, MCP_VERSION, MCP_STANDARD_VERSION, MCP_SUPPORTED_VERSIONS, textResult} from '../lib/mcp-protocol.ts';
 
 const tools = [{name: 'read_records', description: 'Read records', inputSchema: {type: 'object'}}];
 const call = (method, params = {}, id = 1) => ({jsonrpc: '2.0', id, method, params});
@@ -9,7 +9,8 @@ const execute = async (_name, args) => textResult(args);
 test('discovery advertises the Sites protocol and tools capability', async () => {
   const response = await handleMcpMessage(call('server/discover'), tools, execute);
   assert.equal(response.id, 1);
-  assert.deepEqual(response.result.supportedVersions, [MCP_VERSION]);
+  assert.deepEqual(response.result.supportedVersions, [...MCP_SUPPORTED_VERSIONS]);
+  assert.ok(response.result.supportedVersions.includes(MCP_VERSION));
   assert.deepEqual(response.result.capabilities, {tools: {}});
 });
 test('tools are discoverable and calls return MCP content blocks', async () => {
@@ -46,7 +47,29 @@ test('unexpected tool failures are safe MCP errors without internal exception te
   assert.equal(response.result.isError, true);
   assert.equal(JSON.stringify(response).includes('secret database details'), false);
 });
-test('initialize requires the advertised protocol version', async () => {
-  assert.equal((await handleMcpMessage(call('initialize', {protocolVersion: MCP_VERSION}), tools, execute)).result.protocolVersion, MCP_VERSION);
-  assert.equal((await handleMcpMessage(call('initialize', {protocolVersion: 'unsupported'}), tools, execute)).error.code, -32602);
+test('initialize echoes supported standard client versions and retains Sites compatibility', async () => {
+  for (const protocolVersion of ['2025-03-26', '2025-06-18', '2025-11-25', MCP_VERSION]) {
+    const response = await handleMcpMessage(call('initialize', {protocolVersion, capabilities: {}, clientInfo: {name: 'client', version: '1.0'}}), tools, execute);
+    assert.equal(response.error, undefined);
+    assert.equal(response.result.protocolVersion, protocolVersion);
+    assert.deepEqual(response.result.capabilities, {tools: {}});
+  }
+});
+test('unknown client versions negotiate a supported standard version instead of failing initialization', async () => {
+  const response = await handleMcpMessage(call('initialize', {protocolVersion: '2099-01-01'}), tools, execute);
+  assert.equal(response.error, undefined);
+  assert.equal(response.result.protocolVersion, MCP_STANDARD_VERSION);
+});
+test('missing or malformed protocol versions stay invalid', async () => {
+  for (const protocolVersion of [undefined, null, 20250326, '', '   ']) {
+    assert.equal((await handleMcpMessage(call('initialize', {protocolVersion}), tools, execute)).error.code, -32602);
+  }
+});
+test('a standard client can initialize, notify readiness, and list and call tools', async () => {
+  const initialized = await handleMcpMessage(call('initialize', {protocolVersion: '2025-03-26', capabilities: {}, clientInfo: {name: 'client', version: '1.0'}}), tools, execute);
+  assert.equal(initialized.result.protocolVersion, '2025-03-26');
+  assert.equal(await handleMcpMessage({jsonrpc: '2.0', method: 'notifications/initialized'}, tools, execute), undefined);
+  assert.deepEqual((await handleMcpMessage(call('tools/list'), tools, execute)).result.tools, tools);
+  const result = await handleMcpMessage(call('tools/call', {name: 'read_records', arguments: {offset: 1}}), tools, execute);
+  assert.deepEqual(JSON.parse(result.result.content[0].text), {offset: 1});
 });

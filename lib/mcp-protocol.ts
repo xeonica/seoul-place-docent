@@ -9,6 +9,9 @@ export type McpToolResult = {content: McpContent[]; isError?: boolean};
 type Execute = (name: string, args: Record<string, unknown>) => Promise<McpToolResult>;
 
 export const MCP_VERSION = '2026-07-28';
+// Retain Sites discovery while accepting standard Streamable HTTP clients.
+export const MCP_STANDARD_VERSION = '2025-11-25';
+export const MCP_SUPPORTED_VERSIONS = [MCP_VERSION, MCP_STANDARD_VERSION, '2025-06-18', '2025-03-26'] as const;
 export function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -19,7 +22,7 @@ export function textResult(value: unknown): McpToolResult {
   return {content: [{type: 'text', text: JSON.stringify(value)}]};
 }
 
-/** Stateless MCP messages. Authentication is enforced by Sites dispatch. */
+/** Stateless MCP messages. Hosting/authentication is handled outside this dispatcher. */
 export async function handleMcpMessage(value: unknown, tools: readonly McpTool[], execute: Execute) {
   if (!isObject(value)) return rpcError(null, -32600, 'Invalid Request');
   const hasId = Object.prototype.hasOwnProperty.call(value, 'id');
@@ -37,17 +40,18 @@ export async function handleMcpMessage(value: unknown, tools: readonly McpTool[]
   switch (value.method) {
     case 'server/discover':
       result = {
-        supportedVersions: [MCP_VERSION],
+        supportedVersions: [...MCP_SUPPORTED_VERSIONS],
         capabilities: {tools: {}},
         serverInfo: {name: 'seoul-place-docent', version: '1.0.0'},
       };
       break;
     case 'initialize':
-      if (params.protocolVersion !== MCP_VERSION) {
-        return rpcError(id, -32602, 'Supported protocol version: ' + MCP_VERSION);
+      if (typeof params.protocolVersion !== 'string' || !params.protocolVersion.trim()) {
+        return rpcError(id, -32602, 'protocolVersion must be a non-empty string');
       }
       result = {
-        protocolVersion: MCP_VERSION,
+        protocolVersion: MCP_SUPPORTED_VERSIONS.some(version => version === params.protocolVersion)
+          ? params.protocolVersion : MCP_STANDARD_VERSION,
         capabilities: {tools: {}},
         serverInfo: {name: 'seoul-place-docent', version: '1.0.0'},
       };
