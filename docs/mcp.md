@@ -95,3 +95,7 @@ HTTP 요청에는 `Content-Type: application/json`, `Accept: application/json, t
 - `prepare_place_answer`의 `videos.records`는 기존 영상 카탈로그에서 찾은 최대 3개 후보입니다. 구간에는 원자료 시간 및 확인 상태가 포함됩니다. 구간이 기재되지 않은 경우와 구간 자료를 읽지 못한 경우는 `segmentStatus`로 구분합니다. 영상은 참고자료이며 문단의 기계적 검증에는 기존 역사 기록 ID를 사용합니다.
 
 사진/현재 위치 결과의 운영자 AI 생성은 버튼으로 실행합니다. `videos.records[].verifiedSegments`만 검증된 시간 링크이며, 없으면 `playbackStatus`에 재생구간 미검증을 표시합니다. 기존 원자료 시간과 혼동하지 마세요. [사진 기반 구현·검증 보고서](photo-docent-implementation.md)를 참고하세요.
+
+## 원본 사진 서버 처리
+
+선택적으로 `POST /api/photo-location`에 동의 헤더와 원본 바이트를 보내면 서버가 EXIF GPS를 읽고 기존 주소 변환을 실행합니다. 후보 확인 후 기존 MCP token으로 진행합니다. 일반 채팅 첨부 파일이 자동 전달된다는 뜻은 아닙니다. [서버 업로드·개인정보·제한 안내](server-photo-upload.md)를 참고하세요.

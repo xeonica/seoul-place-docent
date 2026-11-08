@@ -1,3 +1,4 @@
+import {handlePhotoLocation} from '../../lib/photo-upload';
 import {POST,GET,OPTIONS,DELETE,HEAD} from '../../app/mcp/route';
 import {env} from '../../lib/runtime-env';
 import {configuredMcpOrigins,originError,mcpHeaders} from '../../lib/mcp-http';
@@ -9,6 +10,7 @@ export default {async fetch(request:Request):Promise<Response>{
  const allowed=configuredMcpOrigins(env.MCP_ALLOWED_ORIGINS);
  const rejected=originError(request,allowed);if(rejected)return rejected;
  const url=new URL(request.url);const path=url.pathname;
+ if(path==='/api/photo-location'||['/api/public-mcp','/mcp'].includes(path)&&url.searchParams.get('__route')==='photo-location')return handlePhotoLocation(request,env,allowed);
  if(path==='/health'||['/mcp','/api/public-mcp'].includes(path)&&url.searchParams.get('__route')==='health'){
   if(request.method!=='GET'&&request.method!=='HEAD')return new Response(null,{status:405,headers:{Allow:'GET, HEAD'}});
   const configured=!!env.JUSO_API_KEY;

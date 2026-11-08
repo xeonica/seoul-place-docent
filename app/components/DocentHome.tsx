@@ -30,7 +30,7 @@ const date=(x:string)=>x?new Date(x).toLocaleString('ko-KR',{timeZone:'Asia/Seou
 function SourceLink({url,children}:{url:string;children:React.ReactNode}){return <a href={url} target="_blank" rel="noopener noreferrer" className="source-link">{children}<ArrowUpRight size={14}/></a>}
 export default function Home({language='ko'}:{language?:'ko'|'en'}){
  const en=language==='en';const photoInput=useRef<HTMLInputElement>(null);const [photoMessage,setPhotoMessage]=useState('');const [photoLoading,setPhotoLoading]=useState(false);
- const [photoSelection,setPhotoSelection]=useState(false);const [locationLoading,setLocationLoading]=useState(false);const [deviceLocation,setDeviceLocation]=useState(false);const [pendingNeighborhood,setPendingNeighborhood]=useState<MapLocation|null>(null);
+ const [serverPhoto,setServerPhoto]=useState(false);const [photoSelection,setPhotoSelection]=useState(false);const [locationLoading,setLocationLoading]=useState(false);const [deviceLocation,setDeviceLocation]=useState(false);const [pendingNeighborhood,setPendingNeighborhood]=useState<MapLocation|null>(null);
  useEffect(()=>{document.documentElement.lang=language;},[language]);
  const [aiData,setAiData]=useState<AISummary|null>(null);
  const [placeContext,setPlaceContext]=useState<PlaceContext|null>(null);const [contextLoading,setContextLoading]=useState(false);const [contextAttempt,setContextAttempt]=useState(0);
@@ -68,15 +68,16 @@ export default function Home({language='ko'}:{language?:'ko'|'en'}){
   abort.current?.abort();setSearching(false);selectAbort.current?.abort();floorAbort.current?.abort();const c=new AbortController();selectAbort.current=c;requestVersion.current++;setLoading(true);setSearchError('');setResult(null);setBuildingId('');setFloorData([]);setFloorState('');setFloorLoading(false);setToken(a.token);setEra('all');setAdditionalOpen(false);
   try{const r=await fetch('/api/place',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:a.token}),signal:c.signal});const d=await readJson<Result>(r);if(!r.ok)throw new Error(d.error?.message??'장소를 불러오지 못했습니다.');if(c.signal.aborted)return;setResult(d);if(fromMap)setPhotoMessage('');setCandidates([]);setSearched(false);setQ(d.address.roadAddr);setRegionId(d.history[0]?.id??'');if(d.building.data?.items.length===1)setBuildingId(d.building.data.items[0].id);requestAnimationFrame(()=>resultRef.current?.scrollIntoView({behavior:'smooth',block:'start'}));}catch(e){if(!c.signal.aborted)setSearchError(e instanceof Error?e.message:'장소 조회에 실패했습니다.');}finally{if(!c.signal.aborted)setLoading(false);}
  }
- async function pickMap(point:{x:number;y:number},fromPhoto=false,currentDevice=false){
+ async function pickMap(point:{x:number;y:number},fromPhoto=false,currentDevice=false,resolved?:MapAddressResult){
   setDeviceLocation(currentDevice);setPendingNeighborhood(null);
   setPhotoSelection(fromPhoto);if(!fromPhoto)setPhotoMessage('');
   mapAbort.current?.abort();abort.current?.abort();selectAbort.current?.abort();floorAbort.current?.abort();requestVersion.current++;
   const controller=new AbortController();mapAbort.current=controller;
   setMapPoint({status:'verified',...point,source:currentDevice?'device-location':fromPhoto?'photo-exif':'map-click'});setMapLocation(null);setMapPicking(true);setMapMessage('');setSearchError('');setSearching(false);setSearched(false);setCandidates([]);setLoading(false);setResult(null);setToken('');setBuildingId('');setFloorData([]);setFloorState('');setFloorLoading(false);setAdditionalOpen(false);setEra('all');setPhotoResearchData(null);setDocumentData(null);setPublications(null);setAiData(null);setNationalData(null);setPhotoData(null);setPermitData(null);
   try{
-   const response=await fetch('/api/map-address?'+new URLSearchParams({x:String(point.x),y:String(point.y)}),{signal:controller.signal});
-   const body=await readJson<MapAddressResult>(response);if(!response.ok)throw new Error(body.error?.message||'선택한 지점의 주소를 불러오지 못했습니다.');if(controller.signal.aborted)return;
+   let body=resolved;
+   if(!body){const response=await fetch('/api/map-address?'+new URLSearchParams({x:String(point.x),y:String(point.y)}),{signal:controller.signal});const responseBody=await readJson<MapAddressResult>(response);if(!response.ok)throw new Error(responseBody.error?.message||'선택한 지점의 주소를 불러오지 못했습니다.');body=responseBody;}
+   if(controller.signal.aborted)return;
    setMapLocation(body.location);setMapMessage(body.message);setQ(body.location.address.roadAddr||body.location.address.jibunAddr);
    if(body.candidates.length===1&&!fromPhoto){await choose(body.candidates[0],true);return;}
    if(fromPhoto&&body.candidates.length){
@@ -101,6 +102,15 @@ export default function Home({language='ko'}:{language?:'ko'|'en'}){
   const version=++requestVersion.current;setPendingNeighborhood(null);
   setPhotoLoading(true);
   try{
+   if(serverPhoto){
+    if(file.size>4*1024*1024){setPhotoMessage(en?'Server uploads support up to 4 MiB. Use on-device analysis for larger photos.':'서버 업로드는 4MiB 이하만 지원해요. 큰 원본은 기기 내 분석을 이용해 주세요.');return;}
+    setPhotoMessage(en?'Uploading the original for temporary GPS processing…':'원본을 업로드해 서버에서 EXIF GPS와 주소를 확인하고 있어요…');
+    const response=await fetch('/api/photo-location',{method:'POST',headers:{'Content-Type':file.type||'application/octet-stream','X-Photo-Consent':'ephemeral-exif'},body:file});
+    const data=await readJson<{inspection?:{status:string;point?:{x:number;y:number}};result?:MapAddressResult;nextAction?:string}>(response);
+    if(version!==requestVersion.current)return;
+    if(!response.ok||!data.result||!data.inspection?.point){setPhotoMessage(data.error?.message||data.nextAction||'GPS를 추출하지 못했어요. 원본 또는 주소를 확인해 주세요.');return;}
+    await pickMap(data.inspection.point,true,false,data.result);return;
+   }
    setPhotoMessage(en?'Reading GPS on your device…':'기기 안에서 EXIF와 GPS를 검사하고 있어요…');
    const checked=await inspectPhotoGps(file);
    if(version!==requestVersion.current)return;
@@ -145,7 +155,8 @@ export default function Home({language='ko'}:{language?:'ko'|'en'}){
  <section className="hero docent-hero"><div className="hero-content"><div className="eyebrow"><span/>SEOUL PLACE DOCENT</div><h1>{en?<>Every place<br/><em>has a past.</em></>:<>당신이 선 곳에도,<br/><em>이야기가 있어요.</em></>}</h1><p className="hero-description">{en?<>One address. A walk through photographs and time.</>:<>주소 하나로 시작하는, 사진 속 서울의 시간 여행.</>}</p></div></section>
  <section id="explore" className="search-section docent-search" aria-label={en?'Find a Seoul place':'서울 장소 찾기'}><form onSubmit={e=>{e.preventDefault();search();}} className="search-form"><MapPin size={22}/><label className="sr-only" htmlFor="address">{en?'Seoul address':'서울 주소'}</label><input id="address" value={q} onChange={e=>setQ(e.target.value)} placeholder={en?'Enter a Seoul street address':'어느 장소의 시간이 궁금한가요? 주소를 입력하세요'} maxLength={100} required autoComplete="street-address"/><button className="search-submit" type="submit" disabled={searching||loading||photoLoading}>{searching?<Loader2 className="spin" size={18}/>:<ArrowRight size={19}/>}<span>{searching?(en?'Searching':'찾는 중'):(en?'Begin':'시간 여행 시작')}</span></button></form>
  <div className="docent-input-options"><input ref={photoInput} className="sr-only" type="file" accept="image/jpeg,image/heic,image/heif,.jpg,.jpeg,.heic,.heif" aria-label={en?'Choose a GPS photo':'GPS가 포함된 사진 선택'} onChange={e=>{const f=e.target.files?.[0];e.target.value='';if(f)void openPhoto(f);}}/><button type="button" onClick={()=>photoInput.current?.click()} disabled={photoLoading||loading||searching||mapPicking}>{photoLoading?<Loader2 size={16} className="spin"/>:<Camera size={17}/>} {en?'Start with a photo':'사진 한 장으로 시작'}</button><button type="button" onClick={useCurrentLocation} disabled={locationLoading||photoLoading||mapPicking||loading||searching}>{en?'Use current location':'현재 위치 사용'}</button><span>{en?'GPS JPEG or HEIC · up to 20 MB':'GPS가 있는 JPEG·HEIC · 20MB 이하'}</span></div>
- <p className="docent-photo-privacy">{en?'Photo files stay on your device. Only GPS coordinates are sent to look up the address. No GPS? Enter the address.':'사진 파일은 전송·저장하지 않아요. 사진의 GPS 좌표만 주소 조회에 사용하며, 위치정보가 없으면 주소를 입력해 주세요.'}</p>
+ <label className="docent-photo-privacy"><input type="checkbox" checked={serverPhoto} disabled={photoLoading} onChange={e=>setServerPhoto(e.target.checked)}/>{en?'Use server analysis (up to 4 MiB). I consent to temporary processing of the original photo and GPS; no file is saved.':'서버 분석 사용(4MiB 이하): 원본 사진·GPS의 일시 처리에 동의합니다. 파일은 저장하지 않습니다.'}</label>
+ <p className="docent-photo-privacy">{serverPhoto?(en?'The selected original is sent to this server, processed in memory, and not saved. Only coordinates go to the address provider.':'선택한 원본을 이 서버에 전송해 메모리에서 분석하고 저장하지 않습니다. 주소 제공기관에는 좌표만 전달합니다.'):(en?'Default: analyze on your device. Only coordinates are sent for address lookup.':'기본값은 기기 내 분석입니다. 사진은 전송하지 않고 주소 조회에 필요한 좌표만 전달합니다.')}</p>
  {pendingNeighborhood&&<div className="notice" role="region" aria-label="동네 위치 확인"><p>{pendingNeighborhood.address.roadAddr||pendingNeighborhood.address.jibunAddr}</p><button type="button" onClick={confirmNeighborhood}>{en?'Confirm neighborhood and find records':'이 동네 확인 후 자료 찾기'}</button><button type="button" onClick={()=>{setPendingNeighborhood(null);setPhotoMessage('');document.getElementById('address')?.focus();}}>{en?'Change address':'주소 변경'}</button></div>}
  {photoMessage&&<p className="notice" role="status">{photoMessage}</p>}
  <details className="docent-map"><summary><MapPin size={15}/>{en?'Or choose a point on the map':'또는 지도에서 위치 고르기'}<ChevronDown size={14}/></summary><KakaoMapPanel address={mapLocation?.address.roadAddr||mapLocation?.address.jibunAddr||result?.address.roadAddr||result?.address.jibunAddr} point={mapPoint??result?.coordinates.data} message={mapMessage||result?.coordinates.message} parcel={placeContext?.parcel.status==='ok'?placeContext.parcel.data:undefined} parcelMessage={placeContext?.parcel.status==='unavailable'?placeContext.parcel.message:undefined} onPick={pickMap} picking={mapPicking||loading}/></details>
