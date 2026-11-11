@@ -37,7 +37,7 @@ def canonical_url(url):
     return urlunsplit((p.scheme.lower(), p.netloc.lower(), p.path.rstrip("/") or "/", urlencode(sorted(keep)), ""))
 
 def validate(tables):
-    records, places, links = [rows for _, rows in tables]
+    records, places, links = [rows for _, _, rows in tables]
     ids = [r["record_id"].strip() for r in records]
     place_ids = [p["place_id"].strip() for p in places]
     if not all(ids) or len(ids) != len(set(ids)):
