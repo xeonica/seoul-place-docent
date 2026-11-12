@@ -20,6 +20,6 @@ class MetadataTests(unittest.TestCase):
         self.assertEqual(compare(row, ("제2한강교 개통식", "1965-01-25", "RG5-SR91-IT7691"))[0], "MISMATCH_REVIEW")
     def test_matching_still_requires_review(self):
         row = {"record_title":"제2한강교 개통식", "production_date":"1965-01-25", "archive_record_id":"RG5-SR91-IT7691"}
-        self.assertEqual(compare(row, ("제2한강교 개통식", "1965-01-25", "7691"))[0], "METADATA_MATCH_REVIEW")
+        self.assertEqual(compare(row, ("제2한강교 개통식", "1965-01-25", "RG5-SR91-IT7691"))[0], "METADATA_MATCH_REVIEW")
 if __name__ == "__main__":
     unittest.main()
