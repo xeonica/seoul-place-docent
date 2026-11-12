@@ -4,6 +4,7 @@ on:
     paths:
       - "scripts/check_history_metadata.py"
       - "tests/test_history_metadata.py"
+      - "tests/fixtures/history_metadata_smoke.csv"
       - ".github/workflows/history-metadata-tests.yml"
   workflow_dispatch:
 permissions:
@@ -19,3 +20,18 @@ jobs:
           python-version: "3.12"
       - name: Run metadata comparison unit tests
         run: python -m unittest discover -s tests -p 'test_history_metadata.py'
+      - name: Live official record metadata smoke test
+        if: github.event_name == 'pull_request'
+        env:
+          HISTORY_RECORDS_PATH: tests/fixtures/history_metadata_smoke.csv
+          HISTORY_METADATA_REPORT_PATH: research-data/metadata_smoke_report.csv
+        run: |
+          python scripts/check_history_metadata.py
+          python -c "import csv; r=list(csv.DictReader(open('research-data/metadata_smoke_report.csv',encoding='utf-8-sig'))); print(r); assert len(r)==1 and r[0]['metadata_verdict']=='METADATA_MATCH_REVIEW', 'Official record metadata did not fully match'"
+      - name: Upload metadata smoke report
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v5
+        with:
+          name: seoul-history-metadata-smoke
+          path: research-data/metadata_smoke_report.csv
+          retention-days: 7
