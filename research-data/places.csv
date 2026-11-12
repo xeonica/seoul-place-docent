@@ -1,0 +1,4 @@
+place_id,place_name,current_address,district,legal_dong,legal_dong_code,historical_names,historical_period,location_review_status,notes
+SEOUL-MAPO-DANGIN-POWER-UNVERIFIED,당인리발전소 / 서울화력발전소,,마포구,당인동,,당인리화력발전소,,UNVERIFIED,주소·필지 대응 미검증; 임시 장소 ID
+SEOUL-MAPO-DANGIN-LINE-UNVERIFIED,당인리선,,마포구,,,당인리선 / 唐人里線,,UNVERIFIED,선형 공간: 단일 부지 아님
+SEOUL-MAPO-DANGIN-AREA-UNVERIFIED,당인동 일대,,마포구,당인동,,당인리,,UNVERIFIED,지역 범위 및 역사 지명 검토 필요
