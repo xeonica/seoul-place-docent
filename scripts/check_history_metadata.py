@@ -6,6 +6,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from html.parser import HTMLParser
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
@@ -22,26 +23,42 @@ def normalize_title(s):
 
 def archive_id(url):
     p = urlsplit(url)
-    if p.scheme != "https" or p.hostname != "archives.seoul.go.kr" or p.port not in (None, 443):
+    if p.scheme != "https" or p.hostname != "archives.seoul.go.kr" or p.port not in (None, 443) or p.username or p.password:
         return ""
     m = re.fullmatch(r"/item/(\d+)/?", p.path)
     return m.group(1) if m else ""
 
+class VisibleText(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.hidden = 0
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style"):
+            self.hidden += 1
+    def handle_endtag(self, tag):
+        if tag in ("script", "style") and self.hidden:
+            self.hidden -= 1
+    def handle_data(self, data):
+        if not self.hidden and data.strip():
+            self.parts.append(data.strip())
+
 def extract_metadata(page, url):
-    """Only explicit machine-readable HTML meta tags; no invented date/title."""
-    metas = {}
-    for tag in re.findall(r"<meta\b[^>]*>", page, re.I):
-        attrs = dict((k.lower(), html.unescape(v)) for k, v in
-                     re.findall(r'([\w:-]+)\s*=\s*["\']([^"\']*)["\']', tag))
-        key = (attrs.get("property") or attrs.get("name") or "").lower()
-        if key and attrs.get("content"):
-            metas[key] = attrs["content"].strip()
-    title = metas.get("og:title", "") or metas.get("dc.title", "")
-    date = metas.get("article:published_time", "") or metas.get("dc.date", "")
+    """Extract explicitly labeled visible archive fields, not URL-inferred identifiers."""
+    parser = VisibleText()
+    parser.feed(page)
+    text = " ".join(parser.parts)
+    identifier = re.search(r"식별번호\s+(RG\d+-SR\d+-IT\d+)\b", text)
+    date = re.search(r"\[생산\]\s*(\d{4}-\d{2}-\d{2})", text)
+    # The page heading contains the record title followed by its production date.
+    title = ""
     if date:
-        m = re.search(r"\d{4}-\d{2}-\d{2}", date)
-        date = m.group(0) if m else ""
-    return title, date, archive_id(url)
+        heading = re.search(r"([^.!?<>]{2,120}?),\s*" + re.escape(date.group(1)), text)
+        if heading:
+            candidate = heading.group(1).strip()
+            # Avoid accepting navigation labels or unrelated content as title.
+            title = candidate.split("검색 ")[-1].split("URL복사 ")[-1].strip()
+    return title, date.group(1) if date else "", identifier.group(1) if identifier else ""
 
 def compare(row, observed):
     title, date, rid = observed
@@ -86,7 +103,8 @@ def run():
                         if "text/html" not in response.headers.get("Content-Type", "").lower():
                             raise ValueError("Not HTML")
                         page = response.read(512000).decode("utf-8", errors="replace")
-                    title, date, rid = extract_metadata(page, url)
+                    title, date, observed_id = extract_metadata(page, url)
+                    rid = observed_id
                     verdict, reason = compare(row, (title, date, rid))
                 except Exception as exc:
                     verdict, reason = "FETCH_FAILED", type(exc).__name__
