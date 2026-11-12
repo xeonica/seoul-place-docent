@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, HTTPRedirectHandler
 
 ROOT = Path(__file__).resolve().parents[1]
 INPUT = Path(os.environ.get("HISTORY_RECORDS_PATH", ROOT / "research-data/records.csv"))
@@ -23,7 +23,7 @@ def normalize_title(s):
 
 def archive_id(url):
     p = urlsplit(url)
-    if p.scheme != "https" or p.hostname != "archives.seoul.go.kr" or p.port not in (None, 443) or p.username or p.password:
+    if p.scheme != "https" or p.hostname != "archives.seoul.go.kr" or p.port not in (None, 443) or p.username or p.password or p.query or p.fragment:
         return ""
     m = re.fullmatch(r"/item/(\d+)/?", p.path)
     return m.group(1) if m else ""
@@ -78,6 +78,11 @@ def compare(row, observed):
         return "INSUFFICIENT_EVIDENCE", "Missing comparison: " + ", ".join(missing)
     return "METADATA_MATCH_REVIEW", "Three metadata fields match; human review still required"
 
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def run():
     with INPUT.open(encoding="utf-8-sig", newline="") as f:
         rows = list(csv.DictReader(f))
@@ -96,7 +101,7 @@ def run():
             if rid:
                 try:
                     req = Request(url, headers={"User-Agent": "SeoulPlaceDocentMetadataReview/1.0"})
-                    with urlopen(req, timeout=8) as response:
+                    with build_opener(NoRedirect).open(req, timeout=8) as response:
                         if response.geturl() != url or response.status != 200:
                             raise ValueError("Unexpected redirect or HTTP status")
                         if "text/html" not in response.headers.get("Content-Type", "").lower():
