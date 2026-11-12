@@ -65,8 +65,7 @@ def compare(row, observed):
     expected_title = (row.get("record_title") or "").strip()
     expected_date = (row.get("production_date") or row.get("created_date") or "").strip()
     expected_id = (row.get("archive_record_id") or "").strip()
-    expected_digits = re.search(r"(\d+)$", expected_id)
-    expected_id_digits = expected_digits.group(1) if expected_digits else ""
+    expected_id_digits = expected_id
     fields = [(expected_title, title, normalize_title), (expected_date, date, str),
               (expected_id_digits, rid, str)]
     mismatch = [name for name, (a,b,norm) in zip(("title","date","archive_id"),fields)
