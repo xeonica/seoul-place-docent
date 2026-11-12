@@ -11,11 +11,11 @@ permissions:
   contents: read
 jobs:
   source-url-check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Run offline safety tests
@@ -28,7 +28,7 @@ jobs:
         run: python scripts/check_history_source_urls.py
       - name: Upload smoke-test report
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: seoul-history-source-url-smoke
           path: research-data/source_url_smoke_report.csv
@@ -38,7 +38,7 @@ jobs:
         run: python scripts/check_history_source_urls.py
       - name: Upload manual report
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: seoul-history-source-url-status
           path: research-data/source_url_report.csv
