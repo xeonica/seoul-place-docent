@@ -5,9 +5,8 @@ on:
     paths:
       - "scripts/check_history_source_urls.py"
       - "tests/test_history_source_urls.py"
+      - "tests/fixtures/history_source_url_smoke.csv"
       - ".github/workflows/history-source-url-check.yml"
-  schedule:
-    - cron: "20 */3 * * *"
 permissions:
   contents: read
 jobs:
@@ -21,11 +20,24 @@ jobs:
           python-version: "3.12"
       - name: Run offline safety tests
         run: python -m unittest discover -s tests -p 'test_history_source_urls.py'
-      - name: Run read-only URL diagnostics
-        if: github.event_name != 'pull_request'
+      - name: Run one-record live smoke test (PR only)
+        if: github.event_name == 'pull_request'
+        env:
+          HISTORY_RECORDS_PATH: tests/fixtures/history_source_url_smoke.csv
+          HISTORY_URL_REPORT_PATH: research-data/source_url_smoke_report.csv
         run: python scripts/check_history_source_urls.py
-      - name: Upload URL status report
-        if: github.event_name != 'pull_request'
+      - name: Upload smoke-test report
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: seoul-history-source-url-smoke
+          path: research-data/source_url_smoke_report.csv
+          retention-days: 7
+      - name: Run read-only URL diagnostics (manual only)
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/check_history_source_urls.py
+      - name: Upload manual report
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: seoul-history-source-url-status
