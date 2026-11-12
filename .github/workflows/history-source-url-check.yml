@@ -1,6 +1,11 @@
 name: Historical source URL diagnostics
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/check_history_source_urls.py"
+      - "tests/test_history_source_urls.py"
+      - ".github/workflows/history-source-url-check.yml"
   schedule:
     - cron: "20 */3 * * *"
 permissions:
@@ -14,9 +19,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Run offline safety tests
+        run: python -m unittest discover -s tests -p 'test_history_source_urls.py'
       - name: Run read-only URL diagnostics
+        if: github.event_name != 'pull_request'
         run: python scripts/check_history_source_urls.py
       - name: Upload URL status report
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: seoul-history-source-url-status
