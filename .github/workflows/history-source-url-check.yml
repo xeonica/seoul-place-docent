@@ -1,0 +1,24 @@
+name: Historical source URL diagnostics
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 */3 * * *"
+permissions:
+  contents: read
+jobs:
+  source-url-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run read-only URL diagnostics
+        run: python scripts/check_history_source_urls.py
+      - name: Upload URL status report
+        uses: actions/upload-artifact@v4
+        with:
+          name: seoul-history-source-url-status
+          path: research-data/source_url_report.csv
+          retention-days: 30
