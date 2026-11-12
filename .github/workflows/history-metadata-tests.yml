@@ -1,0 +1,21 @@
+name: Historical metadata comparison tests
+on:
+  pull_request:
+    paths:
+      - "scripts/check_history_metadata.py"
+      - "tests/test_history_metadata.py"
+      - ".github/workflows/history-metadata-tests.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  metadata-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Run metadata comparison unit tests
+        run: python -m unittest discover -s tests -p 'test_history_metadata.py'
