@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "scripts/check_history_metadata.py"
+      - "scripts/check_history_source_urls.py"
       - "tests/test_history_metadata.py"
       - "tests/fixtures/history_metadata_smoke.csv"
       - ".github/workflows/history-metadata-tests.yml"
@@ -12,7 +13,7 @@ permissions:
 jobs:
   metadata-tests:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -35,3 +36,13 @@ jobs:
           name: seoul-history-metadata-smoke
           path: research-data/metadata_smoke_report.csv
           retention-days: 7
+      - name: Generate full research metadata report (manual only)
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/check_history_metadata.py
+      - name: Upload full metadata review report
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v5
+        with:
+          name: seoul-history-metadata-review
+          path: research-data/source_metadata_report.csv
+          retention-days: 30
