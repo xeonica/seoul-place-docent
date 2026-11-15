@@ -4,6 +4,8 @@ import csv
 import html
 import os
 import re
+import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from html.parser import HTMLParser
@@ -13,8 +15,7 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 ROOT = Path(__file__).resolve().parents[1]
 INPUT = Path(os.environ.get("HISTORY_RECORDS_PATH", ROOT / "research-data/records.csv"))
 OUTPUT = Path(os.environ.get("HISTORY_METADATA_REPORT_PATH", ROOT / "research-data/source_metadata_report.csv"))
-MAX_RECORDS = 100
-FIELDS = ["record_id", "source_url", "expected_title", "observed_title", "expected_date",
+FIELDS = ["source_file", "record_id", "source_url", "expected_title", "observed_title", "expected_date",
           "observed_date", "expected_archive_id", "observed_archive_id",
           "metadata_verdict", "reason", "checked_at_utc", "rights_verdict"]
 
@@ -83,42 +84,79 @@ class NoRedirect(HTTPRedirectHandler):
         return None
 
 
+def candidate_rows():
+    """Reuse URL diagnostics discovery so new research CSVs are automatically included."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from check_history_source_urls import candidate_files
+    paths = [INPUT] if os.environ.get("HISTORY_RECORDS_PATH") else candidate_files()
+    for path in paths:
+        with path.open(encoding="utf-8-sig", newline="") as f:
+            reader = csv.DictReader(f)
+            headers = set(reader.fieldnames or [])
+            url_key = next((k for k in ("source_url", "원문URL") if k in headers), None)
+            id_key = next((k for k in ("record_id", "자료ID") if k in headers), None)
+            if not url_key or not id_key:
+                continue
+            for row in reader:
+                if None in row:
+                    raise ValueError(f"Malformed CSV row: {path}")
+                yield {"source_file": str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path),
+                       "record_id": row[id_key] or "", "source_url": row[url_key] or "",
+                       "record_title": row.get("record_title") or row.get("title") or row.get("후보명") or "",
+                       "production_date": row.get("production_date") or row.get("생산시기") or "",
+                       "created_date": row.get("created_date") or "",
+                       "archive_record_id": row.get("archive_record_id") or row.get("기록번호") or row.get("provider_id") or ""}
+
+def fetch_metadata(url):
+    req = Request(url, headers={"User-Agent": "SeoulPlaceDocentMetadataReview/1.0"})
+    with build_opener(NoRedirect).open(req, timeout=8) as response:
+        if response.geturl() != url or response.status != 200:
+            raise ValueError("Unexpected redirect or HTTP status")
+        if "text/html" not in response.headers.get("Content-Type", "").lower():
+            raise ValueError("Not HTML")
+        page = response.read(512000).decode("utf-8", errors="replace")
+    return extract_metadata(page, url)
+
 def run():
-    with INPUT.open(encoding="utf-8-sig", newline="") as f:
-        rows = list(csv.DictReader(f))
-    if len(rows) > MAX_RECORDS:
-        raise ValueError("Input exceeds 100 rows")
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    cache = {}
+    count = 0
+    compared = 0
     with OUTPUT.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS)
         writer.writeheader()
-        for row in rows:
-            url = (row.get("source_url") or "").strip()
-            rid = archive_id(url)
-            title = date = ""
-            verdict = "SKIPPED_DOMAIN"
-            reason = "Only Seoul Archives item URLs supported"
-            if rid:
-                try:
-                    req = Request(url, headers={"User-Agent": "SeoulPlaceDocentMetadataReview/1.0"})
-                    with build_opener(NoRedirect).open(req, timeout=8) as response:
-                        if response.geturl() != url or response.status != 200:
-                            raise ValueError("Unexpected redirect or HTTP status")
-                        if "text/html" not in response.headers.get("Content-Type", "").lower():
-                            raise ValueError("Not HTML")
-                        page = response.read(512000).decode("utf-8", errors="replace")
-                    title, date, observed_id = extract_metadata(page, url)
-                    rid = observed_id
-                    verdict, reason = compare(row, (title, date, rid))
-                except Exception as exc:
-                    verdict, reason = "FETCH_FAILED", type(exc).__name__
-            writer.writerow(dict(record_id=row.get("record_id",""), source_url=url,
-                expected_title=row.get("record_title",""), observed_title=title,
-                expected_date=row.get("production_date") or row.get("created_date") or "",
-                observed_date=date, expected_archive_id=row.get("archive_record_id",""),
-                observed_archive_id=rid, metadata_verdict=verdict, reason=reason,
-                checked_at_utc=datetime.now(timezone.utc).isoformat(), rights_verdict="NOT_CHECKED"))
-    print(f"Produced {len(rows)} conservative metadata review rows; no rights approval.")
+        for row in candidate_rows():
+            count += 1
+            url = row["source_url"].strip()
+            observed = ("", "", "")
+            verdict, reason = "SKIPPED_DOMAIN", "Only Seoul Archives item URLs supported"
+            if archive_id(url):
+                if url not in cache:
+                    if cache:
+                        time.sleep(0.5)
+                    try:
+                        cache[url] = (fetch_metadata(url), "")
+                    except Exception as exc:
+                        cache[url] = (("", "", ""), type(exc).__name__)
+                observed, error = cache[url]
+                if error:
+                    verdict, reason = "FETCH_FAILED", error
+                else:
+                    compared += 1
+                    verdict, reason = compare(row, observed)
+                    # A partial/year-only date is not evidence of an exact date match.
+                    expected = (row.get("production_date") or row.get("created_date") or "").strip()
+                    if expected and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", expected):
+                        if verdict == "MISMATCH_REVIEW" and "date" in reason:
+                            verdict, reason = "INSUFFICIENT_EVIDENCE", "Expected date not precise enough for comparison"
+            title, date, rid = observed
+            writer.writerow({"source_file":row["source_file"], "record_id":row["record_id"],
+                "source_url":url, "expected_title":row["record_title"], "observed_title":title,
+                "expected_date":row["production_date"] or row["created_date"], "observed_date":date,
+                "expected_archive_id":row["archive_record_id"], "observed_archive_id":rid,
+                "metadata_verdict":verdict, "reason":reason,
+                "checked_at_utc":datetime.now(timezone.utc).isoformat(), "rights_verdict":"NOT_CHECKED"})
+    print(f"Metadata report: {count} candidate rows, {len(cache)} unique official item URLs, {compared} fetched comparisons. No rights approval.")
 
 if __name__ == "__main__":
     run()
