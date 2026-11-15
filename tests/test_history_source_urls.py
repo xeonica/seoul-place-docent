@@ -15,9 +15,9 @@ class URLChecks(unittest.TestCase):
             base = Path(tmp)
             (base / "grok").mkdir()
             rows = [
-                (base / "records.csv", "record_id,source_url\\na,https://archives.seoul.go.kr/item/1\\n"),
-                (base / "seoul_docent_cumulative_20261115_2100.csv", "자료ID,원문URL\\nb,https://archives.seoul.go.kr/item/1\\n"),
-                (base / "grok/seoul_history_candidates_20261115.csv", "record_id,source_url\\nc,https://example.org/2\\n"),
+                (base / "records.csv", "record_id,source_url\na,https://archives.seoul.go.kr/item/1\n"),
+                (base / "seoul_docent_cumulative_20261115_2100.csv", "자료ID,원문URL\nb,https://archives.seoul.go.kr/item/1\n"),
+                (base / "grok/seoul_history_candidates_20261115.csv", "record_id,source_url\nc,https://example.org/2\n"),
             ]
             for path, content in rows:
                 path.write_text(content, encoding="utf-8")
