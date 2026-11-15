@@ -39,7 +39,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
         run: python scripts/check_history_source_urls.py
       - name: Upload manual or daily report
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
         uses: actions/upload-artifact@v5
         with:
           name: seoul-history-source-url-status
