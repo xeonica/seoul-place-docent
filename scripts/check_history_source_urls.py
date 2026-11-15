@@ -17,9 +17,8 @@ INPUT = Path(os.environ.get("HISTORY_RECORDS_PATH", ROOT / "research-data/record
 OUTPUT = Path(os.environ.get("HISTORY_URL_REPORT_PATH", ROOT / "research-data/source_url_report.csv"))
 ALLOWED = {"archives.seoul.go.kr", "museum.seoul.go.kr"}
 TIMEOUT = 8
-MAX_RECORDS = 500
 DATA = ROOT / "research-data"
-CANDIDATE_FILES = ("records.csv", "seoul_docent_cumulative_20261115_2100.csv", "grok/seoul_history_candidates_20261115.csv")
+EXCLUDED_NAMES = {"source_url_report.csv", "source_url_smoke_report.csv"}
 MAX_REDIRECTS = 5
 
 def permitted(url):
@@ -65,41 +64,54 @@ def classify(url):
     except (URLError, TimeoutError, socket.timeout, ValueError, OSError) as e:
         return "CHECK_FAILED", "", "", type(e).__name__
 
-def load_candidates():
-    """Read the three retained research ledgers without changing their contents."""
-    files = [INPUT] if os.environ.get("HISTORY_RECORDS_PATH") else [DATA / name for name in CANDIDATE_FILES]
-    records = []
-    for path in files:
+def candidate_files():
+    """Discover candidate CSVs recursively; exclude generated reports."""
+    if os.environ.get("HISTORY_RECORDS_PATH"):
+        return [INPUT]
+    return sorted(p for p in DATA.rglob("*.csv")
+                  if p.name not in EXCLUDED_NAMES and not p.name.startswith("source_url_")
+                  and not p.name.endswith("_report.csv"))
+
+def iter_candidates():
+    for path in candidate_files():
         with path.open(encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
-            if not reader.fieldnames:
-                raise ValueError(f"{path}: missing CSV headers")
-            id_key = "record_id" if "record_id" in reader.fieldnames else "자료ID"
-            url_key = "source_url" if "source_url" in reader.fieldnames else "원문URL"
-            if id_key not in reader.fieldnames or url_key not in reader.fieldnames:
-                raise ValueError(f"{path}: missing ID or source URL column")
+            headers = set(reader.fieldnames or [])
+            id_key = next((k for k in ("record_id", "자료ID") if k in headers), None)
+            url_key = next((k for k in ("source_url", "원문URL") if k in headers), None)
+            if not (id_key and url_key):
+                print(f"SKIP unrelated CSV: {path}")
+                continue
             for row in reader:
-                records.append({"record_id": row[id_key], "source_url": row[url_key],
-                                "source_file": str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)})
-    if len(records) > MAX_RECORDS:
-        raise ValueError(f"Too many records for a single run: {len(records)} > {MAX_RECORDS}")
-    return records
+                if None in row:
+                    raise ValueError(f"Malformed CSV row in {path}")
+                yield {"record_id": row[id_key], "source_url": row[url_key],
+                       "source_file": str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)}
 
+def load_candidates():
+    return list(iter_candidates())
 
 def run():
-    records = load_candidates()
+    records = iter_candidates()
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     counts = Counter()
     cache = {}
+    rows = 0
+    files = set()
+    requests = 0
     with OUTPUT.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["source_file","record_id","source_url","url_status","http_status","final_url","details","checked_at_utc","metadata_verdict","rights_verdict"])
         writer.writeheader()
         for record in records:
+            rows += 1
+            files.add(record["source_file"])
             url = (record["source_url"] or "").strip()
             # Exact URL repeats share one network request, but each original row is reported.
             if url not in cache:
-                if cache:
-                    time.sleep(0.5)
+                if permitted(url):
+                    if requests:
+                        time.sleep(0.5)
+                    requests += 1
                 cache[url] = classify(url)
             status, http, final, detail = cache[url]
             counts[status] += 1
@@ -107,7 +119,7 @@ def run():
                              "url_status":status,"http_status":http,"final_url":final,"details":detail,
                              "checked_at_utc":datetime.now(timezone.utc).isoformat(),
                              "metadata_verdict":"NOT_CHECKED","rights_verdict":"NOT_CHECKED"})
-    print(f"Checked {len(records)} candidate rows, {len(cache)} unique URLs: {dict(counts)}. No metadata or rights approval.")
+    print(f"Checked {rows} candidate rows from {len(files)} files, {len(cache)} unique URLs: {dict(counts)}. No metadata or rights approval.")
 
 
 if __name__ == "__main__":
