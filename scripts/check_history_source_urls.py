@@ -18,6 +18,8 @@ OUTPUT = Path(os.environ.get("HISTORY_URL_REPORT_PATH", ROOT / "research-data/so
 ALLOWED = {"archives.seoul.go.kr", "museum.seoul.go.kr"}
 TIMEOUT = 8
 MAX_RECORDS = 500
+DATA = ROOT / "research-data"
+CANDIDATE_FILES = ("records.csv", "seoul_docent_cumulative_20261115_2100.csv", "grok/seoul_history_candidates_20261115.csv")
 MAX_REDIRECTS = 5
 
 def permitted(url):
@@ -63,26 +65,50 @@ def classify(url):
     except (URLError, TimeoutError, socket.timeout, ValueError, OSError) as e:
         return "CHECK_FAILED", "", "", type(e).__name__
 
-def run():
-    with INPUT.open(encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f)
-        if not reader.fieldnames or not {"record_id", "source_url"}.issubset(reader.fieldnames):
-            raise ValueError("CSV requires record_id and source_url")
-        records = list(reader)
+def load_candidates():
+    """Read the three retained research ledgers without changing their contents."""
+    files = [INPUT] if os.environ.get("HISTORY_RECORDS_PATH") else [DATA / name for name in CANDIDATE_FILES]
+    records = []
+    for path in files:
+        with path.open(encoding="utf-8-sig", newline="") as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames:
+                raise ValueError(f"{path}: missing CSV headers")
+            id_key = "record_id" if "record_id" in reader.fieldnames else "자료ID"
+            url_key = "source_url" if "source_url" in reader.fieldnames else "원문URL"
+            if id_key not in reader.fieldnames or url_key not in reader.fieldnames:
+                raise ValueError(f"{path}: missing ID or source URL column")
+            for row in reader:
+                records.append({"record_id": row[id_key], "source_url": row[url_key],
+                                "source_file": str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)})
     if len(records) > MAX_RECORDS:
-        raise ValueError("Too many records for a single run")
+        raise ValueError(f"Too many records for a single run: {len(records)} > {MAX_RECORDS}")
+    return records
+
+
+def run():
+    records = load_candidates()
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     counts = Counter()
+    cache = {}
     with OUTPUT.open("w", encoding="utf-8-sig", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["record_id","source_url","url_status","http_status","final_url","details","checked_at_utc","metadata_verdict","rights_verdict"])
+        writer = csv.DictWriter(f, fieldnames=["source_file","record_id","source_url","url_status","http_status","final_url","details","checked_at_utc","metadata_verdict","rights_verdict"])
         writer.writeheader()
-        for i, record in enumerate(records):
-            if i:
-                time.sleep(0.5)
-            status, http, final, detail = classify(record["source_url"].strip())
+        for record in records:
+            url = (record["source_url"] or "").strip()
+            # Exact URL repeats share one network request, but each original row is reported.
+            if url not in cache:
+                if cache:
+                    time.sleep(0.5)
+                cache[url] = classify(url)
+            status, http, final, detail = cache[url]
             counts[status] += 1
-            writer.writerow({"record_id":record["record_id"],"source_url":record["source_url"],"url_status":status,"http_status":http,"final_url":final,"details":detail,"checked_at_utc":datetime.now(timezone.utc).isoformat(),"metadata_verdict":"NOT_CHECKED","rights_verdict":"NOT_CHECKED"})
-    print(f"Checked {len(records)} candidate URLs: {dict(counts)}. No metadata or rights approval.")
+            writer.writerow({"source_file":record["source_file"],"record_id":record["record_id"],"source_url":url,
+                             "url_status":status,"http_status":http,"final_url":final,"details":detail,
+                             "checked_at_utc":datetime.now(timezone.utc).isoformat(),
+                             "metadata_verdict":"NOT_CHECKED","rights_verdict":"NOT_CHECKED"})
+    print(f"Checked {len(records)} candidate rows, {len(cache)} unique URLs: {dict(counts)}. No metadata or rights approval.")
+
 
 if __name__ == "__main__":
     run()
