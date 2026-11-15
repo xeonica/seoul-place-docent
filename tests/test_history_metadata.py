@@ -3,9 +3,9 @@ import unittest
 import tempfile
 import csv
 from unittest.mock import patch
-import check_history_metadata as checker
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import check_history_metadata as checker
 from check_history_metadata import archive_id, extract_metadata, compare
 
 class MetadataTests(unittest.TestCase):
