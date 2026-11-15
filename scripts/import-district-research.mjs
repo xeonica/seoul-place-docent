@@ -74,7 +74,6 @@ for (const kind of ['articles', 'photos']) {
     const csv = source.toString('utf8');
     const parsed = objectRows(csv, filename);
     const district = filename.replace(/-(?:articles|photos)\.csv$/, '');
-    const outName = `${slug(district)}-${kind}.csv`;
     const file = kind === 'articles'
       ? {key: 'articles', title: `${district} 기사 조사자료`, filename: '자료조사.zip', path: archivePath, count: parsed.length, columns: parsed[0]?.header || [], sizeBytes: archiveBytes.length, sha256: archiveSha}
       : {id: `DISTRICT-${slug(district)}`, district, dong: '', filename: '자료조사.zip', count: parsed.length, columns: parsed[0]?.header || [], path: archivePath, sha256: archiveSha, sizeBytes: archiveBytes.length, sourceUrlCount: new Set(parsed.map(row => safeUrl(pick(row.values, ['original_url','원문URL','원문 URL','자료URL','상세URL']))).filter(Boolean)).size, candidateCount: parsed.length, previewLinkCount: 0, collectionScope: 'district', sourceNote: `원본 CSV ${filename}은 ZIP 안에 보존됩니다. 자치구 단위 조사이며 개별 장소·건물 일치는 확인되지 않았습니다.`, headerLine: 1, visualRecordCount: parsed.length, buildingRecordCount: 0, correctionCount: 0};
