@@ -3,7 +3,9 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - "research-data/**/*.csv"
       - "research-data/*.csv"
+      - "scripts/check_research_csvs.py"
       - "scripts/export_history_catalog.py"
       - ".github/workflows/history-catalog.yml"
   schedule:
@@ -18,9 +20,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Check research CSV files recursively
+        run: python scripts/check_research_csvs.py
       - name: Install spreadsheet writer
         run: python -m pip install openpyxl==3.1.5
-      - name: Validate CSV and generate review workbook
+      - name: Validate catalog and generate review workbook
         run: python scripts/export_history_catalog.py
       - name: Upload workbook for review
         uses: actions/upload-artifact@v4
