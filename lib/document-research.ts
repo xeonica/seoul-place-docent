@@ -1,4 +1,4 @@
-export const documentTables = ['targets', 'sources', 'links', 'claims', 'drafts', 'timeline', 'leads', 'progress'] as const;
+export const documentTables = ['targets', 'articles', 'sources', 'links', 'claims', 'drafts', 'timeline', 'leads', 'progress'] as const;
 export type DocumentTable = typeof documentTables[number];
 export type DocumentRow = {
   id: string; targetIds: string[]; sourceIds: string[]; evidenceIds: string[];
@@ -15,7 +15,7 @@ export type DocumentMeta = {
 export type DocumentBundle = {meta: DocumentMeta; targets: DocumentTarget[]; tables: Record<DocumentTable, DocumentRow[]>};
 export type DocumentFilters = {query?: string; district?: string; target?: string; source?: string; evidence?: string; id?: string; issuesOnly?: boolean};
 export const documentLabels: Record<DocumentTable, string> = {
-  targets: '조사대상', sources: '문헌', links: '지역 연결', claims: '주장·근거',
+  targets: '조사대상', articles: '기사 조사자료', sources: '문헌', links: '지역 연결', claims: '주장·근거',
   drafts: '본문 초안', timeline: '연표', leads: '시각자료 단서', progress: '진행 현황',
 };
 export function isDocumentTable(value: string): value is DocumentTable {
@@ -67,3 +67,4 @@ export function documentPlaceResearch(bundle: DocumentBundle, district: string, 
   };
 }
 export type DocumentPlaceResearch = ReturnType<typeof documentPlaceResearch>;
+
