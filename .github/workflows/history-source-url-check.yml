@@ -3,6 +3,11 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '17 2 * * *' # Daily 11:17 KST (UTC+9)
+  push:
+    branches: [main]
+    paths:
+      - 'research-data/**/*.csv'
+      - 'research-data/*.csv'
   pull_request:
     paths:
       - "scripts/check_history_source_urls.py"
@@ -14,7 +19,7 @@ permissions:
 jobs:
   source-url-check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -36,10 +41,10 @@ jobs:
           path: research-data/source_url_smoke_report.csv
           retention-days: 7
       - name: Run read-only URL diagnostics (manual or daily)
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event_name == 'push'
         run: python scripts/check_history_source_urls.py
       - name: Upload manual or daily report
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event_name == 'push'
         uses: actions/upload-artifact@v5
         with:
           name: seoul-history-source-url-status

@@ -32,6 +32,28 @@ class URLChecks(unittest.TestCase):
                         with (base / "out.csv").open(encoding="utf-8-sig", newline="") as f:
                             self.assertEqual(len(list(csv.DictReader(f))), 3)
 
+    def test_new_nested_csv_discovered_and_reports_excluded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            (base / "grok" / "later").mkdir(parents=True)
+            (base / "grok" / "later" / "new.csv").write_text("record_id,source_url\nnew,https://archives.seoul.go.kr/item/3\n", encoding="utf-8")
+            (base / "places.csv").write_text("place_id,name\np1,Test\n", encoding="utf-8")
+            (base / "source_url_report.csv").write_text("record_id,source_url\nold,https://example.org\n", encoding="utf-8")
+            with patch.object(checker, "DATA", base), patch.dict(checker.os.environ, {}, clear=True):
+                records = checker.load_candidates()
+                self.assertEqual([r["record_id"] for r in records], ["new"])
+
+    def test_more_than_500_rows_are_not_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            with (base / "many.csv").open("w", encoding="utf-8", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["record_id", "source_url"])
+                for i in range(501):
+                    writer.writerow([str(i), "https://example.org/skip"])
+            with patch.object(checker, "DATA", base), patch.dict(checker.os.environ, {}, clear=True):
+                self.assertEqual(len(checker.load_candidates()), 501)
+
     def test_allowlist(self):
         self.assertTrue(checker.permitted("https://archives.seoul.go.kr/item/7691"))
         for url in ["http://archives.seoul.go.kr/item/7691", "https://archives.seoul.go.kr.evil.test/item/1", "https://127.0.0.1/", "file:///etc/passwd", "https://user@archives.seoul.go.kr/item/1"]:
