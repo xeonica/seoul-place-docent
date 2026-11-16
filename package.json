@@ -18,7 +18,9 @@
     "test": "node scripts/pack-video-records.mjs && node --experimental-transform-types --import ./tests/ts-resolver.mjs --test tests/*.test.mjs",
     "typecheck": "node scripts/pack-video-records.mjs && tsc --noEmit --incremental false",
     "build:mcp-public": "node scripts/build-public-mcp.mjs",
-    "build:mcp-public:vercel": "node scripts/build-public-mcp-vercel.mjs"
+    "build:mcp-public:vercel": "node scripts/build-public-mcp-vercel.mjs",
+    "bigquery:validate": "python scripts/bigquery/ingest.py",
+    "test:bigquery-python": "python -m unittest discover -s tests -p test_bigquery_ingest.py"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

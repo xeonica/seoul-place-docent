@@ -11,6 +11,8 @@ import {generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, scene
 import {handleMcpMessage, rpcError, textResult, type McpTool, type McpToolResult} from '@/lib/mcp-protocol';
 import {auditedCall,clientHint} from '@/lib/mcp-audit';
 import {originError,configuredMcpOrigins,acceptError,protocolError,allowMcpRequest,unsupportedMcpMethod} from '@/lib/mcp-http';
+import {findVerifiedRecords,toBigQueryScenes} from '@/lib/bigquery/repository';
+import type {BigQueryAudit,BigQueryEnv} from '@/lib/bigquery/types';
 
 export const dynamic = 'force-dynamic';
 const MAX_BODY_BYTES = 32768;
@@ -129,7 +131,7 @@ const validationInput=z.object({
     held:z.array(z.string().max(200)).max(4)}).strict()
 }).strict();
 
-async function execute(name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+async function execute(name: string, args: Record<string, unknown>, request:Request, bigQuery:BigQueryAudit): Promise<McpToolResult> {
   const startedAt=Date.now();
   try {
     switch (name) {
@@ -150,7 +152,8 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
       case 'validate_place_answer': {
         const started=Date.now();const input=validationInput.parse(args);
         const address=await verifyAddress(input.token,env);
-        const story=getFullDocentStory(address.sggNm,address.emdNm);
+        let story=getFullDocentStory(address.sggNm,address.emdNm);
+        story=await withVerifiedBigQueryEvidence(story,address.sggNm,address.emdNm,request,bigQuery);
         const question=input.question||story.dong+'의 시간을 안내해 주세요.';
         const scenes=pickScenes(story,question,14,address.bdNm);
         const checked=validateAnswer(input.answer,scenes);
@@ -166,7 +169,8 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
       case 'get_place_history': {
         const input = historyInput.parse(args);
         const address = await verifyAddress(input.token, env);
-        const story = getDocentStory(address.sggNm, address.emdNm, [address.bdNm].filter(Boolean));
+        let story = getDocentStory(address.sggNm, address.emdNm, [address.bdNm].filter(Boolean));
+        story=await withVerifiedBigQueryEvidence(story,address.sggNm,address.emdNm,request,bigQuery);
         const scenes = story.scenes.slice(input.offset, input.offset + input.limit).map(scene => ({
           id: scene.id,
           kind: scene.kind,
@@ -216,7 +220,8 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
           token = found.candidates[0].token;
         }
         const address = await verifyAddress(token, env);
-        const story = getFullDocentStory(address.sggNm, address.emdNm);
+        let story = getFullDocentStory(address.sggNm, address.emdNm);
+        story=await withVerifiedBigQueryEvidence(story,address.sggNm,address.emdNm,request,bigQuery);
         const packet=await generatePlaceAnswer({address,story,question:input.question,questionType:input.questionType});
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
         const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
@@ -246,6 +251,18 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
       return {content: [{type: 'text', text: error.message}], isError: true,errorType:'service_error'};
     }
     throw error;
+  }
+}
+
+async function withVerifiedBigQueryEvidence(story:ReturnType<typeof getFullDocentStory>,district:string,dong:string,request:Request,audit:BigQueryAudit){
+  try {
+    const rows=await findVerifiedRecords({env:env as BigQueryEnv,request,district,dong,audit});
+    const scenes=toBigQueryScenes(rows);
+    return scenes.length?{...story,scenes:[...story.scenes,...scenes],total:story.total+scenes.length}:story;
+  } catch {
+    // BigQuery is an optional source. Existing JSON history remains available on every failure.
+    if(audit.bigQueryAttempted){audit.bigQueryFallback=true;audit.dataSource='json';audit.bigQueryRecords=0;}
+    return story;
   }
 }
 
@@ -292,7 +309,7 @@ export async function POST(request: Request) {
   }
   const invalidProtocol=protocolError(request,message);
   if(invalidProtocol)return invalidProtocol;
-  const response = await handleMcpMessage(message, tools, (name, args) => auditedCall(env.DB,name,clientHint(request),()=>execute(name, args)));
+  const response = await handleMcpMessage(message, tools, (name, args) => auditedCall(env.DB,name,clientHint(request),(_requestId,bigQuery)=>execute(name,args,request,bigQuery)));
   if (response === undefined) return new Response(null, {status: 202, headers});
   return Response.json(response, {headers,status:'error' in response?(response.error.code===-32601?404:400):200});
 }

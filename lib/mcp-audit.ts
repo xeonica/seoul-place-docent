@@ -1,7 +1,8 @@
 import {sendMcpAudit} from './mcp-audit-remote';
 import {isObject, type McpToolResult} from './mcp-protocol';
+import type {BigQueryAudit} from './bigquery/types';
 
-export type AuditRow = {requestId:string; tool:string; at:number; ok:boolean; records:number; ms:number; errorType:string|null; client:string; validation:boolean};
+export type AuditRow = {requestId:string; tool:string; at:number; ok:boolean; records:number; ms:number; errorType:string|null; client:string; validation:boolean; bigQuery?:BigQueryAudit};
 const schema = `CREATE TABLE IF NOT EXISTS mcp_tool_call_log (
  request_id TEXT PRIMARY KEY, tool TEXT NOT NULL, at INTEGER NOT NULL,
  ok INTEGER NOT NULL, records INTEGER NOT NULL, ms INTEGER NOT NULL,
@@ -9,7 +10,7 @@ const schema = `CREATE TABLE IF NOT EXISTS mcp_tool_call_log (
 const initialized=new WeakMap<D1Database,Promise<void>>();
 export async function ensureMcpAudit(db:D1Database) {
  let task=initialized.get(db);
- if(!task){task=(async()=>{await db.prepare(schema).run();await db.prepare('CREATE INDEX IF NOT EXISTS mcp_tool_call_log_at ON mcp_tool_call_log(at)').run();})();initialized.set(db,task);}
+ if(!task){task=(async()=>{await db.prepare(schema).run();await db.prepare('CREATE INDEX IF NOT EXISTS mcp_tool_call_log_at ON mcp_tool_call_log(at)').run();await db.prepare(`CREATE TABLE IF NOT EXISTS mcp_bigquery_query_log (request_id TEXT PRIMARY KEY, data_source TEXT NOT NULL, attempted INTEGER NOT NULL, job_id TEXT, records INTEGER NOT NULL, ms INTEGER, cache_hit INTEGER, fallback INTEGER NOT NULL, error_code TEXT)`).run();})();initialized.set(db,task);}
  try {await task;}catch(error){initialized.delete(db);throw error;}
 }
 // Only a fixed client family is retained. Client-supplied identity is never proof.
@@ -33,15 +34,17 @@ export async function recordMcpCall(db:D1Database|undefined,row:AuditRow) {
   await ensureMcpAudit(db);
   await db.prepare('INSERT INTO mcp_tool_call_log (request_id,tool,at,ok,records,ms,error_type,client,validation) VALUES (?,?,?,?,?,?,?,?,?)')
    .bind(row.requestId,row.tool,row.at,row.ok?1:0,row.records,row.ms,row.errorType,row.client,row.validation?1:0).run();
+  if(row.bigQuery?.bigQueryAttempted){const bq=row.bigQuery;await db.prepare('INSERT OR REPLACE INTO mcp_bigquery_query_log (request_id,data_source,attempted,job_id,records,ms,cache_hit,fallback,error_code) VALUES (?,?,?,?,?,?,?,?,?)').bind(row.requestId,bq.dataSource,1,bq.bigQueryJobId,bq.bigQueryRecords,bq.bigQueryMs,bq.bigQueryCacheHit===null?null:bq.bigQueryCacheHit?1:0,bq.bigQueryFallback?1:0,bq.bigQueryErrorCode).run();}
   return true;
  }catch { return false; }
 }
-export async function auditedCall(db:D1Database|undefined,tool:string,client:string,execute:()=>Promise<McpToolResult>) {
+export async function auditedCall(db:D1Database|undefined,tool:string,client:string,execute:(requestId:string,bigQuery:BigQueryAudit)=>Promise<McpToolResult>) {
  const requestId=crypto.randomUUID(),at=Date.now();
+ const bigQuery:BigQueryAudit={dataSource:'json',bigQueryAttempted:false,bigQueryJobId:null,bigQueryRecords:0,bigQueryMs:null,bigQueryCacheHit:null,bigQueryFallback:false,bigQueryErrorCode:null};
  let result:McpToolResult;
- try { result=await execute(); }
+ try { result=await execute(requestId,bigQuery); }
  catch { result={content:[{type:'text',text:'자료 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.'}],isError:true,errorType:'internal_error'}; }
- const row:AuditRow={requestId,tool,at,ok:!result.isError,records:returnedRecords(result),ms:Math.max(0,Date.now()-at),errorType:result.isError?(result.errorType||'tool_error'):null,client,validation:tool==='validate_place_answer'&&!result.isError};
+ const row:AuditRow={requestId,tool,at,ok:!result.isError,records:returnedRecords(result),ms:Math.max(0,Date.now()-at),errorType:result.isError?(result.errorType||'tool_error'):null,client,validation:tool==='validate_place_answer'&&!result.isError,...(bigQuery.bigQueryAttempted?{bigQuery}: {})};
  const persisted=await recordMcpCall(db,row);
  // Structured fallback contains no inputs, exception messages, IP or raw client headers.
  if(!persisted)console.info(JSON.stringify({event:'mcp_tool_call',...row,persisted:false}));
@@ -58,6 +61,6 @@ export async function mcpUsageStats(db:D1Database|undefined,now=Date.now()) {
  const count=Number(summary?.calls||0);
  const p95=count?await db.prepare('SELECT ms FROM mcp_tool_call_log WHERE at>=? AND at<=? ORDER BY ms LIMIT 1 OFFSET ?').bind(since,now,Math.ceil(count*.95)-1).first<{ms:number}>():null;
  const byTool=await db.prepare('SELECT tool,count(*) AS calls FROM mcp_tool_call_log WHERE at>=? AND at<=? GROUP BY tool ORDER BY calls DESC,tool').bind(since,now).all();
- const recent=await db.prepare('SELECT request_id,tool,at,ok,records,ms,error_type,client,validation FROM mcp_tool_call_log ORDER BY at DESC LIMIT 50').all();
- return {...limits,available:true,since,calls:count,succeeded:Number(summary?.succeeded||0),errors:Number(summary?.errors||0),returned:Number(summary?.returned||0),averageMs:summary?.averageMs??null,validationRequests:Number(summary?.validationRequests||0),validationsExecuted:Number(summary?.validationsExecuted||0),p95Ms:p95?.ms??null,byTool:byTool.results,recent:recent.results};
+ const [bigQuery,recent]=await Promise.all([db.prepare(`SELECT count(*) AS calls,coalesce(sum(records),0) AS records,coalesce(sum(fallback),0) AS fallbacks,avg(ms) AS averageMs FROM mcp_bigquery_query_log b JOIN mcp_tool_call_log m ON m.request_id=b.request_id WHERE m.at>=? AND m.at<=?`).bind(since,now).first<Record<string,number|null>>(),db.prepare('SELECT m.request_id,m.tool,m.at,m.ok,m.records,m.ms,m.error_type,m.client,m.validation,b.data_source,b.job_id AS bigquery_job_id,b.records AS bigquery_records,b.ms AS bigquery_ms,b.cache_hit AS bigquery_cache_hit,b.fallback AS bigquery_fallback,b.error_code AS bigquery_error_code FROM mcp_tool_call_log m LEFT JOIN mcp_bigquery_query_log b ON b.request_id=m.request_id ORDER BY m.at DESC LIMIT 50').all()]);
+ return {...limits,available:true,since,calls:count,succeeded:Number(summary?.succeeded||0),errors:Number(summary?.errors||0),returned:Number(summary?.returned||0),averageMs:summary?.averageMs??null,validationRequests:Number(summary?.validationRequests||0),validationsExecuted:Number(summary?.validationsExecuted||0),p95Ms:p95?.ms??null,bigQueryCalls:Number(bigQuery?.calls||0),bigQueryRecords:Number(bigQuery?.records||0),bigQueryFallbacks:Number(bigQuery?.fallbacks||0),bigQueryAverageMs:bigQuery?.averageMs??null,byTool:byTool.results,recent:recent.results};
 }

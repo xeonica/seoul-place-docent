@@ -66,6 +66,7 @@ __pycache__/
 # Isolated public MCP deployment and private test receipts
 /.mcp-public/
 /.mcp-test-results/
+/.bigquery-reports/
 
 !/build/sites-native-runtime.ts
 !/build/sites-scan-data.ts

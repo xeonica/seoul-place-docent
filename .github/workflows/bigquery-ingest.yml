@@ -1,0 +1,105 @@
+name: BigQuery catalog ingest (manual only)
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Write data (requires the protected bigquery-production environment)"
+        type: boolean
+        required: true
+        default: false
+      query_dry_run:
+        description: "Ask BigQuery to estimate a read-only verification query"
+        type: boolean
+        required: true
+        default: false
+      limit:
+        description: "Maximum number of records on the first test write"
+        type: number
+        required: true
+        default: 1
+      full_import:
+        description: "Import all currently validated rows instead of the first limited batch"
+        type: boolean
+        required: true
+        default: false
+      resume_run_id:
+        description: "Resume a failed run using its run ID; CSV contents and limit must match"
+        type: string
+        required: false
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements-bigquery.txt
+      - name: Keep local and catalog checks
+        run: |
+          python scripts/check_research_csvs.py
+          python scripts/export_history_catalog.py
+          python -m unittest discover -s tests -p test_bigquery_ingest.py
+          python scripts/bigquery/ingest.py --reject-report .bigquery-reports/rejected.csv
+      - name: Reject conflicting remote options
+        if: inputs.apply && inputs.query_dry_run
+        run: exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bigquery-validation-report
+          path: |
+            .bigquery-reports/rejected.csv
+            research-data/seoul_place_docent_review.xlsx
+          if-no-files-found: ignore
+          retention-days: 14
+
+  remote:
+    needs: validate
+    if: inputs.query_dry_run || inputs.apply
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.apply && 'bigquery-production' || 'bigquery-readonly' }}
+    env:
+      BIGQUERY_ENABLED: "true"
+      BIGQUERY_PROJECT_ID: ${{ vars.BIGQUERY_PROJECT_ID }}
+      BIGQUERY_DATASET_ID: ${{ vars.BIGQUERY_DATASET_ID }}
+      BIGQUERY_LOCATION: ${{ vars.BIGQUERY_LOCATION }}
+      BIGQUERY_MAX_BYTES_BILLED: "104857600"
+      BIGQUERY_QUERY_TIMEOUT_MS: "8000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements-bigquery.txt
+      - name: Prevent unreviewed branch writes
+        if: inputs.apply
+        run: test "$GITHUB_REF" = "refs/heads/main"
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.BIGQUERY_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ inputs.apply && vars.BIGQUERY_WRITER_SERVICE_ACCOUNT || vars.BIGQUERY_READER_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: BigQuery API query dry-run
+        if: inputs.query_dry_run && !inputs.apply
+        run: python scripts/bigquery/ingest.py --query-dry-run
+      - name: Apply a limited import
+        if: inputs.apply
+        env:
+          RESUME_RUN_ID: ${{ inputs.resume_run_id }}
+          FULL_IMPORT: ${{ inputs.full_import }}
+          IMPORT_LIMIT: ${{ inputs.limit }}
+        run: |
+          args=(--apply --confirm APPLY)
+          if [[ -n "$RESUME_RUN_ID" ]]; then
+            args+=(--resume "$RESUME_RUN_ID")
+          elif [[ "$FULL_IMPORT" != "true" ]]; then
+            args+=(--limit "$IMPORT_LIMIT")
+          fi
+          python scripts/bigquery/ingest.py "${args[@]}"
