@@ -10,6 +10,7 @@ test('MCP exposes evidence preparation, GPS fallback and mechanical validation',
  assert.equal(route.includes('beforeRequest'),false);
 });
 test('grouped history pagination uses the actual scene count',()=>{
- assert.ok(route.includes('nextOffset < story.scenes.length'));
- assert.equal(route.includes('nextOffset < story.total'),false);
+ const history=readFileSync(new URL('../lib/mcp-place-history.ts',import.meta.url),'utf8');
+ assert.ok(history.includes('nextOffset < story.scenes.length'));
+ assert.equal(history.includes('nextOffset < story.total'),false);
 });

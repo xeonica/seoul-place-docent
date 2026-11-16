@@ -144,11 +144,11 @@ async function buildingRegister(address: Address, env: Secrets) {
   }
 }
 
-export async function enrichMcpPlace(address: Address, story: DocentStory, env: Secrets & {MCP_HISTORY_RADIUS_METERS?: string}) {
+export async function enrichMcpPlace(address: Address, story: DocentStory, env: Secrets & {MCP_HISTORY_RADIUS_METERS?: string}, includeRegister = true) {
   const configured = Number(env.MCP_HISTORY_RADIUS_METERS);
   const radiusMeters = Number.isInteger(configured) && configured >= 50 && configured <= 3000 ? configured : 1500;
   const pointLookup = coordinates(address, env, AbortSignal.timeout(3500)).catch(() => ({status: 'unavailable'} as const));
-  const [register, coordinate] = await Promise.all([buildingRegister(address, env), pointLookup]);
+  const [register, coordinate] = await Promise.all([buildingRegister(address, includeRegister ? env : {}), pointLookup]);
   const origin = coordinate.status === 'verified' && 'x' in coordinate
     && coordinate.x !== undefined && coordinate.y !== undefined
     ? {latitude: coordinate.y, longitude: coordinate.x, source: coordinate.source, sourceUrl: coordinate.sourceUrl,

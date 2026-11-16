@@ -6,7 +6,7 @@ import type {Parcel} from '@/lib/place-context';
 type LatLng = {getLat: () => number; getLng: () => number};
 type MapObject = {relayout: () => void; setCenter: (point: LatLng) => void; setLevel: (level: number) => void; setBounds: (bounds: unknown) => void; addControl: (control: unknown, position: unknown) => void; setZoomable: (value: boolean) => void};
 type Marker = {setMap: (map: MapObject | null) => void; setPosition: (point: LatLng) => void; getPosition: () => LatLng};
-export type Maps = {load: (callback: () => void) => void; LatLng: new(lat: number, lng: number) => LatLng; LatLngBounds: new(sw: LatLng, ne: LatLng) => unknown; Map: new(node: HTMLElement, options: Record<string, unknown>) => MapObject;
+export type Maps = {load: (callback: () => void) => void; LatLng: new(lat: number, lng: number) => LatLng; LatLngBounds: new(sw?: LatLng, ne?: LatLng) => {extend: (point: LatLng) => void}; Map: new(node: HTMLElement, options: Record<string, unknown>) => MapObject;
   Marker: new(options: Record<string, unknown>) => Marker; Polygon: new(options: Record<string, unknown>) => {setMap: (map: MapObject | null) => void};
   ZoomControl: new() => unknown; MapTypeControl: new() => unknown; ControlPosition: {RIGHT: unknown; TOPRIGHT: unknown};
   event: {addListener: (target: unknown, name: string, handler: (event?: {latLng: LatLng}) => void) => void; removeListener: (target: unknown, name: string, handler: (event?: {latLng: LatLng}) => void) => void}};
