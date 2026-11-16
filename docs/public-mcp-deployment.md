@@ -39,7 +39,9 @@ Vercel 플러그인 연결과 Vercel 계정의 GitHub Login Connection은 별도
 ## 비공개 서버 환경변수
 
 - `JUSO_API_KEY`: 실제 주소 검색과 서명 token 생성에 필수. 키는 기존 소유자의 서버 설정에서 전용 프로젝트 환경변수로 전달하며 Git/문서/ChatGPT 입력창에 복사하지 않습니다.
-- `KAKAO_REST_API_KEY`: GPS 좌표를 주소로 변환할 때 사용합니다.
+- `KAKAO_REST_API_KEY`: GPS를 주소로 변환하거나 확인한 주소의 기준점 좌표를 구할 때 사용합니다.
+- `BUILDING_API_KEY`: 선택한 주소의 국토교통부 건축HUB 건축물대장을 확인할 때 사용합니다.
+- `MCP_HISTORY_RADIUS_METERS`: 선택 사항입니다. 주소 기준점 주변 자료의 직선거리 반경이며 기본값은 1,500m입니다.
 - `MCP_ALLOWED_ORIGINS`: 필요한 경우 정확한 HTTPS Origin을 쉼표로 지정합니다. 예: `https://chatgpt.com,https://claude.ai,https://gemini.google.com`. Origin 없는 서버 간 요청은 허용됩니다. 미등록·null·와일드카드 Origin은 허용하지 않습니다.
 - D1 영구 감사/집계가 필요하면 `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_D1_API_TOKEN`을 설정합니다. 현재 Sites DB를 읽고 쓰려면 별도의 D1 자격증명이 필요합니다. 없으면 수록 JSON 기록은 조회할 수 있지만 `get_archive_stats`와 영구 감사는 사용할 수 없거나 미설정으로 표시됩니다.
 - `OPENAI_API_KEY`, 관리자 키, R2 키는 이 전용 MCP의 핵심 조회에 필요하지 않습니다.
