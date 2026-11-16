@@ -1,11 +1,11 @@
 import {env} from '@/lib/runtime-env';
 import {z} from 'zod';
 import {archiveStats, database} from '@/lib/archive-db';
-import {getDocentStory, getFullDocentStory} from '@/lib/docent-data';
+import {getFullDocentStory} from '@/lib/docent-data';
 import {getDocentVideoCandidates} from '@/lib/docent-videos';
 import {resolveMcpMapAddress as mapAddress} from '@/lib/mcp-map-address';
 import {readAttachedPhoto} from '@/lib/mcp-photo';
-import {photoResearchThumbnail} from '@/lib/photo-research';
+import {readMcpPlaceHistory} from '@/lib/mcp-place-history';
 import {searchAddresses, ServiceError, verifyAddress} from '@/lib/providers';
 import {generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, sceneSource, logClientDocent, QUESTION_TYPES} from '@/lib/place-answer';
 import {enrichMcpPlace} from '@/lib/mcp-place-context';
@@ -169,50 +169,7 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
       }
       case 'get_place_history': {
         const input = historyInput.parse(args);
-        const address = await verifyAddress(input.token, env);
-        const {story,context} = await enrichMcpPlace(address,getDocentStory(address.sggNm, address.emdNm, [address.bdNm].filter(Boolean)),env);
-        const scenes = story.scenes.slice(input.offset, input.offset + input.limit).map(scene => ({
-          id: scene.id,
-          kind: scene.kind,
-          date: scene.date,
-          year: scene.year,
-          title: scene.title,
-          text: scene.text,
-          scope: scene.scope,
-          spatialRelation: context.relations.get(scene.id),
-          cutCount: scene.cutCount,
-          photos: scene.photos.slice(0, 1).map(photo => ({
-            previewUrl: photoResearchThumbnail(photo),
-            sourceUrl: photo.sourceUrl,
-            provider: photo.provider,
-            relation: photo.relation,
-            note: '이미지 이용조건과 장소 관계는 제공기관 원문을 확인해 주세요.',
-          })),
-          evidence: scene.evidence,
-        }));
-        const nextOffset = input.offset + scenes.length;
-        const direct=story.scenes.filter(scene=>context.relations.get(scene.id)?.category==='direct').map(scene=>({
-          ...sceneSource(scene),text:scene.text,spatialRelation:context.relations.get(scene.id),
-        }));
-        return textResult({
-          address,
-          place: {records: direct, status: direct.length?'verified_parcel':'unverified', buildingRegister:context.register,
-            note: direct.length?'출처에서 확인한 필지의 역사 기록입니다.':'이 주소와 직접 연결된 역사 기록은 확인되지 않았습니다.'},
-          spatial: {origin:context.origin,coordinateStatus:context.coordinateStatus,radiusMeters:context.radiusMeters,distanceMethod:'straight_line_between_reference_points'},
-          neighborhood: {
-            district: story.district,
-            dong: story.dong,
-            scenes,
-            total: story.total,
-            offset: input.offset,
-            nextOffset: nextOffset < story.scenes.length ? nextOffset : null,
-            sceneCount: story.scenes.length,
-            photoRecords: story.photoRecords,
-            photoGroups: story.photoGroups,
-            unpictured: story.unpictured,
-          },
-          note: '각 장면의 출처와 공간 관계를 확인하세요. 인근 및 지역 배경 자료는 입력한 건물·부지와 별개입니다.',
-        });
+        return textResult(await readMcpPlaceHistory(input.token, env, input.offset, input.limit));
       }
       case 'prepare_place_answer':
       case 'generate_place_answer': {
