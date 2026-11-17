@@ -20,3 +20,4 @@ for(let start=0;start<items.length;start+=64){
  for(const item of batch)packed.byVideo[item.id]=key;
 }
 writeFileSync(new URL('records-packed.json',folder),JSON.stringify(packed)+'\n');
+await import('./split-district-research-index.mjs');
