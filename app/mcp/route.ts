@@ -7,6 +7,7 @@ import {resolveMcpMapAddress as mapAddress} from '@/lib/mcp-map-address';
 import {readAttachedPhoto} from '@/lib/mcp-photo';
 import {photoResearchThumbnail} from '@/lib/photo-research';
 import {searchAddresses, ServiceError, verifyAddress} from '@/lib/providers';
+import {normalizeVideoCandidate, searchAddressHistory, type DocentVideoCandidate, type HistorySearchResult} from '@/lib/history-search';
 import {generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, sceneSource, logClientDocent, QUESTION_TYPES} from '@/lib/place-answer';
 import {handleMcpMessage, rpcError, textResult, type McpTool, type McpToolResult} from '@/lib/mcp-protocol';
 import {auditedCall,clientHint} from '@/lib/mcp-audit';
@@ -32,8 +33,8 @@ const tools: McpTool[] = [
   },
   {
     name:'prepare_place_answer',
-    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 반환된 근거로 당신이 최종 답변을 작성하세요. token 또는 address 중 하나가 필요합니다. 장소와 동네를 구분하고 문단당 근거를 연결하세요.',
-    inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]}},oneOf:[{required:['token']},{required:['address']}],additionalProperties:false},
+    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 기존 역사 근거와 기사·사진 조사 후보를 반환합니다. 기사·사진 후보는 별도 원문 확인 전까지 검증된 사실이나 인용 가능한 근거가 아닙니다. 서버 AI 호출은 0회입니다. token 또는 address 중 하나가 필요하며 researchPage로 조사 후보를 넘겨볼 수 있습니다.',
+    inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]},researchPage:{type:'integer',minimum:1,maximum:50,default:1}},oneOf:[{required:['token']},{required:['address']}],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
   },
   {
@@ -68,6 +69,7 @@ const tools: McpTool[] = [
         token: {type: 'string', minLength: 1, maxLength: 6000},
         offset: {type: 'integer', minimum: 0, maximum: 10000, default: 0},
         limit: {type: 'integer', minimum: 1, maximum: 12, default: 6},
+        researchPage: {type: 'integer', minimum: 1, maximum: 50, default: 1},
       },
       required: ['token'],
       additionalProperties: false,
@@ -83,6 +85,7 @@ const tools: McpTool[] = [
         token: {type: 'string', minLength: 1, maxLength: 6000, description: 'search_place 후보의 token'},
         address: {type: 'string', minLength: 2, maxLength: 100, description: 'token이 없을 때 주소. 후보가 하나일 때만 바로 진행합니다.'},
         question: {type: 'string', maxLength: 300, description: '예: 1960년대에는 어떤 모습이었나요? 비우면 동네 소개'},
+        researchPage: {type: 'integer', minimum: 1, maximum: 50, default: 1, description: '기사·사진 조사 후보 페이지'},
       },
       additionalProperties: false,
     },
@@ -110,6 +113,7 @@ const historyInput = z.object({
   token: z.string().min(1).max(6000),
   offset: z.number().int().min(0).max(10000).default(0),
   limit: z.number().int().min(1).max(12).default(6),
+  researchPage: z.number().int().min(1).max(50).default(1),
 }).strict();
 
 const answerInput = z.object({
@@ -117,6 +121,7 @@ const answerInput = z.object({
   address: z.string().trim().min(2).max(100).optional(),
   question: z.string().trim().max(300).optional(),
   questionType: z.enum(QUESTION_TYPES).optional(),
+  researchPage: z.number().int().min(1).max(50).default(1),
 }).strict().refine(v => Boolean(v.token) !== Boolean(v.address), {message: 'token 또는 address 중 하나만 필요합니다'});
 
 const locationInput=z.object({latitude:z.number().finite().min(-90).max(90).optional(),longitude:z.number().finite().min(-180).max(180).optional()}).strict()
@@ -129,7 +134,14 @@ const validationInput=z.object({
     held:z.array(z.string().max(200)).max(4)}).strict()
 }).strict();
 
-async function execute(name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+type VideoCandidateList = Awaited<ReturnType<typeof getDocentVideoCandidates>>['records'];
+function combineHistoryCandidates(history: HistorySearchResult | null, videos: VideoCandidateList, address: Awaited<ReturnType<typeof verifyAddress>>) {
+  const normalizedVideos = videos.map(video => normalizeVideoCandidate(video as DocentVideoCandidate, address));
+  if (!history) return {status:'unavailable',articles:[],photos:[],videos:normalizedVideos,note:'기사·사진 인덱스를 읽지 못했습니다. 영상 및 기존 도슨트 자료는 별도 후보로 제공됩니다.'};
+  return {...history,videos:normalizedVideos,counts:{...history.counts,indexes:[...history.counts.indexes,'video-catalog'],videoCandidates:normalizedVideos.length,videoReturned:normalizedVideos.length}};
+}
+
+async function execute(name: string, args: Record<string, unknown>, baseUrl: string): Promise<McpToolResult> {
   const startedAt=Date.now();
   try {
     switch (name) {
@@ -167,6 +179,11 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         const input = historyInput.parse(args);
         const address = await verifyAddress(input.token, env);
         const story = getDocentStory(address.sggNm, address.emdNm, [address.bdNm].filter(Boolean));
+        const [history,videos]=await Promise.all([
+          searchAddressHistory({baseUrl,address,question:address.emdNm,page:input.researchPage}).catch(()=>null),
+          getDocentVideoCandidates(address.sggNm,address.emdNm),
+        ]);
+        const researchCandidates=combineHistoryCandidates(history,videos.records,address);
         const scenes = story.scenes.slice(input.offset, input.offset + input.limit).map(scene => ({
           id: scene.id,
           kind: scene.kind,
@@ -188,6 +205,7 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         const nextOffset = input.offset + scenes.length;
         return textResult({
           address,
+          researchCandidates: researchCandidates || {status:'unavailable',articles:[],photos:[],note:'자치구 조사자료 인덱스를 읽지 못해 기존 도슨트 기록만 반환합니다.'},
           place: {records: [], status: 'unverified', note: '이 건물·부지와 직접 연결된 역사 기록은 아직 확인하지 못했습니다.'},
           neighborhood: {
             district: story.district,
@@ -219,9 +237,13 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         const story = getFullDocentStory(address.sggNm, address.emdNm);
         const packet=await generatePlaceAnswer({address,story,question:input.question,questionType:input.questionType});
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
-        const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
+        const [videos,history]=await Promise.all([
+          getDocentVideoCandidates(address.sggNm,address.emdNm),
+          searchAddressHistory({baseUrl,address,question:input.question,page:input.researchPage}).catch(()=>null),
+        ]);
+        const researchCandidates=combineHistoryCandidates(history,videos.records,address);
         const photos=packet.neighborhood.records.filter(record=>record.source.photo).slice(0,3).map(record=>({evidenceId:record.id,title:record.title,date:record.date,scope:record.scope,...record.source.photo!}));
-        return textResult({...packet,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:photos.length||videos.records.length?null:'주소에 연결된 표시 가능한 시각자료가 없습니다. 자료 없음으로 안내하세요.'},instructions:packet.instructions+'\n10) visuals.photos의 imageUrl이 있으면 사진을 Markdown 이미지로 직접 표시하고 시기·기관·원문·공간 범위를 붙이세요. 사진이 없으면 없다고 명시하세요. 관련 영상은 제목·원문 링크로 별도 안내하세요. 역사 서술의 검증 근거에는 neighborhood 기록 ID를 사용하세요. 원자료 시간과 독립 검증 상태를 구분하세요. verifiedSegments만 검증된 시간 링크이며 비어 있으면 playbackStatus의 재생구간 미검증을 명시하세요. 영상 후보를 입력 건물의 과거 모습으로 단정하지 마세요.'});
+        return textResult({...packet,researchCandidates,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:photos.length||videos.records.length?null:'주소에 연결된 표시 가능한 시각자료가 없습니다. 자료 없음으로 안내하세요.'},instructions:packet.instructions+'\n10) visuals.photos의 imageUrl이 있으면 사진을 Markdown 이미지로 직접 표시하고 시기·기관·원문·공간 범위를 붙이세요. 사진이 없으면 없다고 명시하세요. 관련 영상은 제목·원문 링크로 별도 안내하세요. 역사 서술의 검증 근거에는 neighborhood 기록 ID를 사용하세요. 원자료 시간과 독립 검증 상태를 구분하세요. verifiedSegments만 검증된 시간 링크이며 비어 있으면 playbackStatus의 재생구간 미검증을 명시하세요. 영상 후보를 입력 건물의 과거 모습으로 단정하지 마세요. researchCandidates는 검토 전 조사 후보이며 인용 가능한 역사 사실로 사용하지 마세요. 기사 발행일과 사건 발생일, 사진 촬영 시기와 게시일을 구분하세요.'});
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);
@@ -292,7 +314,17 @@ export async function POST(request: Request) {
   }
   const invalidProtocol=protocolError(request,message);
   if(invalidProtocol)return invalidProtocol;
-  const response = await handleMcpMessage(message, tools, (name, args) => auditedCall(env.DB,name,clientHint(request),()=>execute(name, args)));
+  const response = await handleMcpMessage(message, tools, async (name, args) => {
+    const result=await auditedCall(env.DB,name,clientHint(request),()=>execute(name,args,request.url));
+    if(name==='prepare_place_answer'||name==='generate_place_answer'||name==='get_place_history') {
+      try {
+        const data=JSON.parse(result.content[0]?.text||'{}') as {researchCandidates?:{placeId?:string|null;counts?:Record<string,unknown>}};
+        const history=data.researchCandidates;
+        if(history?.counts)console.info(JSON.stringify({event:'mcp_history_index_search',requestId:result._meta?.requestId,tool:name,placeId:history.placeId||null,...history.counts,persisted:result._meta?.auditPersisted===true}));
+      } catch { /* A failed or legacy result has no history-search trace to log. */ }
+    }
+    return result;
+  });
   if (response === undefined) return new Response(null, {status: 202, headers});
   return Response.json(response, {headers,status:'error' in response?(response.error.code===-32601?404:400):200});
 }
