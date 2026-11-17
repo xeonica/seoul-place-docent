@@ -3,7 +3,7 @@ export type Address = { roadAddr:string; jibunAddr:string; siNm:string; sggNm:st
 export type Candidate = Address & {token:string};
 export class ServiceError extends Error { constructor(public code:string, message:string,public status=502){super(message);} }
 export const checkedFetch = async(url:URL|string,init:RequestInit={}) => {
- const response=await fetch(url,{...init,signal:AbortSignal.timeout(12000)});
+ const response=await fetch(url,{...init,signal:init.signal??AbortSignal.timeout(12000)});
  if(!response.ok) throw new ServiceError('UPSTREAM_HTTP','자료 제공기관과 연결되지 않았습니다. 잠시 후 다시 시도해 주세요.');
  return response;
 };
@@ -49,28 +49,40 @@ export async function verifyAddress(token:string,secrets:Secrets):Promise<Addres
  }catch(e){if(e instanceof ServiceError)throw e;throw new ServiceError('INVALID_TOKEN','주소 선택이 만료되었거나 올바르지 않습니다. 다시 검색해 주세요.',400);}
 }
 export function parcelParams(a:Address) {assertSeoul(a);return {sigunguCd:a.admCd.slice(0,5),bjdongCd:a.admCd.slice(5),platGbCd:a.mtYn,bun:a.lnbrMnnm.padStart(4,'0'),ji:(a.lnbrSlno||'0').padStart(4,'0')};}
-export type Building = { id:string; name:string; dong:string; use:string; structure:string; area:string; landArea:string; above:string; below:string; approved:string; created:string; roadAddr:string; lotAddr:string };
+export type Building = { id:string; name:string; dong:string; use:string; structure:string; area:string; landArea:string; buildingArea?:string; above:string; below:string; approved:string; created:string; roadAddr:string; lotAddr:string };
 export type Floor = { buildingId:string; name:string; use:string; area:string; dong:string };
 const str=(x:Record<string,unknown>,k:string)=>String(x[k]??'').trim();
 export function normalizeRoad(address:string){return address.replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').trim();}
-export function splitBuildingMatches(rows:Building[],a:Address){const road=normalizeRoad(a.roadAddr);return {items:rows.filter(b=>!!b.roadAddr&&normalizeRoad(b.roadAddr)===road),parcelCandidates:rows.filter(b=>!b.roadAddr||normalizeRoad(b.roadAddr)!==road)};}
+export function roadAddressKey(value:string){return normalizeRoad(value).normalize('NFKC').replace(/^서울 /,'서울특별시 ');}
+export function splitBuildingMatches(rows:Building[],a:Address){const road=roadAddressKey(a.roadAddr);return {items:rows.filter(b=>!!b.roadAddr&&roadAddressKey(b.roadAddr)===road),parcelCandidates:rows.filter(b=>!b.roadAddr||roadAddressKey(b.roadAddr)!==road)};}
 export function parseBuildingJson(body:Record<string,any>,a:Address) {
  const response=body.response;
  if(!response||!['00','0'].includes(String(response.header?.resultCode))) throw new ServiceError('BUILDING_PROVIDER','건축물대장 조회에 실패했습니다. 인증·활용신청 상태 또는 제공기관 응답을 확인해야 합니다.');
  const raw=response.body?.items?.item;const rows:Record<string,unknown>[]=Array.isArray(raw)?raw:raw&&typeof raw==='object'?[raw]:[];
  const p=parcelParams(a);
- return rows.filter(x=>str(x,'sigunguCd')===p.sigunguCd&&str(x,'bjdongCd')===p.bjdongCd&&str(x,'bun').padStart(4,'0')===p.bun&&str(x,'ji').padStart(4,'0')===p.ji&&str(x,'platGbCd')===p.platGbCd).map(x=>({id:str(x,'mgmBldrgstPk'),name:str(x,'bldNm'),dong:str(x,'dongNm'),use:str(x,'mainPurpsCdNm'),structure:str(x,'strctCdNm'),area:str(x,'totArea'),landArea:str(x,'platArea'),above:str(x,'grndFlrCnt'),below:str(x,'ugrndFlrCnt'),approved:str(x,'useAprDay'),created:str(x,'crtnDay'),roadAddr:str(x,'newPlatPlc'),lotAddr:str(x,'platPlc')}));
+ const lotNumberMatches = (value:string, expected:string) => /^\d{1,4}$/.test(value) && value.padStart(4,'0') === expected;
+ return rows.filter(row => row && str(row,'sigunguCd') === p.sigunguCd && str(row,'bjdongCd') === p.bjdongCd
+   && str(row,'platGbCd') === p.platGbCd && lotNumberMatches(str(row,'bun'),p.bun)
+   && row.ji != null && lotNumberMatches(str(row,'ji') || '0',p.ji))
+  .map(row => ({
+   id: str(row,'mgmBldrgstPk'), name: str(row,'bldNm'), dong: str(row,'dongNm'),
+   use: str(row,'mainPurpsCdNm'), structure: str(row,'strctCdNm'),
+   area: str(row,'totArea'), landArea: str(row,'platArea'), buildingArea: str(row,'archArea'),
+   above: str(row,'grndFlrCnt'), below: str(row,'ugrndFlrCnt'),
+   approved: str(row,'useAprDay'), created: str(row,'crtnDay'),
+   roadAddr: str(row,'newPlatPlc'), lotAddr: str(row,'platPlc'),
+  }));
 }
-async function fetchBuildingBody(a:Address,secrets:Secrets,op:string,page=1) {
+async function fetchBuildingBody(a:Address,secrets:Secrets,op:string,page=1,signal?:AbortSignal) {
  if(!secrets.BUILDING_API_KEY)throw new ServiceError('KEY_MISSING','건축물 정보 연결을 준비 중입니다.',503);
  const url=new URL(`https://apis.data.go.kr/1613000/BldRgstHubService/${op}`);
  Object.entries({...parcelParams(a),serviceKey:secrets.BUILDING_API_KEY,pageNo:String(page),numOfRows:'100',_type:'json'}).forEach(([k,v])=>url.searchParams.set(k,v));
- const response=await checkedFetch(url);const text=await response.text();
+ const response=await checkedFetch(url,{signal});const text=await response.text();
  try{return JSON.parse(text);}catch{throw new ServiceError('BUILDING_FORMAT','건축물대장 응답을 해석하지 못했습니다. 인증·활용신청 상태 또는 제공기관 응답을 확인해야 합니다.');}
 }
-export async function buildings(a:Address,secrets:Secrets){
+export async function buildings(a:Address,secrets:Secrets,signal?:AbortSignal){
  const rows:Building[]=[];let total=0;let page=1;
- do {const body=await fetchBuildingBody(a,secrets,'getBrTitleInfo',page);rows.push(...parseBuildingJson(body,a));total=Number(body.response.body?.totalCount??0);page++;}while((page-1)*100<total&&page<=5);
+ do {const body=await fetchBuildingBody(a,secrets,'getBrTitleInfo',page,signal);rows.push(...parseBuildingJson(body,a));total=Number(body.response.body?.totalCount??0);page++;}while((page-1)*100<total&&page<=5);
  return {...splitBuildingMatches(rows,a),total,truncated:total>500,sourceUrl:'https://www.data.go.kr/data/15134735/openapi.do',queriedAt:new Date().toISOString()};
 }
 export async function floors(a:Address,secrets:Secrets,buildingId:string){
@@ -82,18 +94,18 @@ export async function floors(a:Address,secrets:Secrets,buildingId:string){
 }
 export type CoordinateResult = {status:string;message?:string;x?:number;y?:number;administrativeDong?:string;queriedAt?:string;source?:string;sourceUrl?:string};
 export function parseCoordinates(documents:Record<string,any>[],a:Address):CoordinateResult {
- const p=parcelParams(a);const road=(v:string)=>normalizeRoad(v).replace(/^서울 /,'서울특별시 ');
+ const p=parcelParams(a);const road=roadAddressKey;
  const matches=documents.filter(d=>d.address?.region_1depth_name==='서울'&&String(d.address?.b_code)===a.admCd&&String(d.address?.main_address_no).padStart(4,'0')===p.bun&&String(d.address?.sub_address_no||'0').padStart(4,'0')===p.ji&&((d.address?.mountain_yn==='Y')?'1':'0')===a.mtYn&&typeof d.road_address?.address_name==='string'&&road(d.road_address.address_name)===road(a.roadAddr));
  if(matches.length!==1)return {status:'unconfirmed',message:'도로명주소와 지번이 함께 일치하는 좌표를 확인하지 못했습니다. 외부 지도에서 주소를 확인해 주세요.'};
  const d=matches[0];const x=Number(d.x),y=Number(d.y);
  if(!d.x||!d.y||!Number.isFinite(x)||!Number.isFinite(y)||x<126.7||x>127.3||y<37.4||y>37.8)return {status:'unconfirmed',message:'서울 주소에 해당하는 좌표를 확인하지 못했습니다.'};
  return {status:'verified',x,y,administrativeDong:typeof d.address.region_3depth_h_name==='string'?d.address.region_3depth_h_name:'',queriedAt:new Date().toISOString(),source:'카카오 로컬 API',sourceUrl:'https://developers.kakao.com/docs/ko/local/dev-guide'};
 }
-export async function coordinates(a:Address,secrets:Secrets):Promise<CoordinateResult>{
+export async function coordinates(a:Address,secrets:Secrets,signal=AbortSignal.timeout(12000)):Promise<CoordinateResult>{
  assertSeoul(a);
  if(!secrets.KAKAO_REST_API_KEY)return {status:'not_configured',message:'좌표 조회는 연결 준비 중입니다. 외부 지도에서 주소를 확인할 수 있습니다.'};
  const url=new URL('https://dapi.kakao.com/v2/local/search/address.json');url.searchParams.set('query',normalizeRoad(a.roadAddr));url.searchParams.set('analyze_type','exact');
- const response=await fetch(url,{headers:{Authorization:`KakaoAK ${secrets.KAKAO_REST_API_KEY}`},signal:AbortSignal.timeout(12000)});
+ const response=await fetch(url,{headers:{Authorization:`KakaoAK ${secrets.KAKAO_REST_API_KEY}`},signal});
  if(response.status===401||response.status===403)throw new ServiceError('KAKAO_AUTH','카카오 로컬 API 인증 또는 카카오맵 사용 설정을 확인해야 합니다.');
  if(response.status===429)throw new ServiceError('KAKAO_QUOTA','카카오 API 이용 한도에 도달했습니다. 개발자 콘솔의 쿼터를 확인해 주세요.',429);
  if(!response.ok)throw new ServiceError('KAKAO_PROVIDER','카카오 좌표 조회에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.');

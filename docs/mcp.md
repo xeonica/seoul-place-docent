@@ -26,7 +26,17 @@ MCP 도슨트는 모델 API를 호출하지 않습니다. 사용자 자신의 AI
 | resolve_photo_location | GPS에 대응하는 주소·동네 및 후보. 항상 사용자 확인 필요 |
 | prepare_place_answer | 최대 14개 기록, 사진·출처, 분류 옵션·작성 규칙 |
 | generate_place_answer | 이전 이름 호환. prepare와 같은 **근거 묶음** 반환; 서버 생성은 제거됨 |
-| validate_place_answer | 근거 id·숫자·길이 검사, 통과 문단과 출처 |
+| validate_place_answer | 근거 ID·대장 문장·직선거리·공간 관계·사진 연결 검사, 통과 문단과 출처 |
+
+### 주소·필지와 역사자료 연결
+
+`prepare_place_answer`와 `get_place_history`는 `place.buildingRegister`에 도로명주소와 지번 코드가 함께 맞는 건축물대장 표제부를 동별로 반환합니다. 필지는 같지만 주소나 대장 식별이 불확실한 후보는 `parcelCandidates`에 표시하며 해설 근거에서는 제외합니다. 사용승인일, 주용도, 층수와 면적은 각 대장에 적힌 값입니다.
+
+역사 기록의 `spatialRelation`은 `direct`(원문과 별도 주소 출처가 확인한 필지), `nearby`(검색 반경 안의 출처 지도 기준점), `regional_background`(동·자치구 배경), `location_unconfirmed`(촬영·대상 위치 미확인)를 구분합니다. 거리는 주소 기준점과 자료 기준점 사이의 직선거리입니다. 1단계 위치 연결은 청계천박물관의 개관 기록부터 적용되며 그 밖의 기존 자료는 확인 가능한 공간 범위로 제공됩니다.
+
+호출한 AI는 대장에 있는 현재 정보에서 출발해 동네의 변화를 이어서 설명할 수 있습니다. 대장이나 거리 수치는 반환된 `statements` 또는 `distanceStatement`를 그대로 인용하면 검증할 수 있습니다. 사진을 언급한 문단에 선택 필드 `visual_ids`를 넣을 때는 같은 문단이 인용한 사진 기록 ID를 사용합니다. 영상 후보는 별도의 원문 링크로 안내합니다. 역사 문장 검증은 출처 어휘와 수치, 장소 표현을 비교하므로 원문에서의 의미와 인과관계는 별도로 확인해야 합니다.
+
+서버 환경변수 `BUILDING_API_KEY`(국토교통부 건축HUB), `KAKAO_REST_API_KEY`(주소 좌표), `MCP_HISTORY_RADIUS_METERS`(기본 1,500, 범위 50~3,000)를 사용합니다. 기존 주소 검색에는 `JUSO_API_KEY`가 필요합니다. 대장 또는 카카오 연결이 없으면 확인 가능한 기존 역사자료와 출처를 반환합니다.
 | get_place_history | 묶은 장면을 시간순으로 페이지 조회 |
 | get_answer_stats | 새 클라이언트 AI 경로의 관측치와 미측정 항목 |
 | get_archive_stats | 연결 D1 아카이브 건수 |
