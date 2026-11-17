@@ -1,0 +1,64 @@
+name: Collect National Archives URLs (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_requests:
+        description: "Maximum API requests this run (1-500)"
+        required: false
+        default: "100"
+      daily_request_cap:
+        description: "Conservative daily request cap"
+        required: false
+        default: "900"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: national-archive-url-collector
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect URLs (no dry-run)
+        env:
+          NATIONAL_ARCHIVES_API_KEY: ${{ secrets.NATIONAL_ARCHIVES_API_KEY }}
+          MAX_REQUESTS: ${{ inputs.max_requests }}
+          DAILY_CAP: ${{ inputs.daily_request_cap }}
+        run: |
+          if [ -z "$NATIONAL_ARCHIVES_API_KEY" ]; then
+            echo "::error::Set repository secret NATIONAL_ARCHIVES_API_KEY before running"
+            exit 1
+          fi
+          case "$MAX_REQUESTS" in ''|*[!0-9]*) echo "::error::max_requests must be integer"; exit 1;; esac
+          case "$DAILY_CAP" in ''|*[!0-9]*) echo "::error::daily_request_cap must be integer"; exit 1;; esac
+          if [ "$MAX_REQUESTS" -lt 1 ] || [ "$MAX_REQUESTS" -gt 500 ] || [ "$DAILY_CAP" -lt 1 ] || [ "$DAILY_CAP" -gt 900 ]; then
+            echo "::error::Request limits outside allowed range"
+            exit 1
+          fi
+          python3 scripts/collect-national-archive-urls.py --max-requests "$MAX_REQUESTS" --daily-request-cap "$DAILY_CAP"
+      - name: Commit collected records and cursor
+        if: always()
+        run: |
+          if [ ! -f research-data/collector/state.json ]; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research-data/collector/records.csv research-data/collector/state.json
+          if git diff --cached --quiet; then
+            echo "No new collector state"
+            exit 0
+          fi
+          git commit -m "data: collect National Archives URL candidates and save cursor"
+          git push origin HEAD:main
