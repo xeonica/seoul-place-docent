@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
-import {gzipSync} from 'node:zlib';
 import {readFile, readdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
+import {writeDistrictResearchShards} from './district-research-index.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const input = path.resolve(process.argv[2] || '.tmp-district-research');
@@ -111,9 +111,6 @@ for (const kind of ['articles', 'photos']) {
 if (articleFiles.length !== 25 || photoFiles.length !== 25) throw new Error(`구별 CSV 파일 수가 예상과 다릅니다: 기사 ${articleFiles.length}, 사진 ${photoFiles.length}`);
 const articleSummary = {files: articleFiles, count: articles.length};
 await writeFile(path.join(root, 'data/document-research/article-summary.json'), JSON.stringify(articleSummary) + '\n');
-const articleGzip = path.join(root, 'public/research/seoul-district-collection/articles-index.json.gz');
-await writeFile(articleGzip, gzipSync(JSON.stringify({rows: articles}), {level: 9}));
-const photoTarget = path.join(root, 'public/research/seoul-district-collection/photos-index.json.gz');
 const photoSummary = {files: photoFiles, count: photos.length,
   sourceUrlCount: new Set(photos.map(row => row.sourceUrl).filter(Boolean)).size,
   missingSourceUrlCount: photos.filter(row => !row.sourceUrl).length,
@@ -122,6 +119,6 @@ const photoSummary = {files: photoFiles, count: photos.length,
   mediaTypes: [...new Set(photos.map(row => row.mediaType))].sort(),
   providers: [...new Set(photos.map(row => row.provider))].sort()};
 await writeFile(path.join(root, 'data/photo-research/district-summary.json'), JSON.stringify(photoSummary) + '\n');
-await writeFile(photoTarget, gzipSync(JSON.stringify({items: photos}), {level: 9}));
-console.log(JSON.stringify({districts: 25, articleFiles: articleFiles.length, articleRows: articles.length, articleIndexGzipBytes: (await readFile(articleGzip)).length, photoFiles: photoFiles.length, photoRows: photos.length, photoIndexGzipBytes: (await readFile(photoTarget)).length, districtNames: articleFiles.map(file => file.title.replace(' 기사 조사자료', ''))}, null, 2));
+const manifest = await writeDistrictResearchShards(root, articles, photos);
+console.log(JSON.stringify({districts: 25, articleFiles: articleFiles.length, articleRows: articles.length, articleFilesBytes: manifest.districts.reduce((sum, item) => sum + item.articles.bytes, 0), photoFiles: photoFiles.length, photoRows: photos.length, photoFilesBytes: manifest.districts.reduce((sum, item) => sum + item.photos.bytes, 0), districtNames: articleFiles.map(file => file.title.replace(' 기사 조사자료', ''))}, null, 2));
 
