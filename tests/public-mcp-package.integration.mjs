@@ -41,6 +41,9 @@ test('deployable package resolves photo coordinates and prepares and validates e
   assert.equal(located.candidates.length,1);
   const token=located.candidates[0].token,question='동네 역사를 알려줘';
   const packet=await call('prepare_place_answer',{token,question,questionType:'동네 역사'});
+  assert.equal(packet.research.status,'research_candidates_only');
+  assert.ok(packet.research.total>0);assert.ok(packet.research.records.every(r=>!r.usableAsVerifiedEvidence));
+  const research=await call('get_place_history',{query:'세운상가',limit:3});assert.ok(research.total>3);assert.equal(research.records.length,3);
   assert.equal(packet.mode,'client_ai');assert.equal(packet.generation.serverAiCalls,0);
   assert.ok(packet.neighborhood.records.length>0);
   assert.equal(packet.visuals.photoCount,packet.visuals.photos.length);

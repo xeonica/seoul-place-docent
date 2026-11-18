@@ -69,3 +69,6 @@ __pycache__/
 
 !/build/sites-native-runtime.ts
 !/build/sites-scan-data.ts
+
+# Built from versioned research CSVs on every build
+/data/research-catalog.json
