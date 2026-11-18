@@ -1,3 +1,6 @@
+import {placeEntity,resolvePlaceEntity} from '@/lib/place-entity';
+import {getBuildingProfile} from '@/lib/place-profile';
+import {integratedEvidence,PLACE_OUTPUT_SCHEMA} from '@/lib/place-evidence';
 import {buildingInfo, validateBuildingClaims} from '@/lib/building-info';
 import {env} from '@/lib/runtime-env';
 import {searchResearchRecords,placeResearchCandidates} from '@/lib/research-catalog';
@@ -19,6 +22,9 @@ const MAX_BODY_BYTES = 32768;
 const headers = {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'};
 
 const tools: McpTool[] = [
+  {name:'resolve_place_entity',description:'주소·지번·건물명을 기존 공식 주소 API로 검색합니다. token이 있으면 동일 장소 식별자를 확인합니다. 복수 후보는 사용자가 선택해야 하며 이름만으로 합치지 않습니다.',inputSchema:{type:'object',properties:{query:{type:'string',minLength:2,maxLength:100},token:{type:'string',minLength:1,maxLength:6000}},oneOf:[{required:['query']},{required:['token']}],additionalProperties:false},annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}},
+  {name:'get_building_profile',description:'확인한 주소 token으로 현재 건축물·총괄표제부·같은 필지 폐쇄대장 후보를 구분합니다. K-apt 및 건물 직접 역사는 미확인 상태로 유지합니다.',inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000}},required:['token'],additionalProperties:false},annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}},
+
   {
     name:'extract_photo_location',
     description:'사용자가 첨부한 원본 JPEG/HEIC 사진 파일에서 실제 EXIF GPS·촬영일을 읽고 서울 주소 후보를 반환합니다. 이미지 외관으로 추측하지 않습니다. 파일 첨부를 file로 전달하세요. GPS가 제거됐으면 원본 재첨부·웹 원본 선택·주소 입력을 안내하세요. 반환된 주소는 촬영 위치이며 사용자가 확인한 후보 token으로 prepare_place_answer를 호출한 뒤 사진·영상·출처를 포함한 도슨트를 작성하세요. 원본은 처리 중 메모리에서만 읽고 저장하지 않습니다.',
@@ -34,6 +40,7 @@ const tools: McpTool[] = [
   },
   {
     name:'prepare_place_answer',
+    outputSchema:PLACE_OUTPUT_SCHEMA,
     description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 주소와 질문에 맞는 현장 해설을 작성하고 관련 MCP 기록·사진을 보태세요. no_records여도 일반 해설을 완성하세요. token 또는 address 중 하나가 필요합니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
     inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]}},oneOf:[{required:['token']},{required:['address']}],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
@@ -44,7 +51,7 @@ const tools: McpTool[] = [
     inputSchema:{type:'object',properties:{
       buildingClaims:{type:'array',maxItems:20,items:{type:'object',properties:{evidenceId:{type:'string',maxLength:200},field:{type:'string',maxLength:40},value:{type:'string',maxLength:200}},required:['evidenceId','field','value'],additionalProperties:false}},
       token:{type:'string',minLength:1,maxLength:6000},question:{type:'string',maxLength:300},
-      answer:{type:'object',properties:{question_type:{type:'string',enum:[...QUESTION_TYPES]},paragraphs:{type:'array',minItems:1,maxItems:6,items:{type:'object',properties:{heading:{type:'string',maxLength:40},text:{type:'string',minLength:1,maxLength:600},evidence_ids:{type:'array',minItems:1,maxItems:14,items:{type:'string',maxLength:200}}},required:['heading','text','evidence_ids'],additionalProperties:false}},held:{type:'array',maxItems:4,items:{type:'string',maxLength:200}}},required:['question_type','paragraphs','held'],additionalProperties:false}
+      answer:{type:'object',properties:{question_type:{type:'string',enum:[...QUESTION_TYPES]},paragraphs:{type:'array',minItems:1,maxItems:6,items:{type:'object',properties:{scope:{type:'string',enum:['building','complex','parcel','nearby','dong','district']},media_ids:{type:'array',maxItems:6,items:{type:'string',maxLength:200}},heading:{type:'string',maxLength:40},text:{type:'string',minLength:1,maxLength:600},evidence_ids:{type:'array',minItems:1,maxItems:14,items:{type:'string',maxLength:200}}},required:['heading','text','evidence_ids'],additionalProperties:false}},held:{type:'array',maxItems:4,items:{type:'string',maxLength:200}}},required:['question_type','paragraphs','held'],additionalProperties:false}
     },required:['token','answer'],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false}
   },
@@ -133,7 +140,7 @@ const validationInput=z.object({
   buildingClaims:z.array(z.object({evidenceId:z.string().max(200),field:z.string().max(40),value:z.string().max(200)}).strict()).max(20).optional(),
   token:z.string().min(1).max(6000),question:z.string().trim().max(300).optional(),
   answer:z.object({question_type:z.enum(QUESTION_TYPES),
-    paragraphs:z.array(z.object({heading:z.string().max(40),text:z.string().min(1).max(600),evidence_ids:z.array(z.string().max(200)).min(1).max(14)}).strict()).min(1).max(6),
+    paragraphs:z.array(z.object({heading:z.string().max(40),text:z.string().min(1).max(600),evidence_ids:z.array(z.string().max(200)).min(1).max(14),scope:z.enum(['building','complex','parcel','nearby','dong','district']).optional(),media_ids:z.array(z.string().max(200)).max(6).optional()}).strict()).min(1).max(6),
     held:z.array(z.string().max(200)).max(4)}).strict()
 }).strict();
 
@@ -141,6 +148,14 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
   const startedAt=Date.now();
   try {
     switch (name) {
+      case 'resolve_place_entity': {
+        const input=z.object({query:z.string().trim().min(2).max(100).optional(),token:z.string().min(1).max(6000).optional()}).strict().refine(value=>!!value.query!==!!value.token).parse(args);
+        return textResult(await resolvePlaceEntity(input,env));
+      }
+      case 'get_building_profile': {
+        const input=z.object({token:z.string().min(1).max(6000)}).strict().parse(args);
+        return textResult(await getBuildingProfile(await verifyAddress(input.token,env),env));
+      }
       case 'extract_photo_location': {
         const {file}=photoInput.parse(args);
         if(!file)return textResult({status:'needs_file',nextAction:'GPS가 보존된 원본 JPEG/HEIC를 파일로 첨부해 주세요. 첨부가 MCP에 전달되지 않으면 https://seoul-place-history.xeonire.chatgpt.site 에서 원본 사진을 선택하고 확인된 주소를 공유하세요.',note:'이미지 미리보기만으로 좌표를 추측하지 마세요.'});
@@ -178,7 +193,8 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         const address = await verifyAddress(input.token, env);
         const research=input.query?searchResearchRecords({query:input.query,district:input.district,offset:input.offset,limit:input.limit}):placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
         const story = getDocentStory(address.sggNm, address.emdNm, [address.bdNm].filter(Boolean));
-        const building=await buildingInfo(address,env);
+        const profile=await getBuildingProfile(address,env);
+        const building=profile.building;
         const scenes = story.scenes.slice(input.offset, input.offset + input.limit).map(scene => ({
           id: scene.id,
           kind: scene.kind,
@@ -201,7 +217,7 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         return textResult({
           address,research,
           building,
-          place: {records: await placeRegisterRecords(address,env,building),historicalStatus:'unverified'},
+          place: {...profile.entity,name:address.bdNm,records:profile.records,historicalStatus:'unverified'},
           neighborhood: {
             district: story.district,
             dong: story.dong,
@@ -230,14 +246,18 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         }
         const address = await verifyAddress(token, env);
         const story = getFullDocentStory(address.sggNm, address.emdNm);
-        const building=await buildingInfo(address,env);
-        const placeRecords=await placeRegisterRecords(address,env,building);
+        const [profile,videoResult]=await Promise.allSettled([getBuildingProfile(address,env),getDocentVideoCandidates(address.sggNm,address.emdNm)]);
+        if(profile.status==='rejected')throw profile.reason;
+        const resolvedProfile=profile.value;
+        const building=resolvedProfile.building;
+        const placeRecords=resolvedProfile.records;
         const packet=await generatePlaceAnswer({address,story,placeRecords,question:input.question,questionType:input.questionType});
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
-        const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
+        const videos=videoResult.status==='fulfilled'?videoResult.value:{records:[],note:'영상 자료 조회 실패'};
         const photos=guidePhotos(packet);
         const research=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
-        return textResult({...packet,building,research,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+'\n질문에 맞는 사진·지도 하나를 골라 관련 문단에 imageMarkdown을 독립된 줄로 넣고 바로 아래에 caption과 클릭 가능한 sourceUrl을 붙이세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
+        const integrated=integratedEvidence({address,packet,building,research,photos,videos,closedStatus:resolvedProfile.closed});
+        return textResult({...packet,...integrated,place:{...packet.place,...resolvedProfile.entity},building,research,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+'\n질문에 맞는 사진·지도 하나를 골라 관련 문단에 imageMarkdown을 독립된 줄로 넣고 바로 아래에 caption과 클릭 가능한 sourceUrl을 붙이세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);
