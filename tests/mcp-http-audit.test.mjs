@@ -19,7 +19,7 @@ test('HTTP initialize/list, notifications, parse errors and stateless methods',a
  const r=await POST(request(envelope('initialize',{protocolVersion:'2025-11-25'})));
  assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/application\/json/);assert.equal(r.headers.has('mcp-session-id'),false);
  assert.equal((await r.json()).result.protocolVersion,'2025-11-25');
- assert.equal((await (await POST(request(envelope('tools/list')))).json()).result.tools.length,9);
+ assert.equal((await (await POST(request(envelope('tools/list')))).json()).result.tools.length,11);
  const n=await POST(request({jsonrpc:'2.0',method:'notifications/initialized'}));assert.equal(n.status,202);assert.equal(await n.text(),'');
  assert.equal((await POST(new Request('https://docent.test/mcp',{method:'POST',headers,body:'{'}))).status,400);
  for(const handler of [GET,DELETE])assert.equal(handler(new Request('https://docent.test/mcp')).status,405);
@@ -57,7 +57,8 @@ test('all eight actual MCP tools run without operator model calls; address and G
  try{
   const search=await invoke('search_place',{query:'사직로 161'});const token=data(search).candidates[0].token;
   assert.ok(search._meta.requestId);assert.equal(search._meta.auditPersisted,false);
-  const packet=data(await invoke('prepare_place_answer',{token}));assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);assert.equal(packet.building.status,'key_missing');assert.equal(packet.place.historicalStatus,'unverified');
+  const entity=data(await invoke('resolve_place_entity',{token}));const profile=data(await invoke('get_building_profile',{token}));assert.equal(entity.placeId,profile.entity.placeId);assert.equal(profile.building.status,'key_missing');
+  const packet=data(await invoke('prepare_place_answer',{token}));assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);assert.equal(packet.building.status,'key_missing');assert.equal(packet.place.historicalStatus,'unverified');assert.ok(packet.facts&&packet.history&&packet.media&&packet.verification&&packet.retrievalStatus);assert.ok(packet.place.placeId);assert.equal(packet.history.direct.length,0);
   assert.deepEqual(data(await invoke('generate_place_answer',{token})).neighborhood,packet.neighborhood);
   assert.ok(data(await invoke('get_place_history',{token})).neighborhood.scenes.length>0);
   const record=packet.neighborhood.records[0];

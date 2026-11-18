@@ -33,9 +33,9 @@ test('current GitHub CSVs are searchable, paginated, and never promoted into vis
  assert.equal(placeResearchCandidates('종로구','없는동','없는건물').total,0);
  assert.equal(searchResearchRecords({query:'정독도서관',district:'마포구'}).total,0);
 });
-test('public MCP exposes query search on existing history tool and includes catalog health without changing tool count',async()=>{
+test('public MCP exposes query search on existing history tool and includes catalog health alongside entity and building tools',async()=>{
  const request=(method,params)=>new Request('https://test.example/mcp',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});
- const list=await (await app.fetch(request('tools/list',{}))).json();assert.equal(list.result.tools.length,9);
+ const list=await (await app.fetch(request('tools/list',{}))).json();assert.equal(list.result.tools.length,11);
  const schema=list.result.tools.find(t=>t.name==='get_place_history').inputSchema;assert.ok(schema.properties.query);assert.ok(schema.anyOf.some(v=>v.required.includes('query')));
  const response=await (await app.fetch(request('tools/call',{name:'get_place_history',arguments:{query:'정독도서관',limit:2}}))).json();
  assert.ok(!response.result.isError);const data=JSON.parse(response.result.content[0].text);assert.ok(data.total>0);assert.equal(data.records.length,2);
