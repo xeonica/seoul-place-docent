@@ -1,3 +1,4 @@
+import {buildingInfo} from './building-info';
 import type {DocentStory,StoryScene} from './docent-story';
 import {photoResearchCredit,photoResearchThumbnail} from './photo-research';
 import {buildings,ServiceError,type Secrets as ProviderSecrets,type Address} from './providers';
@@ -104,12 +105,13 @@ export function validateAnswer(raw:unknown,scenes:StoryScene[]){
   return {questionType:type,paragraphs,held,omitted};
 }
 
-export async function placeRegisterRecords(address: Address, env: ProviderSecrets & PlaceContextSecrets) {
+export async function placeRegisterRecords(address: Address, env: ProviderSecrets & PlaceContextSecrets, info?:Awaited<ReturnType<typeof buildingInfo>>) {
   const [current, closed] = await Promise.all([
-    buildings(address, env).catch(() => null),
+    info ? Promise.resolve(null) : buildings(address, env).catch(() => null),
     closedBuildings(address, env).catch(() => null),
   ]);
   return [
+    ...(info?.status==='verified'?info.records.map(row=>({scope:'building',register:'건축물대장',name:row.name??'',address:row.roadAddress??'',use:row.mainPurpose??'',structure:row.structure??'',totalFloorAreaM2:row.totalFloorArea??'',landAreaM2:row.landArea??'',aboveGroundFloors:row.groundFloors??'',belowGroundFloors:row.undergroundFloors??'',approved:row.approvalDate??'',sourceUrl:info.sourceUrl})):[]),
     ...(current?.items ?? []).map(b => ({scope:'building', register:'건축물대장', name:b.name, address:b.roadAddr, use:b.use, structure:b.structure, totalFloorAreaM2:b.area, landAreaM2:b.landArea, aboveGroundFloors:b.above, belowGroundFloors:b.below, approved:b.approved, sourceUrl:current!.sourceUrl})),
     ...(closed?.items ?? []).map(b => ({scope:'parcel', register:'폐쇄말소대장', name:b.name, address:b.lotAddress, use:b.use, approved:b.approved, sourceUrl:closed!.sourceUrl})),
   ];
@@ -137,7 +139,7 @@ export function preparePlaceAnswer(input:{address:Address;story:DocentStory;ques
       validationScope:'archive_paragraphs_only',
     },
     classification:{executor:'calling_client_ai',questionType:input.questionType??null,allowedTypes:QUESTION_TYPES},
-    place:{name:input.address.bdNm,records:input.placeRecords??[],status:input.placeRecords?.length?'matched':'unverified'},
+    place:{name:input.address.bdNm,records:input.placeRecords??[],status:input.placeRecords?.length?'matched':'unverified',historicalStatus:'unverified'},
     neighborhood:{district:input.story.district,dong:input.story.dong,
       records:scenes.map(s=>({id:s.id,date:s.date,year:s.year,title:s.title,text:s.text,scope:s.scope,cutCount:s.cutCount,evidence:s.evidence,source:sceneSource(s)})),
       storyThreads:storyThreads(scenes),selected:scenes.length,available:input.story.scenes.length},

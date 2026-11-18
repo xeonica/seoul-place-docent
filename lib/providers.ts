@@ -1,3 +1,4 @@
+import {XMLParser, XMLValidator} from 'fast-xml-parser';
 export type Secrets = { JUSO_API_KEY?: string; BUILDING_API_KEY?: string; KAKAO_REST_API_KEY?: string; MCP_MAP_ADDRESS_URL?:string };
 export type Address = { roadAddr:string; jibunAddr:string; siNm:string; sggNm:string; emdNm:string; admCd:string; bdMgtSn:string; bdNm:string; lnbrMnnm:string; lnbrSlno:string; mtYn:string; zipNo:string };
 export type Candidate = Address & {token:string};
@@ -49,28 +50,48 @@ export async function verifyAddress(token:string,secrets:Secrets):Promise<Addres
  }catch(e){if(e instanceof ServiceError)throw e;throw new ServiceError('INVALID_TOKEN','주소 선택이 만료되었거나 올바르지 않습니다. 다시 검색해 주세요.',400);}
 }
 export function parcelParams(a:Address) {assertSeoul(a);return {sigunguCd:a.admCd.slice(0,5),bjdongCd:a.admCd.slice(5),platGbCd:a.mtYn,bun:a.lnbrMnnm.padStart(4,'0'),ji:(a.lnbrSlno||'0').padStart(4,'0')};}
-export type Building = { id:string; name:string; dong:string; use:string; structure:string; area:string; landArea:string; above:string; below:string; approved:string; created:string; roadAddr:string; lotAddr:string };
+export type Building = { id:string; name:string; dong:string; use:string; structure:string; area:string; landArea:string; above:string; below:string; approved:string; created:string; roadAddr:string; lotAddr:string; buildingArea?:string; households?:string; buildingCount?:string; permitDate?:string; startDate?:string; registerType?:string };
 export type Floor = { buildingId:string; name:string; use:string; area:string; dong:string };
 const str=(x:Record<string,unknown>,k:string)=>String(x[k]??'').trim();
-export function normalizeRoad(address:string){return address.replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').trim();}
-export function splitBuildingMatches(rows:Building[],a:Address){const road=normalizeRoad(a.roadAddr);return {items:rows.filter(b=>!!b.roadAddr&&normalizeRoad(b.roadAddr)===road),parcelCandidates:rows.filter(b=>!b.roadAddr||normalizeRoad(b.roadAddr)!==road)};}
+export function normalizeRoad(address:string){return address.normalize('NFKC').replace(/\([^)]*\)/g,' ').replace(/^서울\s/,'서울특별시 ').replace(/\s+/g,' ').trim();}
+export function splitBuildingMatches(rows:Building[],a:Address){
+ const key=(value:string)=>normalizeRoad(value).replace(/\s/g,'');
+ const road=key(a.roadAddr);
+ // A JUSO bdMgtSn and a register mgmBldrgstPk are different identifiers.
+ // Parcel-filtered rows with another/missing road address remain candidates.
+ return {items:rows.filter(b=>!!b.roadAddr&&key(b.roadAddr)===road),parcelCandidates:rows.filter(b=>!b.roadAddr||key(b.roadAddr)!==road)};
+}
 export function parseBuildingJson(body:Record<string,any>,a:Address) {
  const response=body.response;
- if(!response||!['00','0'].includes(String(response.header?.resultCode))) throw new ServiceError('BUILDING_PROVIDER','건축물대장 조회에 실패했습니다. 인증·활용신청 상태 또는 제공기관 응답을 확인해야 합니다.');
+ if(!response||!response.header)throw new ServiceError('BUILDING_FORMAT','건축물대장 응답 구조를 확인하지 못했습니다.');
+ if(!['00','0'].includes(String(response.header?.resultCode))) throw new ServiceError('BUILDING_PROVIDER','건축물대장 조회에 실패했습니다. 인증·활용신청 상태 또는 제공기관 응답을 확인해야 합니다.');
  const raw=response.body?.items?.item;const rows:Record<string,unknown>[]=Array.isArray(raw)?raw:raw&&typeof raw==='object'?[raw]:[];
  const p=parcelParams(a);
- return rows.filter(x=>str(x,'sigunguCd')===p.sigunguCd&&str(x,'bjdongCd')===p.bjdongCd&&str(x,'bun').padStart(4,'0')===p.bun&&str(x,'ji').padStart(4,'0')===p.ji&&str(x,'platGbCd')===p.platGbCd).map(x=>({id:str(x,'mgmBldrgstPk'),name:str(x,'bldNm'),dong:str(x,'dongNm'),use:str(x,'mainPurpsCdNm'),structure:str(x,'strctCdNm'),area:str(x,'totArea'),landArea:str(x,'platArea'),above:str(x,'grndFlrCnt'),below:str(x,'ugrndFlrCnt'),approved:str(x,'useAprDay'),created:str(x,'crtnDay'),roadAddr:str(x,'newPlatPlc'),lotAddr:str(x,'platPlc')}));
+ return rows.filter(x=>str(x,'sigunguCd')===p.sigunguCd&&str(x,'bjdongCd')===p.bjdongCd&&str(x,'bun').padStart(4,'0')===p.bun&&str(x,'ji').padStart(4,'0')===p.ji&&str(x,'platGbCd')===p.platGbCd).map(x=>({id:str(x,'mgmBldrgstPk'),name:str(x,'bldNm'),dong:str(x,'dongNm'),use:str(x,'mainPurpsCdNm'),structure:str(x,'strctCdNm'),area:str(x,'totArea'),landArea:str(x,'platArea'),above:str(x,'grndFlrCnt'),below:str(x,'ugrndFlrCnt'),approved:str(x,'useAprDay'),created:str(x,'crtnDay'),buildingArea:str(x,'archArea'),households:str(x,'hhldCnt'),buildingCount:str(x,'mainBldCnt'),permitDate:str(x,'pmsDay'),startDate:str(x,'stcnsDay'),registerType:str(x,'regstrKindCdNm'),roadAddr:str(x,'newPlatPlc'),lotAddr:str(x,'platPlc')}));
 }
 async function fetchBuildingBody(a:Address,secrets:Secrets,op:string,page=1) {
  if(!secrets.BUILDING_API_KEY)throw new ServiceError('KEY_MISSING','건축물 정보 연결을 준비 중입니다.',503);
  const url=new URL(`https://apis.data.go.kr/1613000/BldRgstHubService/${op}`);
  Object.entries({...parcelParams(a),serviceKey:secrets.BUILDING_API_KEY,pageNo:String(page),numOfRows:'100',_type:'json'}).forEach(([k,v])=>url.searchParams.set(k,v));
- const response=await checkedFetch(url);const text=await response.text();
- try{return JSON.parse(text);}catch{throw new ServiceError('BUILDING_FORMAT','건축물대장 응답을 해석하지 못했습니다. 인증·활용신청 상태 또는 제공기관 응답을 확인해야 합니다.');}
+ let response:Response;
+ try {response=await fetch(url,{signal:AbortSignal.timeout(8000),redirect:'error'});}catch(error){
+  throw new ServiceError(error instanceof Error&&['TimeoutError','AbortError'].includes(error.name)?'BUILDING_TIMEOUT':'BUILDING_NETWORK','건축물대장 제공기관 응답을 확인하지 못했습니다.');
+ }
+ if(!response.ok)throw new ServiceError(response.status===401||response.status===403?'BUILDING_AUTH':response.status===429?'BUILDING_QUOTA':'BUILDING_HTTP','건축물대장 인증·이용 한도 또는 제공기관 상태를 확인해야 합니다.');
+ const text=await response.text();
+ try{
+  if(text.trim().startsWith('<')){
+   if(XMLValidator.validate(text)!==true)throw new Error('xml');
+   const parsed=new XMLParser({parseTagValue:false,processEntities:false}).parse(text);
+   if(parsed.OpenAPI_ServiceResponse)throw new ServiceError('BUILDING_AUTH','건축물대장 인증·활용신청 상태를 확인해야 합니다.');
+   return parsed;
+  }
+  return JSON.parse(text);
+ }catch(error){if(error instanceof ServiceError)throw error;throw new ServiceError('BUILDING_FORMAT','건축물대장 응답을 해석하지 못했습니다.');}
 }
-export async function buildings(a:Address,secrets:Secrets){
+export async function buildings(a:Address,secrets:Secrets,operation:'getBrTitleInfo'|'getBrRecapTitleInfo'='getBrTitleInfo'){
  const rows:Building[]=[];let total=0;let page=1;
- do {const body=await fetchBuildingBody(a,secrets,'getBrTitleInfo',page);rows.push(...parseBuildingJson(body,a));total=Number(body.response.body?.totalCount??0);page++;}while((page-1)*100<total&&page<=5);
+ do {const body=await fetchBuildingBody(a,secrets,operation,page);rows.push(...parseBuildingJson(body,a));total=Number(body.response.body?.totalCount??0);page++;}while((page-1)*100<total&&page<=5);
  return {...splitBuildingMatches(rows,a),total,truncated:total>500,sourceUrl:'https://www.data.go.kr/data/15134735/openapi.do',queriedAt:new Date().toISOString()};
 }
 export async function floors(a:Address,secrets:Secrets,buildingId:string){
