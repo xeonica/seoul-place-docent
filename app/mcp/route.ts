@@ -1,3 +1,4 @@
+import {buildingInfo, validateBuildingClaims} from '@/lib/building-info';
 import {env} from '@/lib/runtime-env';
 import {searchResearchRecords,placeResearchCandidates} from '@/lib/research-catalog';
 import {z} from 'zod';
@@ -41,6 +42,7 @@ const tools: McpTool[] = [
     name:'validate_place_answer',
     description:'MCP 동네 기록을 사용한 문단만 같은 token·question의 근거 기록과 기계적으로 대조합니다. 미등록 근거 id·추가 숫자·과도한 문장 길이를 걸러 냅니다. AI를 호출하지 않으며 의미적 사실 전체를 보증하지 않습니다. 거절된 문단은 수정하거나 보류하세요.',
     inputSchema:{type:'object',properties:{
+      buildingClaims:{type:'array',maxItems:20,items:{type:'object',properties:{evidenceId:{type:'string',maxLength:200},field:{type:'string',maxLength:40},value:{type:'string',maxLength:200}},required:['evidenceId','field','value'],additionalProperties:false}},
       token:{type:'string',minLength:1,maxLength:6000},question:{type:'string',maxLength:300},
       answer:{type:'object',properties:{question_type:{type:'string',enum:[...QUESTION_TYPES]},paragraphs:{type:'array',minItems:1,maxItems:6,items:{type:'object',properties:{heading:{type:'string',maxLength:40},text:{type:'string',minLength:1,maxLength:600},evidence_ids:{type:'array',minItems:1,maxItems:14,items:{type:'string',maxLength:200}}},required:['heading','text','evidence_ids'],additionalProperties:false}},held:{type:'array',maxItems:4,items:{type:'string',maxLength:200}}},required:['question_type','paragraphs','held'],additionalProperties:false}
     },required:['token','answer'],additionalProperties:false},
@@ -128,6 +130,7 @@ const locationInput=z.object({latitude:z.number().finite().min(-90).max(90).opti
   .refine(v=>(v.latitude===undefined)===(v.longitude===undefined),{message:'위도와 경도를 함께 전달하세요'});
 const photoInput=z.object({file:z.object({download_url:z.string().min(1).max(12000),file_id:z.string().min(1).max(300),mime_type:z.string().max(100).optional(),file_name:z.string().max(300).optional()}).strict().optional()}).strict();
 const validationInput=z.object({
+  buildingClaims:z.array(z.object({evidenceId:z.string().max(200),field:z.string().max(40),value:z.string().max(200)}).strict()).max(20).optional(),
   token:z.string().min(1).max(6000),question:z.string().trim().max(300).optional(),
   answer:z.object({question_type:z.enum(QUESTION_TYPES),
     paragraphs:z.array(z.object({heading:z.string().max(40),text:z.string().min(1).max(600),evidence_ids:z.array(z.string().max(200)).min(1).max(14)}).strict()).min(1).max(6),
@@ -160,8 +163,9 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         const scenes=pickScenes(story,question,14,address.bdNm);
         const checked=validateAnswer(input.answer,scenes);
         await logClientDocent(env.DB,{event:'validation',ms:Date.now()-started,ok:checked.omitted===0,records:scenes.length,type:checked.questionType,kept:checked.paragraphs.length,omitted:checked.omitted});
+        const buildingValidation=input.buildingClaims?validateBuildingClaims(input.buildingClaims,await buildingInfo(address,env)):[];
         const used=new Set(checked.paragraphs.flatMap(p=>p.evidenceIds));
-        return textResult({...checked,sources:scenes.filter(s=>used.has(s.id)).map(sceneSource),valid:checked.paragraphs.length>0&&checked.omitted===0,
+        return textResult({...checked,buildingValidation,sources:scenes.filter(s=>used.has(s.id)).map(sceneSource),valid:checked.paragraphs.length>0&&checked.omitted===0&&buildingValidation.every(claim=>claim.valid),
           verification:'mechanical_only',note:'근거 id·숫자·길이 검사입니다. 의미적 사실 일치와 장소 동일성은 별도로 확인해야 합니다.'});
       }
       case 'search_place': {
@@ -174,6 +178,7 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         const address = await verifyAddress(input.token, env);
         const research=input.query?searchResearchRecords({query:input.query,district:input.district,offset:input.offset,limit:input.limit}):placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
         const story = getDocentStory(address.sggNm, address.emdNm, [address.bdNm].filter(Boolean));
+        const building=await buildingInfo(address,env);
         const scenes = story.scenes.slice(input.offset, input.offset + input.limit).map(scene => ({
           id: scene.id,
           kind: scene.kind,
@@ -195,7 +200,8 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         const nextOffset = input.offset + scenes.length;
         return textResult({
           address,research,
-          place: {records: await placeRegisterRecords(address,env)},
+          building,
+          place: {records: await placeRegisterRecords(address,env,building),historicalStatus:'unverified'},
           neighborhood: {
             district: story.district,
             dong: story.dong,
@@ -224,13 +230,14 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         }
         const address = await verifyAddress(token, env);
         const story = getFullDocentStory(address.sggNm, address.emdNm);
-        const placeRecords=await placeRegisterRecords(address,env);
+        const building=await buildingInfo(address,env);
+        const placeRecords=await placeRegisterRecords(address,env,building);
         const packet=await generatePlaceAnswer({address,story,placeRecords,question:input.question,questionType:input.questionType});
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
         const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
         const photos=guidePhotos(packet);
         const research=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
-        return textResult({...packet,research,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+'\n질문에 맞는 사진·지도 하나를 골라 관련 문단에 imageMarkdown을 독립된 줄로 넣고 바로 아래에 caption과 클릭 가능한 sourceUrl을 붙이세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
+        return textResult({...packet,building,research,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+'\n질문에 맞는 사진·지도 하나를 골라 관련 문단에 imageMarkdown을 독립된 줄로 넣고 바로 아래에 caption과 클릭 가능한 sourceUrl을 붙이세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);
