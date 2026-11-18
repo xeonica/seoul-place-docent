@@ -7,7 +7,7 @@ import {resolveMcpMapAddress as mapAddress} from '@/lib/mcp-map-address';
 import {readAttachedPhoto} from '@/lib/mcp-photo';
 import {photoResearchThumbnail} from '@/lib/photo-research';
 import {searchAddresses, ServiceError, verifyAddress} from '@/lib/providers';
-import {generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, sceneSource, logClientDocent, QUESTION_TYPES} from '@/lib/place-answer';
+import {placeRegisterRecords, generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, sceneSource, logClientDocent, QUESTION_TYPES} from '@/lib/place-answer';
 import {handleMcpMessage, rpcError, textResult, type McpTool, type McpToolResult} from '@/lib/mcp-protocol';
 import {auditedCall,clientHint} from '@/lib/mcp-audit';
 import {originError,configuredMcpOrigins,acceptError,protocolError,allowMcpRequest,unsupportedMcpMethod} from '@/lib/mcp-http';
@@ -47,7 +47,7 @@ const tools: McpTool[] = [
   },
   {
     name: 'search_place',
-    description: '서울 도로명·지번 주소를 검색합니다. 후보의 token을 get_place_history에 전달하세요. 후보가 여러 개면 사용자가 장소를 선택하도록 하세요.',
+    description: '서울 도로명·지번 주소를 검색합니다. 후보의 token을 get_place_history에 전달하세요. 단일 주소는 바로 해설하고 모호하면 후보 주소만 표시하세요.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -61,7 +61,7 @@ const tools: McpTool[] = [
   },
   {
     name: 'get_place_history',
-    description: 'search_place의 유효한 주소 token으로 동네의 역사·사진·원문 출처를 시간순 조회합니다. 현재 건물·부지와 직접 일치하는 기록은 미확인입니다. 동네 기록을 해당 건물의 역사로 단정하지 마세요.',
+    description: 'search_place의 유효한 주소 token으로 동네의 역사·사진·원문 출처를 시간순 조회합니다. 주소와 일치하는 건축물대장과 같은 필지의 폐쇄말소대장을 함께 조회합니다. 동네 기록을 해당 건물의 역사로 단정하지 마세요.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -188,7 +188,7 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         const nextOffset = input.offset + scenes.length;
         return textResult({
           address,
-          place: {records: [], status: 'unverified', note: '이 건물·부지와 직접 연결된 역사 기록은 아직 확인하지 못했습니다.'},
+          place: {records: await placeRegisterRecords(address,env)},
           neighborhood: {
             district: story.district,
             dong: story.dong,
@@ -211,17 +211,18 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         if (!token) {
           const found = await searchAddresses(input.address!, 1, env);
           if (found.candidates.length !== 1 || found.total !== 1) {
-            return textResult({needsChoice: true, note: found.candidates.length ? '주소 후보가 여러 개예요. 사용자가 고른 후보의 token으로 다시 호출하세요.' : '서울 주소를 찾지 못했어요. 도로명과 건물번호를 확인해 주세요.', candidates: found.candidates.slice(0, 10).map(c => ({roadAddr: c.roadAddr, jibunAddr: c.jibunAddr, token: c.token}))});
+            return textResult({needsChoice: true, note: found.candidates.length ? '일치하는 서울 주소 후보' : '서울 주소를 찾지 못했어요. 도로명과 건물번호를 확인해 주세요.', candidates: found.candidates.slice(0, 10).map(c => ({roadAddr: c.roadAddr, jibunAddr: c.jibunAddr, token: c.token}))});
           }
           token = found.candidates[0].token;
         }
         const address = await verifyAddress(token, env);
         const story = getFullDocentStory(address.sggNm, address.emdNm);
-        const packet=await generatePlaceAnswer({address,story,question:input.question,questionType:input.questionType});
+        const placeRecords=await placeRegisterRecords(address,env);
+        const packet=await generatePlaceAnswer({address,story,placeRecords,question:input.question,questionType:input.questionType});
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
         const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
         const photos=packet.neighborhood.records.filter(record=>record.source.photo).slice(0,3).map(record=>({evidenceId:record.id,title:record.title,date:record.date,scope:record.scope,...record.source.photo!}));
-        return textResult({...packet,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:photos.length||videos.records.length?null:'주소에 연결된 표시 가능한 시각자료가 없습니다. 자료 없음으로 안내하세요.'},instructions:packet.instructions+'\n10) visuals.photos의 imageUrl이 있으면 사진을 Markdown 이미지로 직접 표시하고 시기·기관·원문·공간 범위를 붙이세요. 사진이 없으면 없다고 명시하세요. 관련 영상은 제목·원문 링크로 별도 안내하세요. 역사 서술의 검증 근거에는 neighborhood 기록 ID를 사용하세요. 원자료 시간과 독립 검증 상태를 구분하세요. verifiedSegments만 검증된 시간 링크이며 비어 있으면 playbackStatus의 재생구간 미검증을 명시하세요. 영상 후보를 입력 건물의 과거 모습으로 단정하지 마세요.'});
+        return textResult({...packet,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+'\n관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요.'});
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);
