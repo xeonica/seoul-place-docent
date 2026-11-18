@@ -2,6 +2,9 @@ name: Import GitHub research into BigQuery
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/bigquery-research-import.yml']
 
 permissions:
   contents: read
@@ -12,7 +15,11 @@ concurrency:
 
 jobs:
   import-research:
-    if: github.ref == 'refs/heads/main'
+    # Bootstrap the first import once, then allow manual runs from main.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       github.event.before == 'd114d89b8ff2d42cb070dcbf4dec04f7afb585dd')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
