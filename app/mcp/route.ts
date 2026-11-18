@@ -1,4 +1,5 @@
 import {env} from '@/lib/runtime-env';
+import {searchResearchRecords,placeResearchCandidates} from '@/lib/research-catalog';
 import {z} from 'zod';
 import {archiveStats, database} from '@/lib/archive-db';
 import {getDocentStory, getFullDocentStory} from '@/lib/docent-data';
@@ -61,15 +62,17 @@ const tools: McpTool[] = [
   },
   {
     name: 'get_place_history',
-    description: 'search_place의 유효한 주소 token으로 동네의 역사·사진·원문 출처를 시간순 조회합니다. 주소와 일치하는 건축물대장과 같은 필지의 폐쇄말소대장을 함께 조회합니다. 동네 기록을 해당 건물의 역사로 단정하지 마세요.',
+    description: '주소 token으로 동네 역사·사진과 GitHub 조사자료 후보를 조회합니다. token 없이 query(예: 세운상가, 정독도서관)로 GitHub CSV 메타데이터를 직접 검색할 수 있습니다. 후보는 검토·권리·장소 상태와 출처행을 보존하며 확정 근거가 아닙니다. 동네 기록을 해당 건물의 역사로 단정하지 마세요.',
     inputSchema: {
       type: 'object',
       properties: {
         token: {type: 'string', minLength: 1, maxLength: 6000},
+        query: {type: 'string', minLength: 2, maxLength: 100, description: 'GitHub 조사자료 키워드 검색'},
+        district: {type: 'string', minLength: 2, maxLength: 20, description: '조사자료 자치구 메타데이터 필터'},
         offset: {type: 'integer', minimum: 0, maximum: 10000, default: 0},
         limit: {type: 'integer', minimum: 1, maximum: 12, default: 6},
       },
-      required: ['token'],
+      anyOf: [{required: ['token']}, {required: ['query']}],
       additionalProperties: false,
     },
     annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false},
@@ -107,10 +110,12 @@ const searchInput = z.object({
   page: z.number().int().min(1).max(100).default(1),
 }).strict();
 const historyInput = z.object({
-  token: z.string().min(1).max(6000),
+  token: z.string().min(1).max(6000).optional(),
+  query: z.string().trim().min(2).max(100).optional(),
+  district: z.string().trim().min(2).max(20).optional(),
   offset: z.number().int().min(0).max(10000).default(0),
   limit: z.number().int().min(1).max(12).default(6),
-}).strict();
+}).strict().refine(v=>Boolean(v.token)||Boolean(v.query),{message:'token 또는 query가 필요합니다'});
 
 const answerInput = z.object({
   token: z.string().min(1).max(6000).optional(),
@@ -165,7 +170,9 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
       }
       case 'get_place_history': {
         const input = historyInput.parse(args);
+        if(!input.token)return textResult(searchResearchRecords(input));
         const address = await verifyAddress(input.token, env);
+        const research=input.query?searchResearchRecords({query:input.query,district:input.district,offset:input.offset,limit:input.limit}):placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
         const story = getDocentStory(address.sggNm, address.emdNm, [address.bdNm].filter(Boolean));
         const scenes = story.scenes.slice(input.offset, input.offset + input.limit).map(scene => ({
           id: scene.id,
@@ -187,7 +194,7 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         }));
         const nextOffset = input.offset + scenes.length;
         return textResult({
-          address,
+          address,research,
           place: {records: await placeRegisterRecords(address,env)},
           neighborhood: {
             district: story.district,
@@ -222,7 +229,8 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
         const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
         const photos=packet.neighborhood.records.filter(record=>record.source.photo).slice(0,3).map(record=>({evidenceId:record.id,title:record.title,date:record.date,scope:record.scope,...record.source.photo!}));
-        return textResult({...packet,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+'\n관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요.'});
+        const research=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
+        return textResult({...packet,research,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+'\n관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 함께 밝히고 원문을 확인하기 전 본문 사실이나 시각자료로 승격하지 마세요.'});
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);

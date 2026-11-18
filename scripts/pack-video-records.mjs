@@ -1,3 +1,4 @@
+import './pack-research-catalog.mjs';
 import {readFileSync,writeFileSync,mkdirSync,rmSync} from 'node:fs';
 import {gzipSync} from 'node:zlib';
 const folder=new URL('../data/video-workbooks/',import.meta.url);
