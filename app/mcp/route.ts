@@ -33,13 +33,13 @@ const tools: McpTool[] = [
   },
   {
     name:'prepare_place_answer',
-    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 반환된 근거로 당신이 최종 답변을 작성하세요. token 또는 address 중 하나가 필요합니다. 장소와 동네를 구분하고 문단당 근거를 연결하세요.',
+    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 주소와 질문에 맞는 현장 해설을 작성하고 관련 MCP 기록·사진을 보태세요. no_records여도 일반 해설을 완성하세요. token 또는 address 중 하나가 필요합니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
     inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]}},oneOf:[{required:['token']},{required:['address']}],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
   },
   {
     name:'validate_place_answer',
-    description:'당신이 작성한 설명 JSON을 같은 token·question의 근거 기록과 기계적으로 대조합니다. 미등록 근거 id·추가 숫자·과도한 문장 길이를 걸러 냅니다. AI를 호출하지 않으며 의미적 사실 전체를 보증하지 않습니다. 거절된 문단은 수정하거나 보류하세요.',
+    description:'MCP 동네 기록을 사용한 문단만 같은 token·question의 근거 기록과 기계적으로 대조합니다. 미등록 근거 id·추가 숫자·과도한 문장 길이를 걸러 냅니다. AI를 호출하지 않으며 의미적 사실 전체를 보증하지 않습니다. 거절된 문단은 수정하거나 보류하세요.',
     inputSchema:{type:'object',properties:{
       token:{type:'string',minLength:1,maxLength:6000},question:{type:'string',maxLength:300},
       answer:{type:'object',properties:{question_type:{type:'string',enum:[...QUESTION_TYPES]},paragraphs:{type:'array',minItems:1,maxItems:6,items:{type:'object',properties:{heading:{type:'string',maxLength:40},text:{type:'string',minLength:1,maxLength:600},evidence_ids:{type:'array',minItems:1,maxItems:14,items:{type:'string',maxLength:200}}},required:['heading','text','evidence_ids'],additionalProperties:false}},held:{type:'array',maxItems:4,items:{type:'string',maxLength:200}}},required:['question_type','paragraphs','held'],additionalProperties:false}
@@ -230,7 +230,7 @@ async function execute(name: string, args: Record<string, unknown>): Promise<Mcp
         const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
         const photos=packet.neighborhood.records.filter(record=>record.source.photo).slice(0,3).map(record=>({evidenceId:record.id,title:record.title,date:record.date,scope:record.scope,...record.source.photo!}));
         const research=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
-        return textResult({...packet,research,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+'\n관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 함께 밝히고 원문을 확인하기 전 본문 사실이나 시각자료로 승격하지 마세요.'});
+        return textResult({...packet,research,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+'\n관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);

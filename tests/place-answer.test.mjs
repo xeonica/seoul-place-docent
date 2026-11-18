@@ -32,6 +32,9 @@ test('no evidence returns honest no_records, never a fabricated story',()=>{
  const p=preparePlaceAnswer({address,story:{...story,scenes:[]}});
  assert.equal(p.status,'no_records');assert.deepEqual(p.neighborhood.records,[]);
  assert.equal(p.classification.questionType,null);
+ assert.equal(p.narration.action,'compose_guided_visit');
+ assert.equal(p.narration.opening,'identify_place_or_guide_observation');
+ assert.equal(p.narration.neighborhood,'explain_general_context');
 });
 test('unknown citations including mixed known/unknown, unsupported numbers and long scenes are rejected',()=>{
  const scenes=pickScenes(story,'지하도',4),id=scenes.find(s=>/지하도/.test(s.title)).id;
