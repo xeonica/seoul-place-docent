@@ -1,0 +1,82 @@
+[
+  {
+    "name": "import_row_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "source_commit",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "source_file",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "source_file_sha256",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "source_line",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "row_kind",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "research_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "original_record_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "place_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "source_url",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "title",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "media_type",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "review_status",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "rights_status",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "usable_as_verified_evidence",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "original_values",
+    "type": "JSON",
+    "mode": "NULLABLE"
+  }
+]

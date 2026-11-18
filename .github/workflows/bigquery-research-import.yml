@@ -1,0 +1,56 @@
+name: Import GitHub research into BigQuery
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: bigquery-research-staging
+
+jobs:
+  import-research:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BQ_PROJECT: seoul-docent-archive
+      BQ_REGION: asia-northeast3
+      BQ_DATASET: docent_ingest
+      BQ_TABLE: github_research_staging
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Export GitHub research CSVs
+        run: node scripts/export-github-research.mjs "$RUNNER_TEMP/github_research.ndjson"
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: seoul-docent-archive
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER || 'projects/100197771642/locations/global/workloadIdentityPools/github-actions/providers/github-docent' }}
+          service_account: ${{ vars.GCP_WRITER_SERVICE_ACCOUNT || 'docent-bq-writer@seoul-docent-archive.iam.gserviceaccount.com' }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          install_components: bq
+      - name: Load and verify staging table
+        shell: bash
+        run: |
+          set -euo pipefail
+          input="$RUNNER_TEMP/github_research.ndjson"
+          expected=$(wc -l < "$input")
+          bq --project_id="$BQ_PROJECT" --location="$BQ_REGION" load \
+            --replace --source_format=NEWLINE_DELIMITED_JSON \
+            "$BQ_PROJECT:$BQ_DATASET.$BQ_TABLE" "$input" \
+            scripts/bigquery/github_research.schema.json
+          bq --project_id="$BQ_PROJECT" --location="$BQ_REGION" query \
+            --use_legacy_sql=false --parameter="expected:INT64:$expected" \
+            --parameter="commit:STRING:$GITHUB_SHA" "
+              ASSERT (
+                SELECT COUNT(*) = @expected
+                  AND COUNT(DISTINCT import_row_id) = @expected
+                  AND COUNTIF(source_commit = @commit) = @expected
+                FROM \`$BQ_PROJECT.$BQ_DATASET.$BQ_TABLE\`
+              ) AS 'Unexpected row count, duplicate IDs, or source commit';"
+          printf 'Loaded and verified %s rows and %s unique IDs.\n' "$expected" "$expected" >> "$GITHUB_STEP_SUMMARY"
