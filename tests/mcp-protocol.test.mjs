@@ -10,7 +10,7 @@ test('discovery advertises the Sites protocol and tools capability', async () =>
   const response = await handleMcpMessage(call('server/discover'), tools, execute);
   assert.equal(response.id, 1);
   assert.deepEqual(response.result.supportedVersions, MCP_SUPPORTED_VERSIONS);
-  assert.deepEqual(response.result.capabilities, {tools: {}});
+  assert.deepEqual(response.result.capabilities, {tools: {}, resources: {}});
 });
 test('tools are discoverable and calls return MCP content blocks', async () => {
   const listed = await handleMcpMessage(call('tools/list'), tools, execute);
