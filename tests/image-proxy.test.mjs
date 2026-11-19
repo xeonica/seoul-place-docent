@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {IMAGE_RESOURCE_DOMAINS, isAllowedImageUrl, toProxyUrl} from '../lib/image-proxy.ts';
+import {IMAGE_RESOURCE_DOMAINS, isAllowedImageUrl, toProxyUrl, upstreamReferer} from '../lib/image-proxy.ts';
 import {handleImageProxy} from '../lib/image-proxy-handler.ts';
 import {guidePhotos, preparePlaceAnswer} from '../lib/place-answer.ts';
 
@@ -71,7 +71,7 @@ test('GET returns the image and caching headers, HEAD returns the same headers',
   assert.equal(head.body, null);
 });
 
-test('answer records and guide photos proxy museum images and retain provenance', () => {
+test('answer records and guide photos proxy every archive image and retain provenance', () => {
   const archiveUrl = 'https://archives-files.seoul.go.kr/photo.jpg';
   const museumUrl = 'https://museum.seoul.go.kr/archive/record';
   const archiveSource = 'https://archives.seoul.go.kr/record';
@@ -100,10 +100,33 @@ test('answer records and guide photos proxy museum images and retain provenance'
   const museum = photos.find(photo => photo.evidenceId === '박물관 사진');
   assert.equal(museum.imageMarkdown, `![박물관 사진](<${museum.imageUrl}>)`);
   const archive = photos.find(photo => photo.evidenceId === '기록원 사진');
-  assert.equal(archive.imageUrl, archiveUrl);
-  assert.deepEqual(archive.alternateUrls, []);
-  assert.equal(archive.imageMarkdown, `![기록원 사진](<${archiveUrl}>)`);
+  assert.equal(archive.imageUrl, toProxyUrl(origin, archiveUrl));
+  assert.deepEqual(archive.alternateUrls, [archiveUrl]);
+  assert.equal(archive.imageMarkdown, `![기록원 사진](<${archive.imageUrl}>)`);
   assert.equal(archive.credit, '서울기록원');
   assert.equal(archive.terms, '공공누리 제1유형');
   assert.equal(archive.sourceUrl, archiveSource);
+});
+
+test('each archive host gets its own viewer page as Referer', () => {
+  assert.equal(upstreamReferer(original), 'https://museum.seoul.go.kr/');
+  assert.equal(upstreamReferer('https://archive-file.sb.go.kr/files/serviceFile/archive/item/a'), 'https://archive.sb.go.kr/');
+  assert.equal(upstreamReferer('https://archives-files.seoul.go.kr/v2/photo.JPG'), 'https://archives.seoul.go.kr/');
+  assert.equal(upstreamReferer('https://data.si.re.kr/photo.jpg'), 'https://data.si.re.kr/');
+});
+
+test('Seongbuk archive photos are proxied and keep the original as an alternate', () => {
+  const sbUrl = 'https://archive-file.sb.go.kr/files/serviceFile/archive/item/2020/05/06/photo';
+  const packet = preparePlaceAnswer({
+    address: {roadAddr: '서울', bdNm: ''},
+    story: {dong: '삼선동2가', scenes: [{
+      id: '성북 사진', title: '성북 사진', date: '1991', text: '성북 사진', scope: 'dong', order: 0, evidence: [],
+      photos: [{previewUrl: sbUrl, sourceUrl: 'https://archive.sb.go.kr/item/5158', provider: '성북마을아카이브', values: {'이용조건': '공공누리'}}],
+    }]},
+  });
+  const [photo] = guidePhotos(packet);
+  assert.equal(new URL(photo.imageUrl).origin, origin);
+  assert.equal(new URL(photo.imageUrl).searchParams.get('u'), sbUrl);
+  assert.equal(photo.alternateUrls[0], sbUrl);
+  assert.equal(photo.sourceUrl, 'https://archive.sb.go.kr/item/5158');
 });

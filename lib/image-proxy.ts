@@ -24,3 +24,15 @@ export function imageProxyOrigin(): string {
   return URL.parse(process.env.PUBLIC_BASE_URL ?? '')?.origin
     ?? 'https://seoul-place-docent-mcp.vercel.app';
 }
+
+/** Archive sites check that image requests come from their own viewer pages. */
+const refererByHost: Record<string, string> = {
+  'museum.seoul.go.kr': 'https://museum.seoul.go.kr/',
+  'archive-file.sb.go.kr': 'https://archive.sb.go.kr/',
+  'archives-files.seoul.go.kr': 'https://archives.seoul.go.kr/',
+};
+
+export function upstreamReferer(original: string): string {
+  const url = new URL(original);
+  return refererByHost[url.hostname] ?? `${url.origin}/`;
+}
