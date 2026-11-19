@@ -1,3 +1,4 @@
+import {publicPhotoItem} from '@/lib/photo-verification';
 import {photoResearchBundle as bundle} from '../../../../lib/photo-research-data';
 import districtSummary from '../../../../data/photo-research/district-summary.json';
 import {filterPhotoResearch, placePhotoResearch, type PhotoResearchFilters} from '../../../../lib/photo-research';
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
   const pageValue = Number(p.get('page') || 1);
   const page = Math.min(Math.max(1, Number.isFinite(pageValue) ? Math.floor(pageValue) : 1), Math.max(1, Math.ceil(rows.length / 20)));
   const download = p.get('download') === '1';
-  return Response.json({total: rows.length, page, pageSize: 20, rows: download ? rows : rows.slice((page - 1) * 20, page * 20),
+  return Response.json({total: rows.length, page, pageSize: 20, rows: download ? rows : rows.slice((page - 1) * 20, page * 20).map(item=>publicPhotoItem(item)),
     sourceUrlCount: new Set(rows.filter(r => r.sourceUrl).map(r => r.sourceUrl)).size,
     candidateCount: rows.filter(r => r.candidate).length,
     ...(download ? {provenance: bundle.meta, filters} : {})}, {headers: {...headers,

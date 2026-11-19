@@ -72,3 +72,5 @@ __pycache__/
 
 # Built from versioned research CSVs on every build
 /data/research-catalog.json
+
+/data/photo-asset-proofs.json

@@ -1,3 +1,4 @@
+import {verifyPhotoAsset} from '@/lib/photo-verification';
 import {galleryToolMeta} from '@/lib/docent-gallery';
 import {bigQueryGitHubCandidates,bigQueryHansungArchive,bigQueryPlaceCandidates} from '@/lib/bigquery-place';
 import {env} from '@/lib/runtime-env';
@@ -45,7 +46,7 @@ const tools: McpTool[] = [
     description:'MCP 동네 기록을 사용한 문단만 같은 token·question의 근거 기록과 기계적으로 대조합니다. 미등록 근거 id·추가 숫자·과도한 문장 길이를 걸러 냅니다. AI를 호출하지 않으며 의미적 사실 전체를 보증하지 않습니다. 거절된 문단은 수정하거나 보류하세요.',
     inputSchema:{type:'object',properties:{
       token:{type:'string',minLength:1,maxLength:6000},question:{type:'string',maxLength:300},
-      answer:{type:'object',properties:{question_type:{type:'string',enum:[...QUESTION_TYPES]},paragraphs:{type:'array',minItems:1,maxItems:6,items:{type:'object',properties:{heading:{type:'string',maxLength:40},text:{type:'string',minLength:1,maxLength:600},evidence_ids:{type:'array',minItems:1,maxItems:14,items:{type:'string',maxLength:200}}},required:['heading','text','evidence_ids'],additionalProperties:false}},held:{type:'array',maxItems:4,items:{type:'string',maxLength:200}}},required:['question_type','paragraphs','held'],additionalProperties:false}
+      answer:{type:'object',properties:{question_type:{type:'string',enum:[...QUESTION_TYPES]},paragraphs:{type:'array',minItems:1,maxItems:6,items:{type:'object',properties:{media_ids:{type:'array',maxItems:8,items:{type:'string',maxLength:2000}},heading:{type:'string',maxLength:40},text:{type:'string',minLength:1,maxLength:600},evidence_ids:{type:'array',minItems:1,maxItems:14,items:{type:'string',maxLength:200}}},required:['heading','text','evidence_ids'],additionalProperties:false}},held:{type:'array',maxItems:4,items:{type:'string',maxLength:200}}},required:['question_type','paragraphs','held'],additionalProperties:false}
     },required:['token','answer'],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false}
   },
@@ -134,7 +135,7 @@ const photoInput=z.object({file:z.object({download_url:z.string().min(1).max(120
 const validationInput=z.object({
   token:z.string().min(1).max(6000),question:z.string().trim().max(300).optional(),
   answer:z.object({question_type:z.enum(QUESTION_TYPES),
-    paragraphs:z.array(z.object({heading:z.string().max(40),text:z.string().min(1).max(600),evidence_ids:z.array(z.string().max(200)).min(1).max(14)}).strict()).min(1).max(6),
+    paragraphs:z.array(z.object({heading:z.string().max(40),text:z.string().min(1).max(600),evidence_ids:z.array(z.string().max(200)).min(1).max(14),media_ids:z.array(z.string().max(2000)).max(8).optional()}).strict()).min(1).max(6),
     held:z.array(z.string().max(200)).max(4)}).strict()
 }).strict();
 
@@ -193,7 +194,8 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           scope: scene.scope,
           cutCount: scene.cutCount,
           photos: scene.photos.slice(0, 1).map(photo => ({
-            previewUrl: photoResearchThumbnail(photo),
+            previewUrl: verifyPhotoAsset(photo,scene.id,scene.evidence[0]?.url||null).displayImageUrl,
+            verification:verifyPhotoAsset(photo,scene.id,scene.evidence[0]?.url||null),
             sourceUrl: photo.sourceUrl,
             provider: photo.provider,
             relation: photo.relation,
@@ -242,6 +244,7 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         const packet=await generatePlaceAnswer({address,story,placeRecords,question:input.question,questionType:input.questionType});
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
         const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
+        const sourceOnlyRecords=packet.neighborhood.records.filter(record=>!record.source.photo&&record.source.url&&record.source.photoVerification?.verificationStatus!=='REJECTED').map(record=>({evidenceId:record.id,title:record.title,date:record.date,sourceUrl:record.source.url,verificationStatus:record.source.photoVerification?.verificationStatus||'SOURCE_ONLY',note:'원문 기록은 있으나 표시 가능한 원본 사진은 확인되지 않았습니다.'}));
         const photos=guidePhotos(packet).map(({imageMarkdown: _imageMarkdown, ...photo}) => photo);
         const research=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
         const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive] = await Promise.all([
@@ -249,8 +252,8 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm}),
           bigQueryHansungArchive(request,{roadAddr:address.roadAddr,district:address.sggNm}),
         ]);
-        const guide=textResult({...packet,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\n기록 사진은 이 도구의 MCP Apps 갤러리에서 자동 표시합니다. ChatGPT와 Claude에서는 사진을 MCP Apps 갤러리에서 보여주고, 답변 본문에는 캡션과 원문 링크를 사용하세요. 갤러리가 보이지 않는 환경에서는 날짜·소장기관·장소 범위와 함께 sourceUrl 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색은 현재 모습 보충용으로만 구분하여 사용하고 MCP 사진인 것처럼 표현하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
-        return {...guide,structuredContent:{photos}};
+        const guide=textResult({...packet,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,videos,visuals:{photos,sourceOnlyRecords,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\n기록 사진은 이 도구의 MCP Apps 갤러리에서 자동 표시합니다. ChatGPT와 Claude에서는 사진을 MCP Apps 갤러리에서 보여주고, 답변 본문에는 캡션과 원문 링크를 사용하세요. 갤러리가 보이지 않는 환경에서는 날짜·소장기관·장소 범위와 함께 sourceUrl 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색은 현재 모습 보충용으로만 구분하여 사용하고 MCP 사진인 것처럼 표현하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
+        return {...guide,structuredContent:{photos,sourceOnlyRecords}};
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);

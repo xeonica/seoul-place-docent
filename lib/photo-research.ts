@@ -1,4 +1,5 @@
 import type {IntegratedResearchSummary} from './integrated-research';
+import {verifyPhotoAsset,publicPhotoItem,type PhotoAssetProof} from './photo-verification';
 export type PhotoResearchFile = {
   id: string; district: string; dong: string; filename: string; count: number; columns: string[];
   path: string; sha256: string; sizeBytes: number; sourceUrlCount: number; candidateCount: number; previewLinkCount: number;
@@ -7,6 +8,8 @@ export type PhotoResearchFile = {
   sourceFileRecordCount?: number;
 };
 export type PhotoResearchItem = {
+  imageVerification?:{verificationStatus:import('./photo-verification').PhotoVerificationStatus;reason:string;sourceRecordId:string|null;mediaId:string|null;displayable:boolean};
+  assetProof?:PhotoAssetProof;
   id: string; batchId: string; district: string; dong: string; dataRow: number;
   collectionScope: 'dong' | 'district' | 'city'; recordType: 'visual' | 'building'; mediaType: string;
   correctionOf: string | null; correctionIds: string[];
@@ -68,27 +71,8 @@ export function trustedImageHost(url: string) {
   try { const u = new URL(url); return u.protocol === 'https:' && u.hostname === 'archive-file.sb.go.kr' && /^\/files\/(?:service|upload)File\/archive\/item\//.test(u.pathname); } catch { return false; }
 }
 export function photoResearchImageCandidates(item: PhotoResearchItem) {
-  if (['사이트표시가능여부', '썸네일표시가능여부'].some(key => /^불가(?:$|[\s(（·:])/.test(item.values[key] || ''))) return [];
-  const images: string[] = [];
-  const supplied = photoResearchUrl(item.previewUrl || undefined);
-  if (supplied?.startsWith('https://') && (/\.(?:avif|gif|jpe?g|png|webp|tmb)$/i.test(new URL(supplied).pathname) || trustedImageHost(supplied))) images.push(supplied);
-  const source = photoResearchUrl(item.sourceUrl || undefined);
-  if (source) {
-    const url = new URL(source);
-    const id = (item.values['기관자료ID'] || '').trim();
-    if (url.hostname === 'archive.much.go.kr' && /^\d{8,15}$/.test(id)) {
-      images.push('https://archive.much.go.kr/archiveImage/thumb.do?idnbr=' + id);
-    }
-    if (url.hostname === 'museum.seoul.go.kr') {
-      const fileId = url.searchParams.get('fileId') || '';
-      const fileSn = url.searchParams.get('fileSn') || '';
-      if (/^[A-Za-z0-9_-]{1,120}$/.test(fileId) && /^\d{1,12}$/.test(fileSn)) {
-        const params = new URLSearchParams({fileSn, fileId, w: '800', h: '800'});
-        images.push('https://museum.seoul.go.kr:8088/component/archv/data/ND_thumbnail.tmb?' + params);
-      }
-    }
-  }
-  return [...new Set(images)];
+  const verification=verifyPhotoAsset(item);
+  return verification.displayable&&verification.displayImageUrl?[verification.displayImageUrl,...verification.alternateUrls]:[];
 }
 export function photoResearchThumbnail(item: PhotoResearchItem) {
   return photoResearchImageCandidates(item)[0] || null;
@@ -124,12 +108,12 @@ export function placePhotoResearch(bundle: PhotoResearchBundle, district: string
   const page = Math.min(Math.max(1, Number.isFinite(visualPage) ? Math.floor(visualPage) : 1), Math.max(1, Math.ceil(visuals.length / pageSize)));
   return {
     datasetId: bundle.meta.id, batches, districtBatches, districtTotal: districtBatches.reduce((sum, file) => sum + file.count, 0), total: rows.length, eligible: visible.length,
-    candidateCount: rows.filter(item => item.candidate).length + (batches.length ? 0 : bundle.items.filter(item => districtIds.has(item.batchId) && item.candidate).length), rows: visible.slice(0, 4),
-    integratedTotal: integrated.length, integratedRows: integrated.slice(0, 4),
+    candidateCount: rows.filter(item => item.candidate).length + (batches.length ? 0 : bundle.items.filter(item => districtIds.has(item.batchId) && item.candidate).length), rows: visible.slice(0, 4).map(item=>publicPhotoItem(item)),
+    integratedTotal: integrated.length, integratedRows: integrated.slice(0, 4).map(item=>publicPhotoItem(item)),
     visuals: {scope: visualScope, total: visuals.length, page, pageSize, recordTotal: relatedVisuals.length,
-      sourceOnlyTotal: sourceOnly.length, sourceOnlyRows: sourceOnly.slice(0, 6),
+      sourceOnlyTotal: sourceOnly.length, sourceOnlyRows: sourceOnly.slice(0, 6).map(item=>publicPhotoItem(item)),
       thumbnailCount: visuals.filter(item => photoResearchThumbnail(item)).length,
-      rows: visuals.slice((page - 1) * pageSize, page * pageSize)},
+      rows: visuals.slice((page - 1) * pageSize, page * pageSize).map(item=>publicPhotoItem(item))},
     relationNote: '선택한 자치구·법정동의 조사묶음입니다. 조사 범위와 촬영 장소는 다를 수 있으며 건물·부지 일치는 미검증입니다.',
   };
 }

@@ -1,3 +1,4 @@
+import {verifyPhotoAsset,sourcePageKey} from './photo-verification';
 import {imageProxyOrigin,isAllowedImageUrl,toProxyUrl} from './image-proxy';
 import type {DocentStory,StoryScene} from './docent-story';
 import {sceneConnections} from './docent-scene-connections';
@@ -8,7 +9,8 @@ import {buildings,ServiceError,type Secrets as ProviderSecrets,type Address} fro
 export const QUESTION_TYPES=['동네 역사','시대별 모습','특정 장소·건물','사진 찾기','지명 유래','기타'] as const;
 export type QuestionType=typeof QUESTION_TYPES[number];
 export type AnswerParagraph={heading:string;text:string;scope:'동네'|'자치구';evidenceIds:string[]};
-export type AnswerSource={id:string;date:string;title:string;institution:string;url:string|null;photo:{imageUrl:string;deliveryPath?:string|null;alternateUrls?:string[];sourceUrl:string|null;credit:string;terms:string}|null};
+type VerifiedPhoto=ReturnType<typeof verifyPhotoAsset>&{imageUrl:string;deliveryPath?:string|null;sourceUrl:string|null;credit:string;terms:string};
+export type AnswerSource={id:string;date:string;title:string;institution:string;url:string|null;photoVerification?:ReturnType<typeof verifyPhotoAsset>;photo:VerifiedPhoto|null};
 import {closedBuildings,type PlaceContextSecrets} from './place-context';
 type Secrets={DB?:D1Database};
 export const ANSWER_VERSION='client-docent-11';
@@ -27,7 +29,7 @@ export const DOCENT_RULES=`당신은 서울 동네의 시간을 안내하는 도
 4) 호출한 AI가 해설을 구성합니다. 직접 열어 확인한 공식 원문으로 장소 이야기를 보강할 수 있습니다. 해당 주소·장소와의 관계를 확인하고 본문은 해설 위주로 쓰세요. 마지막에 ‘출처’ 목록을 하나 두고 실제 사용한 글·일반 사진·서울 기록의 기관명과 자료 제목을 원문에 연결하세요. 같은 URL은 한 번만 싣고 사진은 캡션 제목으로 대응시키세요. 외부 원문에 MCP 기록 ID를 붙이지 마세요.
 5) MCP 동네 기록의 기계적 검증을 요청할 때만 해당 기록에 근거한 문단을 추려 1~3문장으로 쓰고 내부 검증용 evidence_ids를 연결하세요. held, 빈 항목, 자료 부재 설명, 검증 결과와 요청 ID는 독자에게 표시하지 마세요. 확인된 내용까지만 들려주고 후속 질문 없이 끝내세요.
 6) 사진 전달 규칙: imageUrl은 기록에 연결된 표시용 주소입니다. deliveryPath는 같은 웹사이트에서 쓰는 상대경로이므로 외부 채팅에서는 imageUrl을 사용하세요. 사진을 불러오지 못하면 sourceUrl 원문 링크를 제공하세요.
- 사진·출처 일치 규칙: 서울 역사 기록사진은 해당 기록의 evidenceId에 연결된 visuals.photos 또는 neighborhood.records[].source.photo의 imageUrl만 사용하세요. 사진별 imageUrl·sourceUrl·제목·촬영시기·소장기관·저작자표시를 같은 기록에서 가져오고, 서로 다른 검색 이미지와 MCP 기록 출처를 짝짓지 마세요. 별도 이미지 검색 결과는 원본과 동일성이 확인되지 않는 한 MCP 역사사진이라고 표시하거나 그 기록의 캡션·출처를 붙이지 마세요. 검색 이미지를 사용한다면 '별도 검색 사진'으로 구분하고 해당 이미지 자체의 확인된 출처만 표기하세요. 원본 이미지가 표시되지 않거나 접근·권리가 불확실하면 무관한 사진으로 대체하지 말고 원본 sourceUrl과 기록 제목·시기·기관을 안내하세요. 장소 직접 사진과 주변 동네 사진도 구분하세요. 일반 사진은 클라이언트의 이미지 표시 기능을 사용하고 서울 기록 사진은 함께 제공되는 갤러리에서 보여 주세요. 날짜·무엇을 담았는지·소장처를 아는 범위에서 짧은 한글 캡션으로 쓰세요. 사진 원문은 마지막 출처 목록에 모으고 필수 저작자 표시는 유지하세요. 사진의 공간 범위와 전승·추정의 성격을 유지하세요.
+ 사진·출처 일치 규칙: VERIFIED·displayable=true이며 sourceRecordId와 mediaId가 있는 사진만 표시하세요. SOURCE_ONLY는 원문 링크만, RELATED_ONLY는 다른 기록임을 구분하고 REJECTED는 표시하지 마세요. URL이 없어도 일반 검색 사진으로 채우지 마세요. 서울 역사 기록사진은 해당 기록의 evidenceId에 연결된 visuals.photos 또는 neighborhood.records[].source.photo의 imageUrl만 사용하세요. 사진별 imageUrl·sourceUrl·제목·촬영시기·소장기관·저작자표시를 같은 기록에서 가져오고, 서로 다른 검색 이미지와 MCP 기록 출처를 짝짓지 마세요. 별도 이미지 검색 결과는 원본과 동일성이 확인되지 않는 한 MCP 역사사진이라고 표시하거나 그 기록의 캡션·출처를 붙이지 마세요. 검색 이미지를 사용한다면 '별도 검색 사진'으로 구분하고 해당 이미지 자체의 확인된 출처만 표기하세요. 원본 이미지가 표시되지 않거나 접근·권리가 불확실하면 무관한 사진으로 대체하지 말고 원본 sourceUrl과 기록 제목·시기·기관을 안내하세요. 장소 직접 사진과 주변 동네 사진도 구분하세요. 일반 사진은 클라이언트의 이미지 표시 기능을 사용하고 서울 기록 사진은 함께 제공되는 갤러리에서 보여 주세요. 날짜·무엇을 담았는지·소장처를 아는 범위에서 짧은 한글 캡션으로 쓰세요. 사진 원문은 마지막 출처 목록에 모으고 필수 저작자 표시는 유지하세요. 사진의 공간 범위와 전승·추정의 성격을 유지하세요.
 7) 먼저 방문객이 이 거리에서 알아볼 수 있는 단서 하나를 고르세요. storyThreads는 읽을 자료의 후보입니다. 실제 본문을 읽고 질문에 가장 어울리는 장면에서 시작해 다른 기록이 밝혀 주는 배경으로 이어가세요. 제목은 자료명 대신 이야기의 내용을 담으세요. 마지막은 첫 장면이 이제 어떻게 다르게 보이는지로 맺으세요. 과거 조사에서 관찰한 풍경은 조사 당시의 모습으로 서술하세요. 기록 사진의 캡션은 실제로 인용한 기록과 연결하세요.`;
 
 const numbers=(s:string)=>new Set((s.match(/\d[\d,.]*\d|\d/g)||[]).map(n=>n.replace(/[,.]$/,'')));
@@ -86,7 +88,7 @@ export function pickScenes(story:DocentStory,question:string,max=14,placeName=''
   const spread=need>0?Array.from({length:Math.min(need,rest.length)},(_,k)=>rest[Math.floor(k*step)]):[];
   return [...hits,...spread].sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
 }
-function proxyMuseumPhoto(imageUrl: string, alternateUrls?: string[]) {
+function proxyMuseumPhoto(imageUrl: string, alternateUrls: string[] = []) {
   if (!isAllowedImageUrl(imageUrl) || new URL(imageUrl).hostname !== 'museum.seoul.go.kr') {
     return {imageUrl, alternateUrls};
   }
@@ -96,9 +98,16 @@ function proxyMuseumPhoto(imageUrl: string, alternateUrls?: string[]) {
   };
 }
 export function sceneSource(s:StoryScene):AnswerSource{
-  const p=s.photos.find(photo=>photoResearchImageCandidates(photo).length>0);
-  const [img,...alternateUrls]=p?photoResearchImageCandidates(p):[];
-  return {id:s.id,date:s.date,title:s.title,institution:s.evidence[0]?.institution||p?.provider||'',url:s.evidence[0]?.url||p?.sourceUrl||null,photo:p&&img?{...proxyMuseumPhoto(img,alternateUrls),deliveryPath:imageDeliveryUrl(img,p.values['이용조건']||''),sourceUrl:p.sourceUrl,credit:photoResearchCredit(p),terms:p.values['이용조건']||'제공기관 원문의 이용조건을 확인해 주세요.'}:null};
+  const expected=s.evidence[0]?.url;
+  const p=s.photos.find(photo=>sourcePageKey(photo.sourceUrl)===sourcePageKey(expected))||s.photos[0];
+  const current=p?verifyPhotoAsset(p,s.id,expected||null):undefined;
+  const withheld=p?.imageVerification;
+  // Preserve the ingestion diagnostic without ever restoring withheld URLs.
+  const verification=current&&withheld&&!withheld.displayable?{...current,verificationStatus:withheld.verificationStatus,reason:withheld.reason,sourceRecordId:withheld.sourceRecordId,mediaId:withheld.mediaId}:current;
+  const img=verification?.displayable?verification.displayImageUrl:null;
+  const delivery=img?proxyMuseumPhoto(img,verification?.alternateUrls):null;
+  return {id:s.id,date:s.date,title:s.title,institution:s.evidence[0]?.institution||p?.provider||'',url:expected||p?.sourceUrl||null,photoVerification:verification,
+    photo:p&&img&&verification&&delivery?{...verification,...delivery,displayImageUrl:delivery.imageUrl,deliveryPath:imageDeliveryUrl(img,verification.license||''),sourceUrl:verification.sourcePageUrl,credit:photoResearchCredit(p),terms:verification.license||''}:null};
 }
 /** Drops any paragraph that cites an unknown record or uses a number not present in its cited records. */
 export function validateAnswer(raw:unknown,scenes:StoryScene[]){
@@ -110,6 +119,9 @@ export function validateAnswer(raw:unknown,scenes:StoryScene[]){
     const text=typeof p.text==='string'?p.text.trim():'';const heading=typeof p.heading==='string'?p.heading.trim().slice(0,40):'';
     const sentences=text.split(/(?<=[.!?])\s+/).filter(Boolean).length;
     if(!Array.isArray(p.evidence_ids)||p.evidence_ids.some(id=>typeof id!=='string'||!byId.has(id))||!ids.length||!text||text.length>600||sentences>3){omitted++;continue;}
+    const media=Array.isArray(p.media_ids)?p.media_ids:[];
+    const allowedMedia=new Set(ids.map(id=>sceneSource(byId.get(id)!).photo?.mediaId).filter(Boolean));
+    if(media.some(id=>typeof id!=='string'||!allowedMedia.has(id))){omitted++;continue;}
     const allowed=numbers(ids.map(id=>{const s=byId.get(id)!;return [s.date,s.title,s.text].join(' ');}).join(' '));
     if([...numbers(heading+' '+text)].some(n=>!allowed.has(n))){omitted++;continue;}
     const scope=ids.every(id=>byId.get(id)!.scope==='district')?'자치구':'동네';
@@ -183,10 +195,10 @@ export function guidePhotos(packet:ReturnType<typeof preparePlaceAnswer>) {
     const photo={...sourcePhoto,...proxyMuseumPhoto(sourcePhoto.imageUrl,sourcePhoto.alternateUrls)};
     if(seen.has(photo.imageUrl))return [];
     seen.add(photo.imageUrl);
-    const caption=[record.date,record.title,photo.credit].filter(Boolean).join(' · ');
-    const alt=record.title.replaceAll('[','(').replaceAll(']',')');
+    const caption=[photo.date,photo.title,photo.credit].filter(Boolean).join(' · ');
+    const alt=photo.title.replaceAll('[','(').replaceAll(']',')');
     const url=photo.imageUrl.replace(/[<>\s]/g,encodeURIComponent);
-    return [{evidenceId:record.id,title:record.title,date:record.date,scope:record.scope,...photo,
+    return [{scope:record.scope,...photo,
       sourceUrl:photo.sourceUrl||record.source.url,caption,imageMarkdown:'!['+alt+'](<'+url+'>)',
       relatedEvidenceIds:thread?.evidenceIds.filter(id=>id!==record.id)??[]}];
   }).slice(0,MAX_GUIDE_PHOTOS);

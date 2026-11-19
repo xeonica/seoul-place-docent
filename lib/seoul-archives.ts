@@ -22,7 +22,10 @@ export function parseArchiveItem(id:string,html:string):ArchiveItem{
 /** Only clearly open items: public access and no use restriction. */
 export function archiveUsable(item:ArchiveItem){return item.access==='공개'&&item.use==='제한없음'&&!!item.title;}
 export function archivePhoto(item:ArchiveItem,card:ArchiveCard,query:string,scope:'dong'|'district'='dong'):PlacePhoto{
-  return {scope,id:'pp:seoularchives:'+item.id,provider:'서울기록원',title:item.title||card.title,year:item.year,date:item.date||'시기 미상',description:item.description,imageUrl:card.thumb,fullUrl:item.image||card.thumb,sourceUrl:`${SEOUL_ARCHIVES}/item/${item.id}`,creator:item.creator||'서울특별시',license:'서울기록원 공개 기록 · 이용유형 제한없음',licenseUrl:null,distance:null,match:'neighborhood',via:query};
+  const displayable=archiveUsable(item)&&!!item.image&&!item.useNote;
+  const source=`${SEOUL_ARCHIVES}/item/${item.id}`;
+  const assetProof=displayable?{title:item.title,date:item.date,provider:'서울기록원',sourceRecordId:item.id,mediaId:new URL(item.image!).pathname,sourcePageUrl:source,originalImageUrl:item.image!,displayImageUrls:[item.image!],license:'공개 · 이용유형 제한없음',displayAllowed:true,basis:'source_page' as const,provenance:'서울기록원 원문 상세 페이지 파싱'}:undefined;
+  return {assetProof,scope,id:'pp:seoularchives:'+item.id,provider:'서울기록원',title:item.title||card.title,year:item.year,date:item.date||'시기 미상',description:item.description,imageUrl:displayable?item.image!: '',fullUrl:displayable?item.image!: '',sourceUrl:`${SEOUL_ARCHIVES}/item/${item.id}`,creator:item.creator||'서울특별시',license:'서울기록원 공개 기록 · 이용유형 제한없음',licenseUrl:null,distance:null,match:'neighborhood',via:query};
 }
 // The archive server sometimes stalls a request; a short timeout plus one retry is faster than waiting.
 async function getText(url:string,fetcher:typeof fetch,tries=2):Promise<string>{

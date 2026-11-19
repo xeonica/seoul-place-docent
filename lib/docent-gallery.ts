@@ -1,5 +1,6 @@
+import {canDisplayVerifiedPhoto} from './photo-display-policy';
 import {IMAGE_RESOURCE_DOMAINS,imageProxyOrigin} from './image-proxy';
-export const galleryUri = 'ui://seoul-docent/archive-photos-v4.html';
+export const galleryUri = 'ui://seoul-docent/archive-photos-v5.html';
 export const galleryMime = 'text/html;profile=mcp-app';
 export const galleryToolMeta = {ui:{resourceUri:galleryUri}, 'openai/outputTemplate':galleryUri};
 const resourceDomains = [...new Set([...IMAGE_RESOURCE_DOMAINS, imageProxyOrigin()])];
@@ -11,21 +12,21 @@ export const galleryHtml = `<!doctype html><html lang="ko"><meta charset="utf-8"
 <style>body{margin:0;font:14px system-ui;color:inherit}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px}figure{margin:0;min-width:0}img{width:100%;height:200px;object-fit:contain;background:#eee}figcaption{padding:6px 0}a{color:inherit}</style>
 <main aria-label="해설 관련 기록 사진"></main><script>
 const gallery=document.querySelector('main');
+const canDisplayVerifiedPhoto=${canDisplayVerifiedPhoto.toString()};
+const allowedOrigins=${JSON.stringify(IMAGE_RESOURCE_DOMAINS)},proxyOrigin=${JSON.stringify(imageProxyOrigin())};
 function https(value){try{const u=new URL(value);return u.protocol==='https:'?u.href:null}catch{return null}}
 function render(data){
   if(!Array.isArray(data?.photos))return;
   gallery.replaceChildren();
-  for(const photo of data.photos){
-    const src=https(photo.imageUrl), original=https(photo.sourceUrl);
+  for(const photo of [...data.photos,...(data.sourceOnlyRecords||[])]){
+    if(photo.verificationStatus==='REJECTED')continue;
+    const src=canDisplayVerifiedPhoto(photo,allowedOrigins,proxyOrigin)?https(photo.imageUrl):null, original=https(photo.sourceUrl);
     if(!src&&!original)continue;
     const figure=document.createElement('figure'), image=document.createElement('img'), caption=document.createElement('figcaption');
     image.alt=photo.title;
     image.loading='eager';
     image.referrerPolicy='no-referrer';
-    const alternatives=(photo.alternateUrls||[]).map(https).filter(url=>url&&url!==src);
     image.onerror=()=>{
-      const next=alternatives.shift();
-      if(next){image.src=next;return;}
       image.hidden=true;
       const fallback=document.createElement('p');
       fallback.setAttribute('role','status');
@@ -34,7 +35,7 @@ function render(data){
     };
     if(src)image.src=src;
     else {image.hidden=true;const fallback=document.createElement('p');fallback.textContent='사진 주소를 표시할 수 없습니다. 아래 원문에서 확인해 주세요.';figure.append(fallback)}
-    caption.textContent=photo.caption;
+    caption.textContent=photo.caption||[photo.title,photo.date,photo.note].filter(Boolean).join(' · ');
     if(original){const link=document.createElement('a');link.href=original;link.target='_blank';link.rel='noopener noreferrer';link.textContent='사진 원문 보기';caption.append(' · ',link)}
     figure.append(image,caption);gallery.append(figure);
   }

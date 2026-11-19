@@ -1,3 +1,4 @@
+import {publicPhotoItem} from './photo-verification';
 import {photoResearchBundle} from './photo-research-data';
 import raw from '../data/document-research/bundle.json';
 import manualPhotos from '../data/manual-photos.json';
@@ -14,11 +15,11 @@ const manual=[...manualPhotoItems(manualPhotos),...manualPhotoItems(archivePhoto
 /** Every record of the dong (for the MCP answer tool, which picks its own evidence). */
 export function getFullDocentStory(district:string,dong:string){
  if(!district||!dong||district.length>20||dong.length>30||!documents.targets.some(t=>t.level==='법정동'&&t.district===district&&t.name===dong))throw new ServiceError('STORY_LOCATION','서울 주소를 먼저 선택해 주세요.',400);
- return buildDocentStory(photoResearchBundle,documents,district,dong,manual);
+ const story=buildDocentStory(photoResearchBundle,documents,district,dong,manual);return {...story,scenes:story.scenes.map(scene=>({...scene,photos:scene.photos.map(photo=>publicPhotoItem(photo,scene.id,scene.evidence[0]?.url||null))}))};
 }
 /** focus: names near the searched address (building name) whose records should be preferred in each year. */
 export function getDocentStory(district:string,dong:string,focus:string[]=[]){
  if(!district||!dong||district.length>20||dong.length>30||!documents.targets.some(t=>t.level==='법정동'&&t.district===district&&t.name===dong))throw new ServiceError('STORY_LOCATION','서울 주소를 먼저 선택해 주세요.',400);
  const story=buildDocentStory(photoResearchBundle,documents,district,dong,manual);
- return {...story,scenes:composeByYear(story.scenes,focus)};
+ return {...story,scenes:composeByYear(story.scenes,focus).map(scene=>({...scene,photos:scene.photos.map(photo=>publicPhotoItem(photo,scene.id,scene.evidence[0]?.url||null))}))};
 }
