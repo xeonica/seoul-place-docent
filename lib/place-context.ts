@@ -28,11 +28,11 @@ export function normalizeClosedBuildings(body: Record<string, any>, address: Add
   const total = Number(response.body?.totalCount ?? 0);
   return {items, total, truncated: total > rows.length, sourceUrl: CLOSED_SOURCE, queriedAt: new Date().toISOString()};
 }
-export async function closedBuildings(address: Address, secrets: PlaceContextSecrets) {
+export async function closedBuildings(address: Address, secrets: PlaceContextSecrets, options:{timeoutMs?:number}={}) {
   if (!secrets.CLOSED_BUILDING_API_KEY) throw new ServiceError('CLOSED_KEY', '폐쇄말소대장 연결을 준비 중입니다.', 503);
   const u = new URL('https://apis.data.go.kr/1613000/ShtRgstHubService/getSrTitleInfo');
   Object.entries({...parcelParams(address), serviceKey: secrets.CLOSED_BUILDING_API_KEY, _type: 'json', pageNo: '1', numOfRows: '100'}).forEach(([k,v]) => u.searchParams.set(k,v));
-  const raw = await (await checkedFetch(u, {redirect: 'error'})).text();
+  const raw = await (await checkedFetch(u, {redirect: 'error',signal:AbortSignal.timeout(options.timeoutMs||12000)})).text();
   let body: Record<string, any>;
   try {body = raw.trim().startsWith('<') ? readProviderXml(raw) : JSON.parse(raw);} catch {throw new ServiceError('CLOSED_FORMAT', '폐쇄말소대장 응답 형식을 확인하지 못했습니다.');}
   return normalizeClosedBuildings(body, address);
