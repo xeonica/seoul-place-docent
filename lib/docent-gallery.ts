@@ -1,4 +1,4 @@
-export const galleryUri = 'ui://seoul-docent/archive-photos-v1.html';
+export const galleryUri = 'ui://seoul-docent/archive-photos-v2.html';
 export const galleryMime = 'text/html;profile=mcp-app';
 export const galleryToolMeta = {ui:{resourceUri:galleryUri}, 'openai/outputTemplate':galleryUri};
 export const galleryResource = {
@@ -17,7 +17,16 @@ function render(data){
     const src=https(photo.imageUrl), original=https(photo.sourceUrl);
     if(!src)continue;
     const figure=document.createElement('figure'), image=document.createElement('img'), caption=document.createElement('figcaption');
-    image.alt=photo.title; image.onerror=()=>image.hidden=true; image.src=src;
+    image.alt=photo.title;
+    image.loading='eager';
+    image.referrerPolicy='no-referrer';
+    const alternatives=(photo.alternateUrls||[]).map(https).filter(url=>url&&url!==src);
+    image.onerror=()=>{
+      const next=alternatives.shift();
+      if(next)image.src=next;
+      else image.hidden=true;
+    };
+    image.src=src;
     caption.textContent=photo.caption;
     if(original){const link=document.createElement('a');link.href=original;link.target='_blank';link.rel='noopener noreferrer';link.textContent='사진 원문 보기';caption.append(' · ',link)}
     figure.append(image,caption);gallery.append(figure);
