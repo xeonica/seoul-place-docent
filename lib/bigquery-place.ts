@@ -1,3 +1,5 @@
+import {evidencePlace,normalizePlaceText,normalizeRelation} from './evidence-place';
+import type {Address} from './providers';
 const scope = 'https://www.googleapis.com/auth/cloud-platform';
 const view = 'seoul-docent-archive.docent_serving.place_records';
 const fields = ['record_id', 'record_title', 'media_type', 'historical_period_raw',
@@ -14,12 +16,12 @@ async function post<T>(url: string, body: unknown, signal: AbortSignal, token?: 
 }
 
 type QueryResult = {jobComplete: boolean; errors?: unknown[]; rows?: {f: {v: string | null}[]}[]};
-type QueryParameter = {name: string; parameterType: {type: 'STRING' | 'INT64'}; parameterValue: {value: string}};
+type QueryParameter = {name: string; parameterType: {type: 'STRING' | 'INT64' | 'FLOAT64'}; parameterValue: {value: string}};
 const parameter = (name: string, value: string | number): QueryParameter => ({
   name, parameterType: {type: typeof value === 'number' ? 'INT64' : 'STRING'}, parameterValue: {value: String(value)},
 });
 
-async function queryBigQuery(request: Request, query: string, queryParameters: QueryParameter[]) {
+export async function queryBigQuery(request: Request, query: string, queryParameters: QueryParameter[]) {
   const settings = process.env;
   const subjectToken = request.headers.get('x-vercel-oidc-token');
   const {GCP_PROJECT_ID: project, GCP_PROJECT_NUMBER: number, GCP_WORKLOAD_IDENTITY_POOL_ID: pool,
@@ -46,27 +48,29 @@ async function queryBigQuery(request: Request, query: string, queryParameters: Q
   return result.rows ?? [];
 }
 
-export async function bigQueryPlaceCandidates(request: Request, address: {roadAddr: string}, limit = 6, offset = 0) {
-  const road = address.roadAddr.replace(/\s*\([^()]*\)\s*$/, '').replace(/\s+/g, '');
-  if (!road) return undefined;
+export async function bigQueryPlaceCandidates(request: Request, address: Partial<Address>, limit = 6, offset = 0, aliases:string[] = [], point?:{latitude:number;longitude:number;radiusM?:number}) {
+  const place=evidencePlace(address),road=normalizePlaceText(address.roadAddr),jibun=normalizePlaceText(address.jibunAddr);
+  limit=Math.min(20,Math.max(1,Math.floor(limit)||6));offset=Math.min(1000,Math.max(0,Math.floor(offset)||0));
+  const pointValid=!!point&&Number.isFinite(point.latitude)&&Number.isFinite(point.longitude)&&Math.abs(point.latitude)<=90&&Math.abs(point.longitude)<=180;
+  const radius=Math.floor(Math.min(2000,Math.max(1,point?.radiusM||500)));
+  const selected=process.env.BIGQUERY_PLACE_SERVING_VERSION==='v2'?'seoul-docent-archive.docent_serving.place_evidence_candidates_v2':view;
+  // JSON field extraction is additive-compatible with the legacy serving view.
+  const field=(name:string)=>`JSON_VALUE(TO_JSON_STRING(r), '$.${name}')`;
+  const clean=(name:string)=>`REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(REGEXP_REPLACE(COALESCE(${field(name)}, ''), r'^서울\\s', '서울특별시 '), NFKC), r'\\s+', '')`;
+  const near=`(@has_point='true' AND ST_DWITHIN(SAFE.ST_GEOGPOINT(SAFE_CAST(${field('longitude')} AS FLOAT64),SAFE_CAST(${field('latitude')} AS FLOAT64)),ST_GEOGPOINT(@longitude,@latitude),@radius))`;
+  const match=`${near} OR (@building != '' AND ${field('building_management_number')}=@building) OR (@pnu != '' AND ${field('pnu')}=@pnu) OR (@road != '' AND ${clean('road_address')}=@road) OR (@jibun != '' AND ${clean('jibun_address')}=@jibun) OR (@district != '' AND ${field('district')}=@district AND ((@dong != '' AND ${field('legal_dong')}=@dong) OR (@name != '' AND ${clean('place_name')}=@name))) OR (@district != '' AND ${field('district')}=@district AND COALESCE(${field('legal_dong')},'')='' AND COALESCE(${field('place_id')},'')='') OR (@alias != '' AND ${field('alias_verified')}='true' AND STRPOS(@alias, CONCAT('|',${clean('alias_name')},'|'))>0)`;
   try {
     const rows = await queryBigQuery(request,
-      'SELECT ' + fields.join(', ') + ' FROM `' + view + '` ' +
-      "WHERE REGEXP_REPLACE(road_address, r'\\s+', '') = @road AND STARTS_WITH(source_url, 'https://') " +
-      'ORDER BY historical_period_raw, record_id, relation_type LIMIT @limit OFFSET @offset',
-      [parameter('road', road), parameter('limit', limit + 1), parameter('offset', offset)]);
-    if (!rows) return undefined;
-    return {
-      source: 'bigquery', status: 'ready', nextOffset: rows.length > limit ? offset + limit : null,
-      note: '주소로 찾은 조사 후보입니다. 연결 검토 상태와 이용조건을 확인하고 확정 근거 또는 시각자료로 사용하지 마세요.',
-      records: rows.slice(0, limit).map(row => ({
-        ...Object.fromEntries(fields.map((field, index) => [field, row.f[index]?.v ?? null])),
-        usableAsVerifiedEvidence: false,
-      })),
-    };
-  } catch {
-    return {source: 'bigquery', status: 'unavailable', records: [], nextOffset: null};
-  }
+      'SELECT '+fields.map(field).join(', ')+', TO_JSON_STRING(r) FROM `'+selected+'` r WHERE ('+match+") AND STARTS_WITH(source_url, 'https://') ORDER BY CASE WHEN "+field('building_management_number')+"=@building AND @building!='' THEN 0 WHEN "+field('pnu')+"=@pnu AND @pnu!='' THEN 1 WHEN "+clean('road_address')+"=@road THEN 2 ELSE 3 END, record_id LIMIT @limit OFFSET @offset",
+      [parameter('has_point',pointValid?'true':'false'),{name:'latitude',parameterType:{type:'FLOAT64'},parameterValue:{value:String(pointValid?point!.latitude:0)}},{name:'longitude',parameterType:{type:'FLOAT64'},parameterValue:{value:String(pointValid?point!.longitude:0)}},parameter('radius',radius),parameter('road',road),parameter('jibun',jibun),parameter('building',place.buildingManagementNumber||''),parameter('pnu',place.pnu||''),parameter('district',place.district||''),parameter('dong',place.legalDong||''),parameter('name',normalizePlaceText(place.placeName||'')),parameter('alias',aliases.slice(0,10).map(value=>'|'+normalizePlaceText(value)+'|').join('')),parameter('limit',limit+1),parameter('offset',offset)]);
+    if (!rows) return {source:'bigquery',status:'unavailable',diagnosticStatus:'backend_unavailable',records:[],nextOffset:null,diagnostics:{backendStatus:'unavailable',candidateCount:0,placeLinkedCount:0,approvedCount:0,usableEvidenceCount:0,reasonCodes:['workload_identity_unconfigured']}};
+    return {source:'bigquery',status:'ready',diagnosticStatus:rows.length?'candidates_unlinked':'no_candidates',nextOffset:rows.length>limit?offset+limit:null,
+      note:'후보 검색 결과입니다. 문자열·식별자 일치만으로 승인되지 않습니다. D1의 현재 검토·권리 이력이 별도로 필요합니다.',
+      records:rows.slice(0,limit).map(row=>{
+        let detail:Record<string,unknown>={};try{detail=JSON.parse(row.f[fields.length]?.v||'{}');}catch{}
+        return {...Object.fromEntries(fields.map((name,index)=>[name,row.f[index]?.v??null])),originalRecordId:typeof detail.original_record_id==='string'?detail.original_record_id:null,placeId:typeof detail.place_id==='string'?detail.place_id:null,relation_type:normalizeRelation(String(detail.relation_type||row.f[6]?.v||'uncertain')),usableAsVerifiedEvidence:false};
+      }),diagnostics:{backendStatus:'ready',candidateCount:Math.min(rows.length,limit),placeLinkedCount:0,approvedCount:0,usableEvidenceCount:0,reasonCodes:rows.length?['candidate_approval_not_authoritative']:['no_matching_serving_rows']}};
+  } catch {return {source:'bigquery',status:'unavailable',diagnosticStatus:'query_error',records:[],nextOffset:null,diagnostics:{backendStatus:'unavailable',candidateCount:0,placeLinkedCount:0,approvedCount:0,usableEvidenceCount:0,reasonCodes:['query_failed']}};}
 }
 
 const githubFields = ['research_id', 'title', 'source_url', 'media_type', 'district', 'location',

@@ -1,3 +1,4 @@
+import './pack-article-evidence.mjs';
 import './pack-photo-verification.mjs';
 import './pack-research-catalog.mjs';
 import {readFileSync,writeFileSync,mkdirSync,rmSync} from 'node:fs';
