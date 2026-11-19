@@ -149,6 +149,7 @@ export function preparePlaceAnswer(input:{address:Address;story:DocentStory;ques
   };
 }
 /** Select source-backed illustrations from the same material the narrator can cite. */
+export const MAX_GUIDE_PHOTOS = 8;
 export function guidePhotos(packet:ReturnType<typeof preparePlaceAnswer>) {
   const records=packet.neighborhood.records;
   const terms=tokens(packet.question).filter(term=>term.length>=2);
@@ -173,7 +174,7 @@ export function guidePhotos(packet:ReturnType<typeof preparePlaceAnswer>) {
     return [{evidenceId:record.id,title:record.title,date:record.date,scope:record.scope,...photo,
       sourceUrl:photo.sourceUrl||record.source.url,caption,imageMarkdown:'!['+alt+'](<'+url+'>)',
       relatedEvidenceIds:thread?.evidenceIds.filter(id=>id!==record.id)??[]}];
-  }).slice(0,3);
+  }).slice(0,MAX_GUIDE_PHOTOS);
 }
 
 /** Legacy tool name retained, but it can no longer call any model provider. */
