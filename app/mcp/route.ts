@@ -1,3 +1,4 @@
+import {galleryToolMeta} from '@/lib/docent-gallery';
 import {bigQueryGitHubCandidates,bigQueryPlaceCandidates} from '@/lib/bigquery-place';
 import {env} from '@/lib/runtime-env';
 import {searchResearchRecords,placeResearchCandidates} from '@/lib/research-catalog';
@@ -34,6 +35,7 @@ const tools: McpTool[] = [
   },
   {
     name:'prepare_place_answer',
+    _meta:galleryToolMeta,
     description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 주소와 질문에 맞는 현장 해설을 작성하고 관련 MCP 기록·사진을 보태세요. no_records여도 일반 해설을 완성하세요. token 또는 address 중 하나가 필요합니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
     inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]}},oneOf:[{required:['token']},{required:['address']}],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
@@ -80,6 +82,7 @@ const tools: McpTool[] = [
   },
   {
     name: 'generate_place_answer',
+    _meta:galleryToolMeta,
     description: '호환용 이름입니다. prepare_place_answer와 같은 근거 묶음을 반환합니다. 서버는 답변을 생성하지 않습니다. 호출한 당신의 AI가 질문을 분류하고 사진·출처를 포함한 도슨트 답변을 작성하세요.',
     inputSchema: {
       type: 'object',
@@ -239,7 +242,8 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           bigQueryPlaceCandidates(request,address),
           bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm}),
         ]);
-        return textResult({...packet,research,bigQueryResearch,bigQueryGitHubResearch,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\n질문에 맞는 사진·지도 하나를 골라 관련 문단에 imageMarkdown을 독립된 줄로 넣고 바로 아래에 caption과 클릭 가능한 sourceUrl을 붙이세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
+        const guide=textResult({...packet,research,bigQueryResearch,bigQueryGitHubResearch,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\n질문에 맞는 사진·지도 하나를 골라 관련 문단에 imageMarkdown을 독립된 줄로 넣고 바로 아래에 caption과 클릭 가능한 sourceUrl을 붙이세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
+        return {...guide,structuredContent:{photos}};
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);
