@@ -1,12 +1,14 @@
 import {imageProxyOrigin,isAllowedImageUrl,toProxyUrl} from './image-proxy';
 import type {DocentStory,StoryScene} from './docent-story';
+import {sceneConnections} from './docent-scene-connections';
+import {imageDeliveryUrl} from './archive-image-delivery';
 import {photoResearchCredit,photoResearchImageCandidates} from './photo-research';
 import {buildings,ServiceError,type Secrets as ProviderSecrets,type Address} from './providers';
 /** MCP prepares evidence; the calling user's AI classifies and writes the answer. */
 export const QUESTION_TYPES=['동네 역사','시대별 모습','특정 장소·건물','사진 찾기','지명 유래','기타'] as const;
 export type QuestionType=typeof QUESTION_TYPES[number];
 export type AnswerParagraph={heading:string;text:string;scope:'동네'|'자치구';evidenceIds:string[]};
-export type AnswerSource={id:string;date:string;title:string;institution:string;url:string|null;photo:{imageUrl:string;alternateUrls?:string[];sourceUrl:string|null;credit:string;terms:string}|null};
+export type AnswerSource={id:string;date:string;title:string;institution:string;url:string|null;photo:{imageUrl:string;deliveryPath?:string|null;alternateUrls?:string[];sourceUrl:string|null;credit:string;terms:string}|null};
 import {closedBuildings,type PlaceContextSecrets} from './place-context';
 type Secrets={DB?:D1Database};
 export const ANSWER_VERSION='client-docent-11';
@@ -20,11 +22,12 @@ export const DOCENT_RULES=`당신은 서울 동네의 시간을 안내하는 도
  첫 장면은 이 장소에서 무엇을 보면 좋을지와 그것을 보는 이유입니다. 장소의 쓰임이 확인되면 그 쓰임에서 출발하세요. 주소만 있으면 길에서 입구로 향하며 시야와 움직임이 어떻게 바뀌는지처럼 현장에서 직접 적용할 관찰법을 들려주세요. 실제로 보지 않은 외관·주변 시설·건축가 의도는 묘사하지 마세요.
 장소나 동네의 기록이 비어도 끝까지 해설하세요. 웹 조회가 가능하면 주소·장소명으로 운영기관 등 원문을 확인해 이곳의 정체와 역사를 보완하세요. 일반 지식으로 공간·생활·문화의 맥락을 쉽게 풀고, 개별 장소의 이름·연대·용도·사건은 확인한 출처에만 연결하세요. 질문을 되돌려 보내거나 자료 부족을 설명하지 마세요.
 1) 장소와 동네를 구분하세요. 주소와 장소명을 출발점으로 삼고, place.records가 있으면 이 주소의 변화를 먼저 이야기하세요. 건축물대장 수치가 관람에 도움이 되면 단위와 뜻을 풀어 쓰세요. 연면적은 각 층 바닥면적의 합이며 대지면적과의 비로 건폐율을 계산하지 마세요. 사용승인일은 사용승인 시점이고 폐쇄대장은 같은 필지의 옛 건물 기록입니다. 두 건물을 동일시하지 마세요.
-2) 다음에는 동네 이름으로 시선을 넓히세요. neighborhood.records에서 서로 이어지는 장면을 골라 시간의 흐름이나 생활의 변화를 따라가세요. 서로 무관한 기록에 인과관계를 만들지 마세요.
+2) 다음에는 동네 이름으로 시선을 넓히세요. neighborhood.sceneConnections는 서로 다른 연도의 기록에 동일한 장소·주제가 명시적으로 등장하는 탐색 후보입니다. fromEvidenceId와 toEvidenceId의 원문을 각각 읽고 두 시기의 대비를 설명하되, verification이 candidate_only인 연결을 장소 동일성·건물 존속·변화의 원인에 대한 검증으로 취급하지 마세요. 단지 같은 이름이 등장한다는 이유로 연속된 역사나 인과관계를 주장하지 마세요. neighborhood.records에서 서로 이어지는 장면을 골라 시간의 흐름이나 생활의 변화를 따라가세요. 서로 무관한 기록에 인과관계를 만들지 마세요.
 3) 제목과 연도를 나열하는 대신 사진이나 기록에 담긴 구체적인 사물·사람·행동으로 시작하세요. 무엇이 달라졌고 당시 사람들에게 어떤 의미였는지 쉬운 존댓말로 풀어 주세요. 인물의 의도나 대화는 출처가 뒷받침할 때만 쓰세요.
 4) 호출한 AI가 해설을 구성합니다. 직접 열어 확인한 공식 원문으로 장소 이야기를 보강할 수 있습니다. 해당 주소·장소와의 관계를 확인하고 본문은 해설 위주로 쓰세요. 마지막에 ‘출처’ 목록을 하나 두고 실제 사용한 글·일반 사진·서울 기록의 기관명과 자료 제목을 원문에 연결하세요. 같은 URL은 한 번만 싣고 사진은 캡션 제목으로 대응시키세요. 외부 원문에 MCP 기록 ID를 붙이지 마세요.
 5) MCP 동네 기록의 기계적 검증을 요청할 때만 해당 기록에 근거한 문단을 추려 1~3문장으로 쓰고 내부 검증용 evidence_ids를 연결하세요. held, 빈 항목, 자료 부재 설명, 검증 결과와 요청 ID는 독자에게 표시하지 마세요. 확인된 내용까지만 들려주고 후속 질문 없이 끝내세요.
-6) 사진·출처 일치 규칙: 서울 역사 기록사진은 해당 기록의 evidenceId에 연결된 visuals.photos 또는 neighborhood.records[].source.photo의 imageUrl만 사용하세요. 사진별 imageUrl·sourceUrl·제목·촬영시기·소장기관·저작자표시를 같은 기록에서 가져오고, 서로 다른 검색 이미지와 MCP 기록 출처를 짝짓지 마세요. 별도 이미지 검색 결과는 원본과 동일성이 확인되지 않는 한 MCP 역사사진이라고 표시하거나 그 기록의 캡션·출처를 붙이지 마세요. 검색 이미지를 사용한다면 '별도 검색 사진'으로 구분하고 해당 이미지 자체의 확인된 출처만 표기하세요. 원본 이미지가 표시되지 않거나 접근·권리가 불확실하면 무관한 사진으로 대체하지 말고 원본 sourceUrl과 기록 제목·시기·기관을 안내하세요. 장소 직접 사진과 주변 동네 사진도 구분하세요. 일반 사진은 클라이언트의 이미지 표시 기능을 사용하고 서울 기록 사진은 함께 제공되는 갤러리에서 보여 주세요. 날짜·무엇을 담았는지·소장처를 아는 범위에서 짧은 한글 캡션으로 쓰세요. 사진 원문은 마지막 출처 목록에 모으고 필수 저작자 표시는 유지하세요. 사진의 공간 범위와 전승·추정의 성격을 유지하세요.
+6) 사진 전달 규칙: imageUrl은 기록에 연결된 표시용 주소입니다. deliveryPath는 같은 웹사이트에서 쓰는 상대경로이므로 외부 채팅에서는 imageUrl을 사용하세요. 사진을 불러오지 못하면 sourceUrl 원문 링크를 제공하세요.
+ 사진·출처 일치 규칙: 서울 역사 기록사진은 해당 기록의 evidenceId에 연결된 visuals.photos 또는 neighborhood.records[].source.photo의 imageUrl만 사용하세요. 사진별 imageUrl·sourceUrl·제목·촬영시기·소장기관·저작자표시를 같은 기록에서 가져오고, 서로 다른 검색 이미지와 MCP 기록 출처를 짝짓지 마세요. 별도 이미지 검색 결과는 원본과 동일성이 확인되지 않는 한 MCP 역사사진이라고 표시하거나 그 기록의 캡션·출처를 붙이지 마세요. 검색 이미지를 사용한다면 '별도 검색 사진'으로 구분하고 해당 이미지 자체의 확인된 출처만 표기하세요. 원본 이미지가 표시되지 않거나 접근·권리가 불확실하면 무관한 사진으로 대체하지 말고 원본 sourceUrl과 기록 제목·시기·기관을 안내하세요. 장소 직접 사진과 주변 동네 사진도 구분하세요. 일반 사진은 클라이언트의 이미지 표시 기능을 사용하고 서울 기록 사진은 함께 제공되는 갤러리에서 보여 주세요. 날짜·무엇을 담았는지·소장처를 아는 범위에서 짧은 한글 캡션으로 쓰세요. 사진 원문은 마지막 출처 목록에 모으고 필수 저작자 표시는 유지하세요. 사진의 공간 범위와 전승·추정의 성격을 유지하세요.
 7) 먼저 방문객이 이 거리에서 알아볼 수 있는 단서 하나를 고르세요. storyThreads는 읽을 자료의 후보입니다. 실제 본문을 읽고 질문에 가장 어울리는 장면에서 시작해 다른 기록이 밝혀 주는 배경으로 이어가세요. 제목은 자료명 대신 이야기의 내용을 담으세요. 마지막은 첫 장면이 이제 어떻게 다르게 보이는지로 맺으세요. 과거 조사에서 관찰한 풍경은 조사 당시의 모습으로 서술하세요. 기록 사진의 캡션은 실제로 인용한 기록과 연결하세요.`;
 
 const numbers=(s:string)=>new Set((s.match(/\d[\d,.]*\d|\d/g)||[]).map(n=>n.replace(/[,.]$/,'')));
@@ -95,7 +98,7 @@ function proxyMuseumPhoto(imageUrl: string, alternateUrls?: string[]) {
 export function sceneSource(s:StoryScene):AnswerSource{
   const p=s.photos.find(photo=>photoResearchImageCandidates(photo).length>0);
   const [img,...alternateUrls]=p?photoResearchImageCandidates(p):[];
-  return {id:s.id,date:s.date,title:s.title,institution:s.evidence[0]?.institution||p?.provider||'',url:s.evidence[0]?.url||p?.sourceUrl||null,photo:p&&img?{...proxyMuseumPhoto(img,alternateUrls),sourceUrl:p.sourceUrl,credit:photoResearchCredit(p),terms:p.values['이용조건']||'제공기관 원문의 이용조건을 확인해 주세요.'}:null};
+  return {id:s.id,date:s.date,title:s.title,institution:s.evidence[0]?.institution||p?.provider||'',url:s.evidence[0]?.url||p?.sourceUrl||null,photo:p&&img?{...proxyMuseumPhoto(img,alternateUrls),deliveryPath:imageDeliveryUrl(img,p.values['이용조건']||''),sourceUrl:p.sourceUrl,credit:photoResearchCredit(p),terms:p.values['이용조건']||'제공기관 원문의 이용조건을 확인해 주세요.'}:null};
 }
 /** Drops any paragraph that cites an unknown record or uses a number not present in its cited records. */
 export function validateAnswer(raw:unknown,scenes:StoryScene[]){
@@ -153,7 +156,7 @@ export function preparePlaceAnswer(input:{address:Address;story:DocentStory;ques
     place:{name:input.address.bdNm,records:input.placeRecords??[],status:input.placeRecords?.length?'matched':'unverified'},
     neighborhood:{district:input.story.district,dong:input.story.dong,
       records:scenes.map(s=>({id:s.id,date:s.date,year:s.year,title:s.title,text:s.text,scope:s.scope,cutCount:s.cutCount,evidence:s.evidence,source:sceneSource(s)})),
-      storyThreads:storyThreads(scenes),selected:scenes.length,available:input.story.scenes.length},
+      storyThreads:storyThreads(scenes),sceneConnections:sceneConnections(scenes,input.address.bdNm),selected:scenes.length,available:input.story.scenes.length},
     instructions:DOCENT_RULES,
     answerSchema:{question_type:QUESTION_TYPES,paragraphs:[{heading:'시기·장면 제목',text:'1~3문장',evidence_ids:['반환된 기록 id']}],held:['확인할 수 없는 내용']},
     notice:'GPS는 촬영 위치이며 사진 속 건물·부지와의 동일성을 증명하지 않습니다.'
