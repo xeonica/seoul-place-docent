@@ -1,5 +1,5 @@
 import {IMAGE_RESOURCE_DOMAINS,imageProxyOrigin} from './image-proxy';
-export const galleryUri = 'ui://seoul-docent/archive-photos-v2.html';
+export const galleryUri = 'ui://seoul-docent/archive-photos-v3.html';
 export const galleryMime = 'text/html;profile=mcp-app';
 export const galleryToolMeta = {ui:{resourceUri:galleryUri}, 'openai/outputTemplate':galleryUri};
 export const galleryResource = {
@@ -38,12 +38,28 @@ function render(data){
     figure.append(image,caption);gallery.append(figure);
   }
 }
+function renderToolResult(result){
+  if(Array.isArray(result?.structuredContent?.photos)){
+    render(result.structuredContent);
+    return;
+  }
+  for(const block of result?.content ?? []){
+    if(block.type!=='text')continue;
+    try{
+      const data=JSON.parse(block.text);
+      if(Array.isArray(data?.visuals?.photos)){
+        render(data.visuals);
+        return;
+      }
+    }catch{/* A non-JSON result has no photo evidence. */}
+  }
+}
 function send(message){parent.postMessage({jsonrpc:'2.0',...message},'*')}
 addEventListener('message',event=>{
   if(event.source!==parent)return;
   const m=event.data;
   if(m?.id===1&&m.result)send({method:'ui/notifications/initialized',params:{}});
-  if(m?.method==='ui/notifications/tool-result')render(m.params?.structuredContent);
+  if(m?.method==='ui/notifications/tool-result')renderToolResult(m.params);
 });
 addEventListener('openai:set_globals',e=>render(e.detail?.globals?.toolOutput));
 render(window.openai?.toolOutput);
