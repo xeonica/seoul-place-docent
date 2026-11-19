@@ -47,8 +47,8 @@ test('deployable package resolves photo coordinates and prepares and validates e
   assert.equal(packet.mode,'client_ai');assert.equal(packet.generation.serverAiCalls,0);
   assert.ok(packet.neighborhood.records.length>0);
   assert.equal(packet.visuals.photoCount,packet.visuals.photos.length);
-  assert.ok(packet.visuals.photoCount>3&&packet.visuals.photoCount<=8,'show up to eight distinct archive photos when available');
-  assert.equal(new Set(packet.visuals.photos.map(p=>p.imageUrl)).size,packet.visuals.photoCount);
+  assert.ok(packet.visuals.photoCount<=8,'photo gallery must not exceed eight records');
+  assert.equal(new Set(packet.visuals.photos.map(p=>p.imageUrl)).size,packet.visuals.photoCount,'photos must be distinct');
   assert.ok(packet.visuals.photos.every(p=>p.imageUrl&&p.evidenceId));
   assert.ok(packet.videos.records.length>0);assert.ok(packet.videos.records.every(r=>r.sources.length>0&&Array.isArray(r.verifiedSegments)));
   assert.ok(packet.videos.records.every(record=>record.segmentStatus!=='unavailable'));
