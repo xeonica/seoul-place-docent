@@ -1,4 +1,4 @@
-import {isAllowedImageUrl} from './image-proxy';
+import {isAllowedImageUrl,upstreamReferer} from './image-proxy';
 
 const maxImageBytes = 5 * 1024 * 1024;
 const corsHeaders = {'Access-Control-Allow-Origin': '*'};
@@ -26,7 +26,7 @@ export async function handleImageProxy(request: Request): Promise<Response> {
       redirect: 'manual',
       signal: AbortSignal.timeout(8000),
       headers: {
-        Referer: 'https://museum.seoul.go.kr/',
+        Referer: upstreamReferer(original),
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
       },
     });
