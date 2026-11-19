@@ -74,3 +74,5 @@ __pycache__/
 /data/research-catalog.json
 
 /data/photo-asset-proofs.json
+
+/public/research/article-evidence/

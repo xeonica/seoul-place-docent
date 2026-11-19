@@ -1,0 +1,45 @@
+name: Import versioned evidence candidates v2
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: bigquery-evidence-v2
+  cancel-in-progress: false
+jobs:
+  import-evidence:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Export original observations and article metadata
+        run: node scripts/export-evidence-v2.mjs "$RUNNER_TEMP/evidence.ndjson"
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: seoul-docent-archive
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER || 'projects/100197771642/locations/global/workloadIdentityPools/github-actions/providers/github-docent' }}
+          service_account: ${{ vars.GCP_WRITER_SERVICE_ACCOUNT || 'docent-bq-writer@seoul-docent-archive.iam.gserviceaccount.com' }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          install_components: bq
+      - name: Create additive versioned tables and candidate view
+        run: bq --project_id=seoul-docent-archive --location=asia-northeast3 query --use_legacy_sql=false < scripts/bigquery/evidence-v2.sql
+      - name: Load isolated run snapshot and merge without deleting history
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_table="evidence_run_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          [[ "$run_table" =~ ^evidence_run_[0-9]+_[0-9]+$ ]]
+          bq --project_id=seoul-docent-archive --location=asia-northeast3 load \
+            --source_format=NEWLINE_DELIMITED_JSON \
+            "seoul-docent-archive:docent_ingest.$run_table" \
+            "$RUNNER_TEMP/evidence.ndjson" scripts/bigquery/github_research.schema.json
+          bq --project_id=seoul-docent-archive update --expiration 86400 "seoul-docent-archive:docent_ingest.$run_table"
+          sed "s/__RUN_TABLE__/$run_table/g" scripts/bigquery/merge-evidence-v2.sql > "$RUNNER_TEMP/merge.sql"
+          bq --project_id=seoul-docent-archive --location=asia-northeast3 query --use_legacy_sql=false < "$RUNNER_TEMP/merge.sql"
+          bq --project_id=seoul-docent-archive --location=asia-northeast3 query --use_legacy_sql=false < scripts/bigquery/link-evidence-v2.sql
+          echo 'v2 candidates updated. Existing serving views unchanged; D1 approval remains required.' >> "$GITHUB_STEP_SUMMARY"
