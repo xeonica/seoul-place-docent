@@ -157,3 +157,52 @@ export async function bigQueryHansungArchive(request: Request, input: {
     return {source: 'bigquery', status: 'unavailable', reason, records: [], nextOffset: null};
   }
 }
+
+const archiveFields = ['record_id', 'record_title', 'record_type', 'source_institution',
+  'source_url', 'created_date_raw', 'review_status', 'rights_status'];
+
+export async function bigQueryArchiveCandidates(request: Request, input: {
+  query?: string; district?: string; dong?: string; placeName?: string; limit?: number; offset?: number;
+}) {
+  const normalize = (value?: string) => (value ?? '').normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+  const term = normalize(input.query) || normalize(input.placeName) || normalize(input.dong);
+  if (term.length < 2 || (input.district && input.district !== '성북구')) return undefined;
+  const {limit = 6, offset = 0} = input;
+  const projection = archiveFields.join(', ');
+
+  try {
+    const rows = await queryBigQuery(request, `
+      WITH archive_records AS (
+        SELECT ${projection}
+        FROM \`seoul-docent-archive.docent_raw.photos\`
+        WHERE STARTS_WITH(record_id, 'SBA-ITEM-') OR STARTS_WITH(record_id, 'HANSUNG-')
+        UNION ALL
+        SELECT ${projection}
+        FROM \`seoul-docent-archive.docent_raw.documents\`
+        WHERE STARTS_WITH(record_id, 'SBA-')
+      )
+      SELECT ${projection}
+      FROM archive_records
+      WHERE REGEXP_CONTAINS(source_url, r'^https://(archive[.]sb[.]go[.]kr|archives[.]hansung[.]ac[.]kr)/')
+        AND (STRPOS(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(record_title, NFKC), r'\\s+', ''), @term) > 0
+          OR (@hansung = 1 AND STARTS_WITH(record_id, 'HANSUNG-')))
+      QUALIFY ROW_NUMBER() OVER (PARTITION BY record_id ORDER BY source_url, record_title) = 1
+      ORDER BY record_title, record_id
+      LIMIT @limit OFFSET @offset`, [
+      parameter('term', term),
+      parameter('hansung', ['한성대', '한성대학교', '한성대아카이브', '한성대학교아카이브', 'hansunguniversity'].includes(term) ? 1 : 0),
+      parameter('limit', limit + 1), parameter('offset', offset),
+    ]);
+    if (!rows) return undefined;
+    return {
+      source: 'bigquery', status: 'ready', nextOffset: rows.length > limit ? offset + limit : null,
+      records: rows.slice(0, limit).map(({f}) => ({
+        ...Object.fromEntries(archiveFields.map((field, index) => [field, f[index]?.v ?? null])),
+        usableAsVerifiedEvidence: false, buildingMatch: 'unverified',
+      })),
+      note: '성북마을아카이브와 한성대학교 아카이브의 검색 후보입니다. 제목과 원문 링크를 제공하며 장소 일치와 이용조건은 원문에서 확인하세요.',
+    };
+  } catch {
+    return {source: 'bigquery', status: 'unavailable', records: [], nextOffset: null};
+  }
+}
