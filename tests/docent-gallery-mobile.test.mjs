@@ -1,10 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {galleryResource} from '../lib/docent-gallery.ts';
+import {IMAGE_RESOURCE_DOMAINS, imageProxyOrigin} from '../lib/image-proxy.ts';
 const source=readFileSync(new URL('../lib/docent-gallery.ts',import.meta.url),'utf8');
 test('gallery permits the photo hosts returned by Seoul archives and Seoul research',()=>{
-  assert.match(source,/https:\/\/archives-files\.seoul\.go\.kr/);
-  assert.match(source,/https:\/\/data\.si\.re\.kr/);
+  const {resourceDomains}=galleryResource._meta.ui.csp;
+  assert.deepEqual(resourceDomains,[...IMAGE_RESOURCE_DOMAINS,imageProxyOrigin()]);
+  assert.ok(resourceDomains.includes('https://archives-files.seoul.go.kr'));
+  assert.ok(resourceDomains.includes('https://data.si.re.kr'));
 });
 test('failed images have a visible source-link fallback rather than silently disappearing',()=>{
   assert.match(source,/image\.onerror/);

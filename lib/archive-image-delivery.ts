@@ -12,7 +12,7 @@ export function permittedArchiveImage(raw:string):URL|null{
 }
 export function imageDeliveryUrl(imageUrl:string,terms:string):string|null{
   // The upstream provider requires per-item license confirmation; no proxy for unclear rights.
-  if(!/(?:CC BY 4\\.0|공공누리 제1유형)/i.test(terms))return null;
+  if(!/(?:CC BY 4\.0|공공누리 제1유형)/i.test(terms))return null;
   const url=permittedArchiveImage(imageUrl);
   return url?'/api/archive-image?url='+encodeURIComponent(url.href):null;
 }
