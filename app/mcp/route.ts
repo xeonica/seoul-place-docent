@@ -1,5 +1,5 @@
 import {galleryToolMeta} from '@/lib/docent-gallery';
-import {bigQueryGitHubCandidates,bigQueryPlaceCandidates} from '@/lib/bigquery-place';
+import {bigQueryGitHubCandidates,bigQueryHansungArchive,bigQueryPlaceCandidates} from '@/lib/bigquery-place';
 import {env} from '@/lib/runtime-env';
 import {searchResearchRecords,placeResearchCandidates} from '@/lib/research-catalog';
 import {z} from 'zod';
@@ -174,7 +174,12 @@ async function execute(request: Request, name: string, args: Record<string, unkn
       }
       case 'get_place_history': {
         const input = historyInput.parse(args);
-        if(!input.token)return textResult({...searchResearchRecords(input),bigQueryGitHubResearch:await bigQueryGitHubCandidates(request,input)});
+        if(!input.token){
+          const [bigQueryGitHubResearch,hansungArchive] = await Promise.all([
+            bigQueryGitHubCandidates(request,input), bigQueryHansungArchive(request,input),
+          ]);
+          return textResult({...searchResearchRecords(input),bigQueryGitHubResearch,hansungArchive});
+        }
         const address = await verifyAddress(input.token, env);
         const research=input.query?searchResearchRecords({query:input.query,district:input.district,offset:input.offset,limit:input.limit}):placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
         const story = getDocentStory(address.sggNm, address.emdNm, [address.bdNm].filter(Boolean));
@@ -197,12 +202,13 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           evidence: scene.evidence,
         }));
         const nextOffset = input.offset + scenes.length;
-        const [bigQueryResearch,bigQueryGitHubResearch] = await Promise.all([
+        const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive] = await Promise.all([
           bigQueryPlaceCandidates(request,address,input.limit,input.offset),
           bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm,query:input.query,limit:input.limit,offset:input.offset}),
+          bigQueryHansungArchive(request,{...input,roadAddr:address.roadAddr,district:address.sggNm}),
         ]);
         return textResult({
-          address,research,bigQueryResearch,bigQueryGitHubResearch,
+          address,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,
           place: {records: await placeRegisterRecords(address,env)},
           neighborhood: {
             district: story.district,
@@ -238,11 +244,12 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
         const photos=guidePhotos(packet);
         const research=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
-        const [bigQueryResearch,bigQueryGitHubResearch] = await Promise.all([
+        const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive] = await Promise.all([
           bigQueryPlaceCandidates(request,address),
           bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm}),
+          bigQueryHansungArchive(request,{roadAddr:address.roadAddr,district:address.sggNm}),
         ]);
-        const guide=textResult({...packet,research,bigQueryResearch,bigQueryGitHubResearch,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\n도구 갤러리 표시 여부와 무관하게 visuals.photos에서 실제 사용한 기록 사진을 해당 해설 문단 바로 아래에 배치하세요. imageUrl을 표시할 수 있는 클라이언트에서는 원본 이미지를 사용하고, 표시할 수 없거나 권리·접근이 불명확하면 sourceUrl 원문 링크와 날짜·소장기관·장소 범위가 포함된 캡션을 대신 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색은 현재 모습 보충용으로만 구분하여 사용하고 MCP 사진인 것처럼 표현하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
+        const guide=textResult({...packet,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\n도구 갤러리 표시 여부와 무관하게 visuals.photos에서 실제 사용한 기록 사진을 해당 해설 문단 바로 아래에 배치하세요. imageUrl을 표시할 수 있는 클라이언트에서는 원본 이미지를 사용하고, 표시할 수 없거나 권리·접근이 불명확하면 sourceUrl 원문 링크와 날짜·소장기관·장소 범위가 포함된 캡션을 대신 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색은 현재 모습 보충용으로만 구분하여 사용하고 MCP 사진인 것처럼 표현하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
         return {...guide,structuredContent:{photos}};
       }
       case 'get_answer_stats': {

@@ -115,3 +115,45 @@ export async function bigQueryGitHubCandidates(request: Request, input: {
     return {source: 'bigquery', status: 'unavailable', records: [], nextOffset: null};
   }
 }
+
+const hansungFields = ['record_id', 'record_title', 'record_type', 'source_institution', 'source_url', 'created_date_raw'];
+
+export async function bigQueryHansungArchive(request: Request, input: {
+  query?: string; district?: string; roadAddr?: string; limit?: number; offset?: number;
+}) {
+  const normalize = (value: string) => value.normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+  const query = normalize(input.query ?? '');
+  const campus = normalize((input.roadAddr ?? '').replace(/\s*\([^()]*\)\s*$/, ''));
+  if (input.district && input.district !== '성북구') return undefined;
+  if (input.roadAddr ? campus !== '서울특별시성북구삼선교로16길116' : !/한성대|hansunguniversity/.test(query)) return undefined;
+  const term = query.replace(/한성대학교|한성대|hansunguniversity|아카이브|archives?/g, '');
+  const {limit = 6, offset = 0} = input;
+  try {
+    const rows = await queryBigQuery(request, `
+      SELECT ${hansungFields.join(', ')}
+      FROM \`seoul-docent-archive.docent_raw.hansung-archive\`
+      WHERE NULLIF(TRIM(record_title), '') IS NOT NULL
+        AND REGEXP_CONTAINS(source_url, r'^https://archives[.]hansung[.]ac[.]kr/')
+        AND (@term = '' OR STRPOS(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(record_title, NFKC), r'\\s+', ''), @term) > 0)
+      QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY COALESCE(NULLIF(TRIM(record_id), ''), source_url)
+        ORDER BY source_url, record_title, record_type, source_institution, created_date_raw
+      ) = 1
+      ORDER BY IF(NULLIF(TRIM(created_date_raw), '') IS NULL, 1, 0), created_date_raw, record_title, record_id, source_url
+      LIMIT @limit OFFSET @offset`, [
+      parameter('term', term), parameter('limit', limit + 1), parameter('offset', offset),
+    ]);
+    if (!rows) return undefined;
+    return {
+      source: 'bigquery', status: 'ready', nextOffset: rows.length > limit ? offset + limit : null,
+      records: rows.slice(0, limit).map(({f}) => ({
+        ...Object.fromEntries(hansungFields.map((field, index) => [field, f[index]?.v ?? null])),
+        usableAsVerifiedEvidence: false, buildingMatch: 'unverified',
+      })),
+      note: '한성대학교 공식 아카이브의 목록과 원문 링크입니다. 기록의 촬영 장소와 이용조건은 원문에서 확인하세요.',
+    };
+  } catch (error) {
+    const reason = error instanceof Error && error.message === 'Upstream HTTP 403' ? 'access_denied' : 'query_failed';
+    return {source: 'bigquery', status: 'unavailable', reason, records: [], nextOffset: null};
+  }
+}
