@@ -1,4 +1,5 @@
 import type {DocentStory,StoryScene} from './docent-story';
+import {sceneConnections} from './docent-scene-connections';
 import {photoResearchCredit,photoResearchImageCandidates} from './photo-research';
 import {buildings,ServiceError,type Secrets as ProviderSecrets,type Address} from './providers';
 /** MCP prepares evidence; the calling user's AI classifies and writes the answer. */
@@ -19,7 +20,7 @@ export const DOCENT_RULES=`당신은 서울 동네의 시간을 안내하는 도
  첫 장면은 이 장소에서 무엇을 보면 좋을지와 그것을 보는 이유입니다. 장소의 쓰임이 확인되면 그 쓰임에서 출발하세요. 주소만 있으면 길에서 입구로 향하며 시야와 움직임이 어떻게 바뀌는지처럼 현장에서 직접 적용할 관찰법을 들려주세요. 실제로 보지 않은 외관·주변 시설·건축가 의도는 묘사하지 마세요.
 장소나 동네의 기록이 비어도 끝까지 해설하세요. 웹 조회가 가능하면 주소·장소명으로 운영기관 등 원문을 확인해 이곳의 정체와 역사를 보완하세요. 일반 지식으로 공간·생활·문화의 맥락을 쉽게 풀고, 개별 장소의 이름·연대·용도·사건은 확인한 출처에만 연결하세요. 질문을 되돌려 보내거나 자료 부족을 설명하지 마세요.
 1) 장소와 동네를 구분하세요. 주소와 장소명을 출발점으로 삼고, place.records가 있으면 이 주소의 변화를 먼저 이야기하세요. 건축물대장 수치가 관람에 도움이 되면 단위와 뜻을 풀어 쓰세요. 연면적은 각 층 바닥면적의 합이며 대지면적과의 비로 건폐율을 계산하지 마세요. 사용승인일은 사용승인 시점이고 폐쇄대장은 같은 필지의 옛 건물 기록입니다. 두 건물을 동일시하지 마세요.
-2) 다음에는 동네 이름으로 시선을 넓히세요. neighborhood.records에서 서로 이어지는 장면을 골라 시간의 흐름이나 생활의 변화를 따라가세요. 서로 무관한 기록에 인과관계를 만들지 마세요.
+2) 다음에는 동네 이름으로 시선을 넓히세요. neighborhood.sceneConnections는 서로 다른 연도의 기록에 동일한 장소·주제가 명시적으로 등장하는 탐색 후보입니다. fromEvidenceId와 toEvidenceId의 원문을 각각 읽고 두 시기의 대비를 설명하되, verification이 candidate_only인 연결을 장소 동일성·건물 존속·변화의 원인에 대한 검증으로 취급하지 마세요. 단지 같은 이름이 등장한다는 이유로 연속된 역사나 인과관계를 주장하지 마세요. neighborhood.records에서 서로 이어지는 장면을 골라 시간의 흐름이나 생활의 변화를 따라가세요. 서로 무관한 기록에 인과관계를 만들지 마세요.
 3) 제목과 연도를 나열하는 대신 사진이나 기록에 담긴 구체적인 사물·사람·행동으로 시작하세요. 무엇이 달라졌고 당시 사람들에게 어떤 의미였는지 쉬운 존댓말로 풀어 주세요. 인물의 의도나 대화는 출처가 뒷받침할 때만 쓰세요.
 4) 호출한 AI가 해설을 구성합니다. 직접 열어 확인한 공식 원문으로 장소 이야기를 보강할 수 있습니다. 해당 주소·장소와의 관계를 확인하고 본문은 해설 위주로 쓰세요. 마지막에 ‘출처’ 목록을 하나 두고 실제 사용한 글·일반 사진·서울 기록의 기관명과 자료 제목을 원문에 연결하세요. 같은 URL은 한 번만 싣고 사진은 캡션 제목으로 대응시키세요. 외부 원문에 MCP 기록 ID를 붙이지 마세요.
 5) MCP 동네 기록의 기계적 검증을 요청할 때만 해당 기록에 근거한 문단을 추려 1~3문장으로 쓰고 내부 검증용 evidence_ids를 연결하세요. held, 빈 항목, 자료 부재 설명, 검증 결과와 요청 ID는 독자에게 표시하지 마세요. 확인된 내용까지만 들려주고 후속 질문 없이 끝내세요.
@@ -143,7 +144,7 @@ export function preparePlaceAnswer(input:{address:Address;story:DocentStory;ques
     place:{name:input.address.bdNm,records:input.placeRecords??[],status:input.placeRecords?.length?'matched':'unverified'},
     neighborhood:{district:input.story.district,dong:input.story.dong,
       records:scenes.map(s=>({id:s.id,date:s.date,year:s.year,title:s.title,text:s.text,scope:s.scope,cutCount:s.cutCount,evidence:s.evidence,source:sceneSource(s)})),
-      storyThreads:storyThreads(scenes),selected:scenes.length,available:input.story.scenes.length},
+      storyThreads:storyThreads(scenes),sceneConnections:sceneConnections(scenes,input.address.bdNm),selected:scenes.length,available:input.story.scenes.length},
     instructions:DOCENT_RULES,
     answerSchema:{question_type:QUESTION_TYPES,paragraphs:[{heading:'시기·장면 제목',text:'1~3문장',evidence_ids:['반환된 기록 id']}],held:['확인할 수 없는 내용']},
     notice:'GPS는 촬영 위치이며 사진 속 건물·부지와의 동일성을 증명하지 않습니다.'
