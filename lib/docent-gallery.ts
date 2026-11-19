@@ -1,9 +1,10 @@
+import {IMAGE_RESOURCE_DOMAINS,imageProxyOrigin} from './image-proxy';
 export const galleryUri = 'ui://seoul-docent/archive-photos-v2.html';
 export const galleryMime = 'text/html;profile=mcp-app';
 export const galleryToolMeta = {ui:{resourceUri:galleryUri}, 'openai/outputTemplate':galleryUri};
 export const galleryResource = {
   uri:galleryUri, name:'서울 기록 사진', mimeType:galleryMime,
-  _meta:{ui:{csp:{resourceDomains:['https://museum.seoul.go.kr:8088','https://museum.seoul.go.kr','https://archive-file.sb.go.kr','https://archive.much.go.kr','https://archives.seoul.go.kr','https://archives-files.seoul.go.kr','https://data.si.re.kr']}}},
+  _meta:{ui:{csp:{resourceDomains:[...IMAGE_RESOURCE_DOMAINS,imageProxyOrigin()]}}},
 };
 export const galleryHtml = `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>body{margin:0;font:14px system-ui;color:inherit}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px}figure{margin:0;min-width:0}img{width:100%;height:200px;object-fit:contain;background:#eee}figcaption{padding:6px 0}a{color:inherit}</style>
