@@ -10,3 +10,7 @@ test('narrative guidance keeps client-side generation and mechanical evidence va
   assert.match(source,/export function validateAnswer/);
   assert.match(source,/client-docent-10/);
 });
+
+test('archival images must retain their own evidence and source association',()=>{
+  for(const phrase of ['사진·출처 일치 규칙','evidenceId','imageUrl·sourceUrl','서로 다른 검색 이미지와 MCP 기록 출처를 짝짓지 마세요','원본 sourceUrl','별도 검색 사진'])assert.ok(source.includes(phrase),phrase);
+});
