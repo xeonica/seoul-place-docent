@@ -6,7 +6,7 @@ export const galleryResource = {
   _meta:{ui:{csp:{resourceDomains:['https://museum.seoul.go.kr:8088','https://museum.seoul.go.kr','https://archive-file.sb.go.kr','https://archive.much.go.kr','https://archives.seoul.go.kr']}}},
 };
 export const galleryHtml = `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>body{margin:0;font:14px system-ui;color:inherit}main{display:flex;gap:12px;overflow-x:auto}figure{margin:0;flex:1 0 min(260px,80vw)}img{width:100%;height:180px;object-fit:contain;background:#eee}figcaption{padding:6px 0}a{color:inherit}</style>
+<style>body{margin:0;font:14px system-ui;color:inherit}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px}figure{margin:0;min-width:0}img{width:100%;height:200px;object-fit:contain;background:#eee}figcaption{padding:6px 0}a{color:inherit}</style>
 <main aria-label="해설 관련 기록 사진"></main><script>
 const gallery=document.querySelector('main');
 function https(value){try{const u=new URL(value);return u.protocol==='https:'?u.href:null}catch{return null}}
