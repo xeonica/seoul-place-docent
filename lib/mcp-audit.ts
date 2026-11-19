@@ -48,6 +48,7 @@ export async function auditedCall(db:D1Database|undefined,tool:string,client:str
  try{
   const packet=JSON.parse(result.content[0]?.text||'{}');
   if(packet.evidence?.diagnostics)console.info(JSON.stringify({event:'mcp_evidence_retrieval',requestId,tool,status:packet.evidence.status,diagnostics:packet.evidence.diagnostics}));
+  if(packet.timing)console.info(JSON.stringify({event:'mcp_stage_timing',requestId,tool,timing:packet.timing}));
   const records=packet.neighborhood?.records;
   if(Array.isArray(records))for(const record of records){const photo=record.source?.photoVerification;if(photo)console.info(JSON.stringify({event:'mcp_photo_verification',requestId,tool,evidenceId:record.id,sourceRecordId:photo.sourceRecordId,mediaId:photo.mediaId,status:photo.verificationStatus,reason:photo.reason,displayable:photo.displayable===true}));}
  }catch{/* No photo payload, input values are never logged. */}

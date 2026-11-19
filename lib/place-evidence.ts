@@ -1,3 +1,4 @@
+import {DocentTrace} from './docent-runtime';
 import rawDocuments from '../data/document-research/bundle.json';
 import {documentPlaceResearch,type DocumentBundle,safeDocumentUrl} from './document-research';
 import {articleCandidates} from './article-evidence';
@@ -12,14 +13,14 @@ export const evidenceInstructions='evidence.records 중 usableAsVerifiedEvidence
 
 /** Static indices contain metadata only. The live D1 ledger is the sole authority
  * for newly introduced claims; it is deliberately not cached with these indices. */
-export async function prepareEvidence(request:Request,db:D1Database|undefined,address:Address,question='',videoLimit=3,videoOffset=0){
- const reviewTask=reviewedEvidence(db,address);
- const placeQuery=reviewTask.then(reviewed=>bigQueryPlaceCandidates(request,address,6,0,reviewed.records.filter(r=>r.usableAsVerifiedEvidence&&['exact_building','exact_parcel','historical_site'].includes(r.relationType)).flatMap(r=>r.aliases.map(a=>a.name))));
+export async function prepareEvidence(request:Request,db:D1Database|undefined,address:Address,question='',videoLimit=3,videoOffset=0,trace=new DocentTrace()){
+ const reviewTask=trace.measure('d1_current_approvals',()=>reviewedEvidence(db,address));
+ const placeQuery=reviewTask.then(reviewed=>trace.measure('bigquery_place',()=>bigQueryPlaceCandidates(request,address,6,0,reviewed.records.filter(r=>r.usableAsVerifiedEvidence&&['exact_building','exact_parcel','historical_site'].includes(r.relationType)).flatMap(r=>r.aliases.map(a=>a.name)))));
  const [reviewed,articles,videos,bigQueryGitHubResearch,hansungArchive,bigQueryResearch]=await Promise.all([
-  reviewTask,articleCandidates(address,question),
-  getDocentVideoCandidates(address.sggNm,address.emdNm,{query:question,placeName:address.bdNm,limit:videoLimit,offset:videoOffset}),
-  bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm}),
-  bigQueryHansungArchive(request,{roadAddr:address.roadAddr,district:address.sggNm}),placeQuery,
+  reviewTask,trace.measure('article_metadata',()=>articleCandidates(address,question)),
+  trace.measure('video_metadata',()=>getDocentVideoCandidates(address.sggNm,address.emdNm,{query:question,placeName:address.bdNm,limit:videoLimit,offset:videoOffset})),
+  trace.measure('bigquery_github',()=>bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm})),
+  trace.measure('bigquery_hansung',()=>bigQueryHansungArchive(request,{roadAddr:address.roadAddr,district:address.sggNm})),placeQuery,
  ]);
  const documents=documentPlaceResearch(rawDocuments as unknown as DocumentBundle,address.sggNm,[address.emdNm]);
  const documentCandidates=documents.context.sources.map(s=>({evidenceId:'candidate:document:'+s.id,recordId:s.id,mediaType:'document',title:s.title,sourceUrl:safeDocumentUrl(s.url||''),relationType:documents.scope==='legal_dong'?'dong_context':'district_context',reviewStatus:s.status,usableAsVerifiedEvidence:false,claims:[],claimReferences:documents.context.claims.filter(c=>c.sourceIds.includes(s.id)).map(c=>({claimId:c.id,sourceLocator:c.locator})),timelineReferences:documents.timeline.map(t=>t.id)}));
@@ -29,7 +30,7 @@ export async function prepareEvidence(request:Request,db:D1Database|undefined,ad
  const approvedIds=new Set(reviewed.records.map(r=>r.recordId));
  const candidates=[...articles.records.map(r=>({...r,recordId:r.id})),...documentCandidates,...videoCandidates,...bqCandidates].filter(r=>!approvedIds.has(r.recordId));
  // Deduplicate records, never URLs: one original may support multiple claims.
- const unique=[...new Map(candidates.map(r=>[r.evidenceId,r])).values()].map(r=>({eventDate:null,publishedAt:null,placeId:null,relationReviewStatus:'unverified',rightsStatus:'metadata_link_only',sourceInstitution:null,media:{videoUrl:null,verifiedSegments:[]},verification:{level:'not_checked'},usageMode:'candidate_link_only',...r}));
+ const unique=[...new Map(candidates.map(r=>[r.evidenceId,r])).values()].map(r=>({eventDate:null,publishedAt:null,placeId:null,relationReviewStatus:'unverified',rightsStatus:'metadata_link_only',sourceInstitution:null,media:{videoUrl:null,verifiedSegments:[]},verification:{level:'not_checked'},usageMode:'candidate_link_only',acquisition:'mcp_candidate_index',...r}));
  const counts=Object.fromEntries(['article','video','photo','document'].map(type=>[type,{candidateCount:unique.filter(r=>r.mediaType===type).length,approvedCount:reviewed.records.filter(r=>r.mediaType===type&&r.reviewStatus==='approved'&&r.verification.approvalActive).length,usableEvidenceCount:reviewed.records.filter(r=>r.mediaType===type&&r.usableAsVerifiedEvidence).length}]));
  return {bigQueryResearch,bigQueryGitHubResearch,hansungArchive,videos,evidence:{place:evidencePlace(address),status:reviewed.status==='no_candidates'&&unique.length?'candidates_unlinked':reviewed.status,records:reviewed.records,candidates:unique,diagnostics:{...reviewed.diagnostics,candidateCount:reviewed.diagnostics.candidateCount+unique.length,unlinkedCandidateCount:unique.length,byMediaType:counts,articleIndex:{status:articles.status,total:articles.total},videoIndex:{candidateCount:videos.candidateCount,searchedCount:videos.searchedCount,returnedCount:videos.returnedCount},bigquery:bigQueryResearch.diagnosticStatus},semanticVerification:'not_checked'}};
 }

@@ -95,3 +95,7 @@ test('wrong original record cannot be combined with an unrelated reviewed source
 test('approved article flows through prepare and validation while returned static articles remain candidates',async()=>{
  const {db,input}=await fixture();await reviewEvidence(db,input,'reviewer');const result=await prepareEvidence(new Request('https://fixture.test/mcp'),db,addresses[0]);const e=result.evidence.records[0];assert.equal(e.usableAsVerifiedEvidence,true);assert.equal(result.evidence.status,'approved_records_available');assert.equal(result.evidence.diagnostics.byMediaType.article.usableEvidenceCount,1);assert.equal(validateEvidenceClaims(result.evidence.records,[{evidenceId:e.evidenceId,claimId:e.claims[0].claimId,text:e.claims[0].text}]).valid,true);assert.ok(result.evidence.candidates.every(r=>!r.usableAsVerifiedEvidence));
 });
+
+test('expired approval is retained in history but supplies no claims or aliases',async()=>{
+ const {db,input}=await fixture();await reviewEvidence(db,{...input,payload:{...input.payload,expiresAt:'2000-01-01T00:00:00Z'}},'reviewer');const result=await reviewedEvidence(db,addresses[0]);assert.equal(result.records[0].usableAsVerifiedEvidence,false);assert.ok(result.records[0].verification.reasonCodes.includes('review_expired'));assert.deepEqual(result.records[0].aliases,[]);assert.equal(result.diagnostics.approvedCount,0);
+});
