@@ -1,10 +1,11 @@
 import {IMAGE_RESOURCE_DOMAINS,imageProxyOrigin} from './image-proxy';
-export const galleryUri = 'ui://seoul-docent/archive-photos-v3.html';
+export const galleryUri = 'ui://seoul-docent/archive-photos-v4.html';
 export const galleryMime = 'text/html;profile=mcp-app';
 export const galleryToolMeta = {ui:{resourceUri:galleryUri}, 'openai/outputTemplate':galleryUri};
+const resourceDomains = [...new Set([...IMAGE_RESOURCE_DOMAINS, imageProxyOrigin()])];
 export const galleryResource = {
   uri:galleryUri, name:'서울 기록 사진', mimeType:galleryMime,
-  _meta:{ui:{csp:{resourceDomains:[...IMAGE_RESOURCE_DOMAINS,imageProxyOrigin()]}}},
+  _meta:{ui:{csp:{resourceDomains}},'openai/widgetCSP':{resource_domains:resourceDomains},'openai/widgetDescription':'서울 장소 기록 사진과 날짜, 출처, 원문 링크를 표시합니다.'},
 };
 export const galleryHtml = `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>body{margin:0;font:14px system-ui;color:inherit}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px}figure{margin:0;min-width:0}img{width:100%;height:200px;object-fit:contain;background:#eee}figcaption{padding:6px 0}a{color:inherit}</style>
