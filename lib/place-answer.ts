@@ -173,7 +173,7 @@ export function guidePhotos(packet:ReturnType<typeof preparePlaceAnswer>) {
     return [{evidenceId:record.id,title:record.title,date:record.date,scope:record.scope,...photo,
       sourceUrl:photo.sourceUrl||record.source.url,caption,imageMarkdown:'!['+alt+'](<'+url+'>)',
       relatedEvidenceIds:thread?.evidenceIds.filter(id=>id!==record.id)??[]}];
-  }).slice(0,3);
+  }).slice(0,8);
 }
 
 /** Legacy tool name retained, but it can no longer call any model provider. */
