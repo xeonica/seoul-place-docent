@@ -5,7 +5,7 @@ export function permittedArchiveImage(raw:string):URL|null{
   try{
     const url=new URL(raw);
     if(url.protocol!=='https:'||url.username||url.password||url.port||!ARCHIVE_IMAGE_HOSTS.has(url.hostname.toLowerCase()))return null;
-    if(!/^\\/sites\\/default\\/files\\/photos(?:\\d+)?\\/[a-zA-Z0-9_-]+\\.(?:jpg|jpeg|png|webp)$/i.test(url.pathname))return null;
+    if(!/^\/sites\/default\/files\/photos(?:\d+)?\/[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|webp)$/i.test(url.pathname))return null;
     if(url.search||url.hash)return null;
     return url;
   }catch{return null;}
