@@ -72,7 +72,7 @@ export async function queryBigQuery(request: Request, query: string, queryParame
   return structuredClone(cached.value);
 }
 
-const queryCandidateMetadata=(request:Request,sql:string,params:QueryParameter[])=>queryBigQuery(request,sql,params,{publicMetadata:true});
+const queryCandidateMetadata=(request:Request,sql:string,params:QueryParameter[])=>queryBigQuery(request,sql,params,{publicMetadata:!params.some(p=>p.name==='has_point'&&p.parameterValue.value==='true')});
 
 export async function bigQueryPlaceCandidates(request: Request, address: Partial<Address>, limit = 6, offset = 0, aliases:string[] = [], point?:{latitude:number;longitude:number;radiusM?:number}) {
   const place=evidencePlace(address),road=normalizePlaceText(address.roadAddr),jibun=normalizePlaceText(address.jibunAddr);

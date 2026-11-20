@@ -7,7 +7,7 @@ import {signAddress,verifyAddress} from '../lib/providers.ts';
 import {briefDocent} from '../lib/brief-docent.ts';
 import {canDisplayVerifiedPhoto} from '../lib/photo-display-policy.ts';
 import {IMAGE_RESOURCE_DOMAINS,imageProxyOrigin} from '../lib/image-proxy.ts';
-import {queryBigQuery,bigQueryMetrics,clearBigQueryMetadataCacheForTests} from '../lib/bigquery-place.ts';
+import {queryBigQuery,bigQueryMetrics,bigQueryPlaceCandidates,clearBigQueryMetadataCacheForTests} from '../lib/bigquery-place.ts';
 const address=JSON.parse(readFileSync(new URL('./fixtures/centras-address.json',import.meta.url),'utf8'));
 async function isolation(run){const saved={...process.env},fetch=globalThis.fetch,info=console.info;console.info=()=>{};clearBigQueryMetadataCacheForTests();try{return await run();}finally{globalThis.fetch=fetch;console.info=info;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);clearBigQueryMetadataCacheForTests();}}
 async function call(token,detailLevel){const r=await POST(new Request('https://fixture.test/mcp',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'prepare_place_answer',arguments:{token,detailLevel}}})}));const text=await r.text(),rpc=JSON.parse(text);assert.equal(rpc.result.isError,undefined);return {r,text,result:rpc.result,packet:JSON.parse(rpc.result.content[0].text)};}
@@ -39,3 +39,7 @@ test('concurrent 5/10 callers coalesce public query work; failed queries are evi
 test('additive audit index is usable and idempotent without changing approvals or audit rows',()=>{
  const db=new DatabaseSync(':memory:');db.exec('CREATE TABLE archive_audit(action TEXT,actor TEXT,note TEXT); INSERT INTO archive_audit VALUES (\'evidence_review\',\'fixture\',\'{}\')');const sql=readFileSync(new URL('../drizzle/0007_evidence_audit_lookup.sql',import.meta.url),'utf8');db.exec(sql);db.exec(sql);assert.match(db.prepare("EXPLAIN QUERY PLAN SELECT note FROM archive_audit WHERE action='evidence_review' AND actor='fixture'").all()[0].detail,/archive_audit_action_actor/);assert.equal(db.prepare('SELECT count(*) AS n FROM archive_audit').get().n,1);db.close();
 });
+test('queries using a caller coordinate do not enter the shared public metadata cache',async()=>isolation(async()=>{
+ configure();let queries=0;globalThis.fetch=async url=>{if(String(url).includes('sts.googleapis'))return Response.json({access_token:'fixture'});if(String(url).includes('iamcredentials'))return Response.json({accessToken:'fixture'});queries++;return Response.json({jobComplete:true,rows:[]});};
+ for(let i=0;i<2;i++){const r=request();await bigQueryPlaceCandidates(r,address,6,0,[],{latitude:37.56,longitude:127.04});assert.equal(bigQueryMetrics(r).cacheHits,0);}assert.equal(queries,2);
+}));
