@@ -1,5 +1,3 @@
-import {briefDocent} from '@/lib/brief-docent';
-import {bigQueryMetrics} from '@/lib/bigquery-place';
 import {storyEvidence,evidenceUsage} from '@/lib/story-evidence';
 import {searchAddressHistory} from '@/lib/history-search';
 import {resolvePlaceMap} from '@/lib/mcp-map-view';
@@ -47,8 +45,8 @@ const tools: McpTool[] = [
   {
     name:'prepare_place_answer',
     _meta:galleryToolMeta,
-    description:'빠른 기본 경로: 명확한 주소를 address로 넣고 detailLevel=brief로 한 번 호출하세요. 후보가 여러 개면 선택을 요청하고, 추가 자료가 필요할 때만 full 또는 get_place_history를 사용하세요. brief의 validationContext로 검증할 수 있습니다. 사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 도구의 기록 사진 갤러리에서 자동 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token 또는 address 중 하나가 필요합니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
-    inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]},detailLevel:{type:'string',enum:['brief','standard','full']},videoLimit:{type:'integer',minimum:1,maximum:12},videoOffset:{type:'integer',minimum:0,maximum:100}},oneOf:[{required:['token']},{required:['address']}],additionalProperties:false},
+    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 도구의 기록 사진 갤러리에서 자동 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token 또는 address 중 하나가 필요합니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
+    inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]},detailLevel:{type:'string',enum:['standard','full']},videoLimit:{type:'integer',minimum:1,maximum:12},videoOffset:{type:'integer',minimum:0,maximum:100}},oneOf:[{required:['token']},{required:['address']}],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
   },
   {
@@ -63,7 +61,7 @@ const tools: McpTool[] = [
   },
   {
     name: 'search_place',
-    description: '별도 주소 검색이 필요할 때 서울 도로명·지번 주소를 조회합니다. 선택한 후보의 token을 prepare_place_answer에 전달하세요. get_place_history는 추가 원자료가 필요할 때 사용하세요. 단일 주소는 바로 해설하고 모호하면 후보 주소만 표시하세요.',
+    description: '서울 도로명·지번 주소를 검색합니다. 후보의 token을 get_place_history에 전달하세요. 단일 주소는 바로 해설하고 모호하면 후보 주소만 표시하세요.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -138,7 +136,7 @@ const answerInput = z.object({
   address: z.string().trim().min(2).max(100).optional(),
   question: z.string().trim().max(300).optional(),
   questionType: z.enum(QUESTION_TYPES).optional(),
-  detailLevel:z.enum(['brief','standard','full']).optional(),videoLimit:z.number().int().min(1).max(12).optional(),videoOffset:z.number().int().min(0).max(100).optional(),
+  detailLevel:z.enum(['standard','full']).optional(),videoLimit:z.number().int().min(1).max(12).optional(),videoOffset:z.number().int().min(0).max(100).optional(),
 }).strict().refine(v => Boolean(v.token) !== Boolean(v.address), {message: 'token 또는 address 중 하나만 필요합니다'});
 
 const locationInput=z.object({latitude:z.number().finite().min(-90).max(90).optional(),longitude:z.number().finite().min(-180).max(180).optional()}).strict()
@@ -256,7 +254,7 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         }
         const address = await verifyAddress(token, env);
         const story = getFullDocentStory(address.sggNm, address.emdNm);
-        const [registers,newEvidence,map]=await Promise.all([trace.measure('official_registers',()=>placeRegisterBundle(address,env)),prepareEvidence(request,env.DB,address,input.question,input.videoLimit??(input.detailLevel==='brief'?2:undefined),input.videoOffset,trace,{deferExternalCandidates:input.detailLevel==='brief'}),trace.measure('verified_coordinates',()=>resolvePlaceMap(address,env))]);
+        const [registers,newEvidence,map]=await Promise.all([trace.measure('official_registers',()=>placeRegisterBundle(address,env)),prepareEvidence(request,env.DB,address,input.question,input.videoLimit,input.videoOffset,trace),trace.measure('verified_coordinates',()=>resolvePlaceMap(address,env))]);
         for(const [stage,part] of Object.entries(registers.sections))trace.stages.push({stage:stage+'_building_register',ms:part.ms,status:part.status==='ok'?'ok':'unavailable',...(part.status==='ok'?{cache:part.cache}:{})});
         const placeRecords=registers.records;
         const packet=await generatePlaceAnswer({address,story,placeRecords,question:input.question,questionType:input.questionType,recordLimit:input.detailLevel==='full'?14:8});
@@ -266,11 +264,11 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         const photos=visitorPhotos(guidePhotos(packet,new Map(newEvidence.evidence.records.filter(e=>e.usableAsVerifiedEvidence&&e.mediaType==='photo').map(e=>[sourcePageKey(e.sourceUrl)||'',relationPriority[e.relationType as keyof typeof relationPriority]??6]))),newEvidence.evidence.records).map(({imageMarkdown: _imageMarkdown, ...photo}) => photo);
         const photoCandidates=packet.neighborhood.records.filter(r=>r.source.photoVerification).map(r=>({evidenceId:'candidate:photo:'+r.id,recordId:r.id,mediaType:'photo',title:r.title,sourceInstitution:r.source.institution,sourceUrl:r.source.url,eventDate:r.date,publishedAt:null,placeId:null,relationType:r.scope==='district'?'district_context':'dong_context',relationReviewStatus:'unverified',reviewStatus:'candidate',rightsStatus:'metadata_link_only',license:r.source.photoVerification?.license||null,usableAsVerifiedEvidence:false,claims:[],media:{videoUrl:null,verifiedSegments:[]},imageVerification:r.source.photoVerification?.verificationStatus,usageMode:'candidate_link_only'}));
         const evidence={...newEvidence.evidence,candidates:[...newEvidence.evidence.candidates,...photoCandidates],diagnostics:{...newEvidence.evidence.diagnostics,candidateCount:newEvidence.evidence.diagnostics.candidateCount+photoCandidates.length,byMediaType:{...newEvidence.evidence.diagnostics.byMediaType,photo:{...newEvidence.evidence.diagnostics.byMediaType.photo,candidateCount:(newEvidence.evidence.diagnostics.byMediaType.photo?.candidateCount||0)+photoCandidates.length}}}};
-        const research=input.detailLevel==='brief'?undefined:(()=>{const rawResearch=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);return input.detailLevel==='full'?rawResearch:{...rawResearch,records:rawResearch.records.map(r=>({...r,observations:r.observations.slice(0,2),observationsTruncated:r.observations.length>2,detailMode:'detailLevel=full'}))};})();
+        const rawResearch=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
+        const research=input.detailLevel==='full'?rawResearch:{...rawResearch,records:rawResearch.records.map(r=>({...r,observations:r.observations.slice(0,2),observationsTruncated:r.observations.length>2,detailMode:'detailLevel=full'}))};
         const storytelling=storyEvidence(evidence.records,photos);
-        const responsePacket={...packet,storytelling,researchCandidates:newEvidence.researchCandidates,map,coordinates:{latitude:map.latitude,longitude:map.longitude,coordinateSystem:map.coordinateSystem,verificationStatus:map.verificationStatus},experience:input.detailLevel==='brief'?undefined:docentExperience(packet,evidence.records),registerDiagnostics:registers,provenance:{provider:'seoul_place_docent_mcp',returnedEvidenceIds:[...packet.neighborhood.records.map(r=>r.id),...evidence.records.map(r=>r.evidenceId)],unobserved:['클라이언트 별도 웹 검색','사용자 AI 최종 해설'],externalMaterialMayClaimMcpOrigin:false},timing:{...trace.snapshot(),bigQuery:bigQueryMetrics(request)},evidence,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,videos,visuals:{photos,comparisons:[],comparisonStatus:'subject_and_direction_not_checked',sourceOnlyRecords,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:storytelling.instructions+' 지도는 map.externalUrl로 안내하세요. latitude는 위도, longitude는 경도이며 null이면 지도 핀을 추정하지 마세요. ChatGPT 자체 지도 렌더링은 서버가 보장하지 않습니다. '+(input.detailLevel==='full'?packet.instructions:FIELD_DOCENT_RULES)+evidenceInstructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\n기록 사진은 이 도구의 MCP Apps 갤러리에서 자동 표시합니다. ChatGPT와 Claude에서는 사진을 MCP Apps 갤러리에서 보여주고, 답변 본문에는 캡션과 원문 링크를 사용하세요. 갤러리가 보이지 않는 환경에서는 날짜·소장기관·장소 범위와 함께 sourceUrl 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색은 현재 모습 보충용으로만 구분하여 사용하고 MCP 사진인 것처럼 표현하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'};
-        if(input.detailLevel==='brief'){const brief=briefDocent(responsePacket,token!);return {...textResult(brief),structuredContent:{photos:brief.visuals.photos,sourceOnlyRecords,map}};}
-        return {...textResult(responsePacket),structuredContent:{photos,sourceOnlyRecords,evidence,map,storytelling}};
+        const guide=textResult({...packet,storytelling,researchCandidates:newEvidence.researchCandidates,map,coordinates:{latitude:map.latitude,longitude:map.longitude,coordinateSystem:map.coordinateSystem,verificationStatus:map.verificationStatus},experience:docentExperience(packet,evidence.records),registerDiagnostics:registers,provenance:{provider:'seoul_place_docent_mcp',returnedEvidenceIds:[...packet.neighborhood.records.map(r=>r.id),...evidence.records.map(r=>r.evidenceId)],unobserved:['클라이언트 별도 웹 검색','사용자 AI 최종 해설'],externalMaterialMayClaimMcpOrigin:false},timing:trace.snapshot(),evidence,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,videos,visuals:{photos,comparisons:[],comparisonStatus:'subject_and_direction_not_checked',sourceOnlyRecords,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:storytelling.instructions+' 지도는 map.externalUrl로 안내하세요. latitude는 위도, longitude는 경도이며 null이면 지도 핀을 추정하지 마세요. ChatGPT 자체 지도 렌더링은 서버가 보장하지 않습니다. '+(input.detailLevel==='full'?packet.instructions:FIELD_DOCENT_RULES)+evidenceInstructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\n기록 사진은 이 도구의 MCP Apps 갤러리에서 자동 표시합니다. ChatGPT와 Claude에서는 사진을 MCP Apps 갤러리에서 보여주고, 답변 본문에는 캡션과 원문 링크를 사용하세요. 갤러리가 보이지 않는 환경에서는 날짜·소장기관·장소 범위와 함께 sourceUrl 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색은 현재 모습 보충용으로만 구분하여 사용하고 MCP 사진인 것처럼 표현하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
+        return {...guide,structuredContent:{photos,sourceOnlyRecords,evidence,map,storytelling}};
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);
@@ -300,7 +298,6 @@ async function execute(request: Request, name: string, args: Record<string, unkn
 
 /** Bound streamed bodies as well as requests with Content-Length. */
 export async function POST(request: Request) {
-  const transportStart=performance.now();
   const rejected=originError(request,configuredMcpOrigins(env.MCP_ALLOWED_ORIGINS))??acceptError(request);
   if(rejected)return rejected;
   if(!allowMcpRequest())return Response.json(rpcError(null,-31000,'Too many requests'),{status:429,headers:{...headers,'Retry-After':'60'}});
@@ -344,8 +341,7 @@ export async function POST(request: Request) {
   if(invalidProtocol)return invalidProtocol;
   const response = await handleMcpMessage(message, tools, (name, args) => auditedCall(env.DB,name,clientHint(request),()=>execute(request, name, args)));
   if (response === undefined) return new Response(null, {status: 202, headers});
-  const serializationStart=performance.now(),serialized=JSON.stringify(response),serializationMs=performance.now()-serializationStart;
-  return new Response(serialized,{headers:{...headers,'Content-Type':'application/json','Server-Timing':`mcp;dur=${(performance.now()-transportStart).toFixed(1)}, serialize;dur=${serializationMs.toFixed(1)}`,'X-MCP-Response-Bytes':String(new TextEncoder().encode(serialized).byteLength)},status:'error' in response?(response.error.code===-32601?404:400):200});
+  return Response.json(response, {headers,status:'error' in response?(response.error.code===-32601?404:400):200});
 }
 
 export function GET(request:Request){return unsupportedMcpMethod(request,configuredMcpOrigins(env.MCP_ALLOWED_ORIGINS));}

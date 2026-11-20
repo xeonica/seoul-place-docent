@@ -100,10 +100,3 @@ test('approved article flows through prepare and validation while returned stati
 test('expired approval is retained in history but supplies no claims or aliases',async()=>{
  const {db,input}=await fixture();await reviewEvidence(db,{...input,payload:{...input.payload,expiresAt:'2000-01-01T00:00:00Z'}},'reviewer');const result=await reviewedEvidence(db,addresses[0]);assert.equal(result.records[0].usableAsVerifiedEvidence,false);assert.ok(result.records[0].verification.reasonCodes.includes('review_expired'));assert.deepEqual(result.records[0].aliases,[]);assert.equal(result.diagnostics.approvedCount,0);
 });
-
-test('brief retrieval rereads a revoked approval even when public district metadata is already warm',async()=>{
- const {db,input}=await fixture();await reviewEvidence(db,input,'reviewer');
- const request=new Request('https://fixture.test/mcp');const first=await prepareEvidence(request,db,addresses[0],'',2,0,undefined,{deferExternalCandidates:true});assert.equal(first.evidence.records[0].usableAsVerifiedEvidence,true);
- await reviewEvidence(db,{...input,status:'revoked',expectedRevision:1},'reviewer');
- const second=await prepareEvidence(new Request('https://fixture.test/mcp'),db,addresses[0],'',2,0,undefined,{deferExternalCandidates:true});assert.equal(second.researchCandidates.cacheStatus,'HIT');assert.equal(second.evidence.records[0].usableAsVerifiedEvidence,false);assert.deepEqual(second.evidence.records[0].claims,[]);assert.deepEqual(storyEvidence(second.evidence.records).articles,[]);
-});

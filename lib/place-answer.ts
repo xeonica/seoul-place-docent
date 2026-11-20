@@ -206,11 +206,8 @@ export async function generatePlaceAnswer(input:Parameters<typeof preparePlaceAn
   return packet;
 }
 type Metric={event:'retrieval'|'validation';ms:number;ok:boolean;records:number;type?:QuestionType;kept?:number;omitted?:number};
-const metricSchemas=new WeakMap<D1Database,Promise<void>>();
 async function ensure(db:D1Database){
-  let task=metricSchemas.get(db);
-  if(!task){task=db.prepare('CREATE TABLE IF NOT EXISTS mcp_client_docent_log (at INTEGER NOT NULL, event TEXT NOT NULL, ms INTEGER NOT NULL, ok INTEGER NOT NULL, records INTEGER NOT NULL, question_type TEXT, kept INTEGER NOT NULL, omitted INTEGER NOT NULL)').run().then(()=>{});metricSchemas.set(db,task);}
-  try{await task;}catch(error){metricSchemas.delete(db);throw error;}
+  await db.prepare('CREATE TABLE IF NOT EXISTS mcp_client_docent_log (at INTEGER NOT NULL, event TEXT NOT NULL, ms INTEGER NOT NULL, ok INTEGER NOT NULL, records INTEGER NOT NULL, question_type TEXT, kept INTEGER NOT NULL, omitted INTEGER NOT NULL)').run();
 }
 /** No photo bytes, coordinates, addresses, question text, identity or answer text are persisted. */
 export async function logClientDocent(db:D1Database|undefined,row:Metric){
