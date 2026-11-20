@@ -42,7 +42,7 @@ export async function auditedCall(db:D1Database|undefined,tool:string,client:str
  try { result=await execute(); }
  catch { result={content:[{type:'text',text:'자료 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.'}],isError:true,errorType:'internal_error'}; }
  const row:AuditRow={requestId,tool,at,ok:!result.isError,records:returnedRecords(result),ms:Math.max(0,Date.now()-at),errorType:result.isError?(result.errorType||'tool_error'):null,client,validation:tool==='validate_place_answer'&&!result.isError};
- const persisted=await recordMcpCall(db,row);
+ const auditStarted=performance.now(),persisted=await recordMcpCall(db,row),auditMs=Math.round(performance.now()-auditStarted);
  // Structured fallback contains no inputs, exception messages, IP or raw client headers.
  if(!persisted)console.info(JSON.stringify({event:'mcp_tool_call',...row,persisted:false}));
  try{
@@ -54,7 +54,7 @@ export async function auditedCall(db:D1Database|undefined,tool:string,client:str
  }catch{/* No photo payload, input values are never logged. */}
  const {errorType: _errorType,...publicResult}=result;
  const receipt={requestId,auditPersisted:persisted,clientIdentityVerified:false};
- return {...publicResult,content:[...publicResult.content,{type:'text' as const,text:JSON.stringify({serverReceipt:receipt})}],_meta:receipt};
+ return {...publicResult,content:[...publicResult.content,{type:'text' as const,text:JSON.stringify({serverReceipt:receipt})}],_meta:{...receipt,serverTimings:{executionMs:row.ms,auditMs,totalMs:Date.now()-at}}};
 }
 export async function mcpUsageStats(db:D1Database|undefined,now=Date.now()) {
  const limits={timezone:'Asia/Seoul',unmeasured:['사용자 AI 최종 답변 완료','사용자 AI 실제 토큰 소비량','반환 자료가 최종 답변에 사용되었는지'],clientIdentity:'클라이언트 표시는 자기신고 추정이며 인증된 AI 서비스가 아닙니다.'};

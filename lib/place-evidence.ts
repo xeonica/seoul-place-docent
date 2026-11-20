@@ -14,14 +14,15 @@ export const evidenceInstructions='evidence.records 중 usableAsVerifiedEvidence
 
 /** Static indices contain metadata only. The live D1 ledger is the sole authority
  * for newly introduced claims; it is deliberately not cached with these indices. */
-export async function prepareEvidence(request:Request,db:D1Database|undefined,address:Address,question='',videoLimit=3,videoOffset=0,trace=new DocentTrace()){
+export async function prepareEvidence(request:Request,db:D1Database|undefined,address:Address,question='',videoLimit=3,videoOffset=0,trace=new DocentTrace(),options:{deferExternalCandidates?:boolean}={}){
+ const deferred={source:'bigquery',status:'deferred',diagnosticStatus:'deferred',records:[],nextOffset:null,diagnostics:{backendStatus:'not_queried',candidateCount:0,placeLinkedCount:0,approvedCount:0,usableEvidenceCount:0,reasonCodes:['external_candidates_deferred']}};
  const reviewTask=trace.measure('d1_current_approvals',()=>reviewedEvidence(db,address));
- const placeQuery=reviewTask.then(reviewed=>trace.measure('bigquery_place',()=>bigQueryPlaceCandidates(request,address,6,0,reviewed.records.filter(r=>r.usableAsVerifiedEvidence&&['exact_building','exact_parcel','historical_site'].includes(r.relationType)).flatMap(r=>r.aliases.map(a=>a.name)))));
+ const placeQuery=reviewTask.then(reviewed=>trace.measure('bigquery_place',async()=>options.deferExternalCandidates?deferred:await bigQueryPlaceCandidates(request,address,6,0,reviewed.records.filter(r=>r.usableAsVerifiedEvidence&&['exact_building','exact_parcel','historical_site'].includes(r.relationType)).flatMap(r=>r.aliases.map(a=>a.name)))));
  const [reviewed,articles,videos,bigQueryGitHubResearch,hansungArchive,bigQueryResearch,researchCandidates]=await Promise.all([
   reviewTask,trace.measure('article_metadata',()=>articleCandidates(address,question)),
   trace.measure('video_metadata',()=>getDocentVideoCandidates(address.sggNm,address.emdNm,{query:question,placeName:address.bdNm,limit:videoLimit,offset:videoOffset})),
-  trace.measure('bigquery_github',()=>bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm})),
-  trace.measure('bigquery_hansung',()=>bigQueryHansungArchive(request,{roadAddr:address.roadAddr,district:address.sggNm})),placeQuery,
+  trace.measure('bigquery_github',async()=>options.deferExternalCandidates?deferred:await bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm})),
+  trace.measure('bigquery_hansung',async()=>options.deferExternalCandidates?deferred:await bigQueryHansungArchive(request,{roadAddr:address.roadAddr,district:address.sggNm})),placeQuery,
   trace.measure('district_candidate_index',()=>searchAddressHistory({baseUrl:request.url,address,question}).catch(()=>null)),
  ]);
  const documents=documentPlaceResearch(rawDocuments as unknown as DocumentBundle,address.sggNm,[address.emdNm]);

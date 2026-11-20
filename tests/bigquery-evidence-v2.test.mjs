@@ -6,7 +6,7 @@ import {getDocentVideoCandidates} from '../lib/docent-videos.ts';
 const address={roadAddr:'서울특별시 성동구 마장로42길 16',jibunAddr:'서울특별시 성동구 마장동 1',bdMgtSn:'1'.repeat(25),admCd:'1120010500',mtYn:'0',lnbrMnnm:'1',lnbrSlno:'0',sggNm:'성동구',emdNm:'마장동',bdNm:"test' OR TRUE --"};
 async function queryFixture(result,run){
  const saved={...process.env},original=globalThis.fetch,requests=[];
- Object.assign(process.env,{VERCEL:'1',GCP_PROJECT_ID:'fixture',GCP_PROJECT_NUMBER:'123',GCP_WORKLOAD_IDENTITY_POOL_ID:'fixture',GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:'fixture',GCP_SERVICE_ACCOUNT_EMAIL:'fixture@example.org',BIGQUERY_LOCATION:'asia-northeast3',BIGQUERY_PLACE_SERVING_VERSION:'v2'});
+ Object.assign(process.env,{MCP_PUBLIC_METADATA_CACHE:'off',VERCEL:'1',GCP_PROJECT_ID:'fixture',GCP_PROJECT_NUMBER:'123',GCP_WORKLOAD_IDENTITY_POOL_ID:'fixture',GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:'fixture',GCP_SERVICE_ACCOUNT_EMAIL:'fixture@example.org',BIGQUERY_LOCATION:'asia-northeast3',BIGQUERY_PLACE_SERVING_VERSION:'v2'});
  globalThis.fetch=async(url,init)=>{requests.push({url:String(url),body:JSON.parse(init.body)});return Response.json(String(url).includes('sts.googleapis')?{access_token:'fixture'}:String(url).includes('iamcredentials')?{accessToken:'fixture'}:result);};
  try{return await run(requests);}finally{globalThis.fetch=original;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);}
 }
