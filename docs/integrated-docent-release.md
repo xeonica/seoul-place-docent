@@ -104,3 +104,38 @@ node --test tests/public-mcp-package.integration.mjs tests/public-mcp-node.integ
 운영 팀 권한으로 D1 migration0006_evidence_reviews.sql 적용 여부와 DB 연결을 확인하고, 원문·장소·주장·권리를 확인한 기사·영상만 관리 화면에서 승인해야 한다. BigQuery v2는 기존 SQL과 절차로 단계 이행해야 하며 연결 가능과 승인 자료 존재를 구분해야 한다.
 
 새 코드의 Production 반영 후 /health SHA, 센트라스 prepare의 storytelling/map, 기사·영상의 승인 수와 후보 수, 제출 후 usedEvidenceIds를 다시 확인해야 한다. ChatGPT 연결을 갱신한 새 대화에서 갤러리v6·동일 사진·실패 시 원문 링크·외부 지도를 별도 확인해야 한다. 카카오 허용 도메인, 모바일, 기존16개 테스트 실패도 남아 있다.
+
+## 운영 반영 후 최종 확인 — 위 조사 상태에서 달라진 내용
+
+2026-11-20 10:37:31 UTC에 통합 PR #69의 main 병합 및 자동 Vercel Production 배포를 실제 확인했다. **main과 운영 `/health`의 SHA가 `b4a2fcf93b4e2ac8b631891ded58bffd6a4e2134`로 같았다.** 응답 환경은 production, 스키마 integrated-docent-1, 갤러리는 v6, 주소 설정 있음, 운영자 모델 호출0이었다. 후속 문서 커밋은 이 런타임 코드를 바꾸지 않는다. 이전 섹션 E의 b1a9969는 통합 전 조사 상태다.
+
+PR 상태를 다시 조회했을 때 #63은 Merged, #47·#64·#66은 기존 Draft/Open이었다. **해당 PR 번호가 미병합인 것과 유효한 코드가 통합 PR #69를 통해 main에 포함된 것은 별개다.** #47의 오래된 MCP 구현은 덮어쓰지 않았고 나머지 변경은 위 B의 선택 통합 기준을 따랐다.
+
+새 운영 코드로 `search_place → get_place_history → prepare_place_answer → validate_place_answer`를 다시 실행했다. [배포 후 관측 JSON](integrated-docent-production-observation.json)에 실제 반환값을 기록했다.
+
+| 항목 | 실제 새 Production 결과 |
+| --- | --- |
+| 주소 | 왕십리로410, 하왕십리동1070, 센트라스, 유일 후보 |
+| 구조화 응답 | photos / sourceOnlyRecords / evidence / map / storytelling 반환 |
+| 기사 후보 | 주소 관련 검색에서 2건. 매일경제·동아일보 원문 링크와 원본 조사 ID 유지. citationEligible=false이며 내용 근거로 사용하지 않음 |
+| 영상 후보 | 3건, 실제 확인 구간 없음. 정확한 ID·제목은 배포 후 관측 JSON 참조. 배포 전 조회의 후보와 달라질 수 있음 |
+| 승인 근거 | evidenceBackendConfigured=false, d1_unconfigured. 승인 기사·영상·사건 배열은 비어 있음. 자료 부재가 아니라 승인 DB 미연결 상태 |
+| 지도 | coordinatesConfigured=false, map.status=not_configured. 위도·경도=null, 실제 주소를 담은 카카오 검색 링크 반환. 추정 핀 없음 |
+| BigQuery | 첫 조회는 5초 제한에서 query_error, 재조회는 ready / candidates_unlinked. 연결 가능을 건물의 검증된 자료 존재로 해석하지 않음 |
+| 서버 해설 준비 시간 | 첫5126ms, 재조회1027ms, 구별 후보 캐시 HIT. AI 생성·네트워크·화면 렌더링 시간은 제외 |
+| 사용 추적·검증 | valid=true, usedEvidenceIds=[seoul-museum-5039,seoul-museum-5040], rejectedEvidenceIds=[], mechanical_only. 승인 근거와 의미 검증은 not_checked |
+| 갤러리 HTML | 실제 resources/read v6 HTTP200, 새 payload 정규화 포함 |
+
+### 실제 이미지 접근에서 남은 실패
+
+새 Production에서 반환된 사진 `seoul-museum-5039`의 프록시 GET은 **HTTP502, 약8.3초**로 실패했다. 같은 원본 `museum.seoul.go.kr:8088`은 로컬 직접 GET에서 **HTTP200·image/jpeg·59,505바이트**, SHA256 `f69f8854d1ce42d444c581f68d3b1ab240b714521ae76f7de79828dbeae8dd12`였다. 표준443 경로는 오류 페이지로302, 기존 Sites의 `/api/archive-image`는404여서 대체 경로로 채택하지 않았다.
+
+이 관측은 **Vercel 측 원본 접근과 로컬 접근 결과가 다름**을 보여 준다. 방화벽·지역 제한·특정 포트 차단 중 정확한 원인은 확정하지 않았다. 사진 원본의 동일성이 검증됐어도 현재 프록시 접근 성공까지 보장하지 않는다. 갤러리는 이미지 실패 시 제목·출처 링크를 유지하도록 구현·테스트했으며 다른 검색 사진으로 바꾸지 않는다. 실제 ChatGPT 브라우저의 이 실패 화면은 미검증이다. 따라서 **사진 이미지 표시 문제까지 전부 해결했다고 보고하지 않는다.**
+
+### 남은 운영 연결과 권한
+
+Vercel 운영 팀에서 KAKAO_REST_API_KEY 및 D1 연결 설정(CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_D1_DATABASE_ID / CLOUDFLARE_D1_API_TOKEN)의 존재와 최소 권한을 확인해야 한다. DB를 연결한 뒤 0006 마이그레이션 및 원문·장소·주장·권리를 검토한 기사·영상 승인이 필요하다. 새 키나 자료를 임의로 만들거나 후보를 승인하지 않았다.
+
+Sites 소스 쓰기 자격증명 발급도 실제 시도했으나 **Sites project not found**로 실패했다. 기존 사이트 ID와 URL은 바꾸지 않았다. 따라서 별도 Sites 홈페이지 배포는 완료하지 못했다. 운영 사이트를 소유한 Sites 연결을 복구해야 한다. Vercel MCP는 GitHub main 자동 배포 경로로 성공했지만 CLI 운영 팀 접근은 여전히 없어 환경변수·네트워크 설정을 변경할 수 없다.
+
+사용자에게 운영 팀 접근 연결을 요청했으며, 사진 원본 네트워크 접근, 승인 DB·좌표 키, 홈페이지 별도 배포와 실제 ChatGPT/모바일 표시는 남은 작업이다. 통합 MCP 코드의 Production 배포와 이 미완료 항목을 구분한다.
