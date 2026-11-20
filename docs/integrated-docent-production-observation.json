@@ -1,0 +1,305 @@
+{
+  "observedAt": "2026-11-20",
+  "productionCommit": "b4a2fcf93b4e2ac8b631891ded58bffd6a4e2134",
+  "productionUrl": "https://seoul-place-docent-mcp.vercel.app",
+  "execution": "connected production MCP in Codex, not ChatGPT browser UI",
+  "address": "서울특별시 성동구 왕십리로 410 (하왕십리동, 센트라스)",
+  "map": {
+    "address": "서울특별시 성동구 왕십리로 410 (하왕십리동, 센트라스)",
+    "status": "not_configured",
+    "coordinateSystem": "WGS84",
+    "latitude": null,
+    "longitude": null,
+    "verificationStatus": "not_verified",
+    "source": null,
+    "sourceUrl": null,
+    "queriedAt": null,
+    "errorCode": null,
+    "externalUrl": "https://map.kakao.com/link/search/%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C%20%EC%84%B1%EB%8F%99%EA%B5%AC%20%EC%99%95%EC%8B%AD%EB%A6%AC%EB%A1%9C%20410%20(%ED%95%98%EC%99%95%EC%8B%AD%EB%A6%AC%EB%8F%99%2C%20%EC%84%BC%ED%8A%B8%EB%9D%BC%EC%8A%A4)",
+    "addressSearchUrl": "https://map.kakao.com/link/search/%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C%20%EC%84%B1%EB%8F%99%EA%B5%AC%20%EC%99%95%EC%8B%AD%EB%A6%AC%EB%A1%9C%20410%20(%ED%95%98%EC%99%95%EC%8B%AD%EB%A6%AC%EB%8F%99%2C%20%EC%84%BC%ED%8A%B8%EB%9D%BC%EC%8A%A4)",
+    "message": "좌표 조회는 연결 준비 중입니다. 외부 지도에서 주소를 확인할 수 있습니다.",
+    "rendering": "external_link",
+    "nativeChatgptMapControlled": false
+  },
+  "evidenceStatus": "backend_unavailable",
+  "evidenceDiagnostics": {
+    "candidateCount": 18,
+    "placeLinkedCount": 0,
+    "approvedCount": 0,
+    "rejectedCount": 0,
+    "usableEvidenceCount": 0,
+    "reasonCodes": [
+      "d1_unconfigured"
+    ],
+    "sampled": false,
+    "unlinkedCandidateCount": 17,
+    "byMediaType": {
+      "article": {
+        "candidateCount": 6,
+        "approvedCount": 0,
+        "usableEvidenceCount": 0
+      },
+      "video": {
+        "candidateCount": 3,
+        "approvedCount": 0,
+        "usableEvidenceCount": 0
+      },
+      "photo": {
+        "candidateCount": 1,
+        "approvedCount": 0,
+        "usableEvidenceCount": 0
+      },
+      "document": {
+        "candidateCount": 8,
+        "approvedCount": 0,
+        "usableEvidenceCount": 0
+      }
+    },
+    "articleIndex": {
+      "status": "pending_review_only",
+      "total": 1000
+    },
+    "videoIndex": {
+      "candidateCount": 153,
+      "searchedCount": 120,
+      "returnedCount": 3
+    },
+    "bigquery": "query_error"
+  },
+  "storytelling": {
+    "articles": [],
+    "videos": [],
+    "historicalEvents": [],
+    "usage": {
+      "status": "awaiting_client_answer",
+      "usedEvidenceIds": [],
+      "returnedApprovedEvidenceIds": [],
+      "note": "반환은 사용의 증명이 아닙니다. 최종 해설의 문단별 evidence_ids와 evidenceClaims를 validate_place_answer에 제출하세요."
+    },
+    "instructions": "historicalEvents의 검토한 주장과 원문만 사용하세요. 서로 다른 사건을 날짜·지역명만으로 연결하지 마세요. 기사·영상이 비어 있으면 사용했다고 쓰지 마세요. 사진의 피사체·장소 관계는 별도입니다. 실제 인용 ID는 검증 결과의 usedEvidenceIds로 추적하고 의미 검증은 사용자 AI가 수행합니다."
+  },
+  "photos": [
+    {
+      "evidenceId": "seoul-museum-5039",
+      "title": "청계천과 무학로에 접한 주거지역",
+      "date": "2009",
+      "sourceUrl": "https://museum.seoul.go.kr/archive/archiveNew/NR_archiveView.do?ctgryId=CTGRY385&fileId=H-TRNS-8010-387&fileSn=300&type=A&upperNodeId=CTGRY387",
+      "imageUrl": "https://seoul-place-docent-mcp.vercel.app/img?u=https%3A%2F%2Fmuseum.seoul.go.kr%3A8088%2Fcomponent%2Farchv%2Fdata%2FND_thumbnail.tmb%3FfileSn%3D300%26fileId%3DH-TRNS-8010-387%26w%3D800%26h%3D800",
+      "credit": "서울역사박물관 · 서울생활문화자료조사",
+      "verificationStatus": "VERIFIED",
+      "sourceRecordId": "H-TRNS-8010-387",
+      "relation_type": "neighborhood"
+    }
+  ],
+  "articleCandidates": [
+    {
+      "id": "DISTRICT-ARTICLE-성동구-sd-art-a02539290fd1cc-00521",
+      "originalRecordId": "SD-ART-A02539290FD1CC",
+      "title": "왕십리뉴타운 사업 마무리 단계…하왕십리동 `텐즈힐1` 인기",
+      "sourceUrl": "https://m.mk.co.kr/amp/7423897",
+      "verificationStatus": "후보 · 첨부자료 표기 · 원문 독립 검증 안 됨",
+      "citationEligible": false
+    },
+    {
+      "id": "DISTRICT-ARTICLE-성동구-sd-r7-27a1f3400d57-00425",
+      "originalRecordId": "SD-R7-27A1F3400D57",
+      "title": "`청계천 프리미엄` 꿈틀…마장동 현대 1000∼2000만원 올라",
+      "sourceUrl": "https://www.donga.com/news/Economy/article/all/20030715/7964379/1",
+      "verificationStatus": "후보 · 첨부자료 표기 · 원문 독립 검증 안 됨",
+      "citationEligible": false
+    }
+  ],
+  "videoCandidates": [
+    {
+      "id": "video-4e660425bda0565d3898",
+      "title": "성동의 역사",
+      "url": "https://tv.seoul.go.kr/v/40180",
+      "verifiedSegments": [],
+      "independentlyVerified": false
+    },
+    {
+      "id": "video-d59137e543501f9fab3b",
+      "title": "성동美行 — 금호&옥수 힙플레이스",
+      "url": "https://www.sd.go.kr/tour/selectBbsNttView.do?bbsNo=567&key=4418&nttNo=309635&pageIndex=1&pageUnit=10",
+      "verifiedSegments": [],
+      "independentlyVerified": false
+    },
+    {
+      "id": "video-b60ee2f3302ccc7e729b",
+      "title": "기자가 만난 아름다운 성동",
+      "url": "https://tv.seoul.go.kr/v/57840",
+      "verifiedSegments": [],
+      "independentlyVerified": false
+    }
+  ],
+  "validation": {
+    "valid": true,
+    "usedEvidenceIds": [
+      "seoul-museum-5039",
+      "seoul-museum-5040"
+    ],
+    "rejectedEvidenceIds": [],
+    "verification": "mechanical_only",
+    "verificationStages": {
+      "format": {
+        "status": "checked",
+        "scope": "ids_numbers_length"
+      },
+      "sourceCorrespondence": {
+        "status": "not_checked",
+        "scope": "reviewed_claim_exact_text_only"
+      },
+      "placeRelation": {
+        "status": "not_checked",
+        "scope": "current_reviewed_relation_only"
+      },
+      "semantic": {
+        "status": "not_checked",
+        "executor": "optional_calling_client_ai"
+      }
+    }
+  },
+  "cold": {
+    "serverProcessingMs": 5126,
+    "stages": [
+      {
+        "stage": "d1_current_approvals",
+        "ms": 24,
+        "status": "unavailable"
+      },
+      {
+        "stage": "bigquery_hansung",
+        "ms": 24,
+        "status": "unavailable"
+      },
+      {
+        "stage": "verified_coordinates",
+        "ms": 26,
+        "status": "ok"
+      },
+      {
+        "stage": "official_registers",
+        "ms": 54,
+        "status": "ok"
+      },
+      {
+        "stage": "article_metadata",
+        "ms": 139,
+        "status": "ok"
+      },
+      {
+        "stage": "video_metadata",
+        "ms": 177,
+        "status": "ok"
+      },
+      {
+        "stage": "district_candidate_index",
+        "ms": 1485,
+        "status": "ok"
+      },
+      {
+        "stage": "bigquery_github",
+        "ms": 1953,
+        "status": "ok"
+      },
+      {
+        "stage": "bigquery_place",
+        "ms": 5003,
+        "status": "unavailable"
+      },
+      {
+        "stage": "current_building_register",
+        "ms": 54,
+        "status": "unavailable"
+      },
+      {
+        "stage": "closed_building_register",
+        "ms": 52,
+        "status": "unavailable"
+      }
+    ],
+    "bigQueryStatus": "unavailable"
+  },
+  "warm": {
+    "serverProcessingMs": 1027,
+    "stages": [
+      {
+        "stage": "d1_current_approvals",
+        "ms": 6,
+        "status": "unavailable"
+      },
+      {
+        "stage": "bigquery_hansung",
+        "ms": 19,
+        "status": "unavailable"
+      },
+      {
+        "stage": "article_metadata",
+        "ms": 28,
+        "status": "ok"
+      },
+      {
+        "stage": "verified_coordinates",
+        "ms": 22,
+        "status": "ok"
+      },
+      {
+        "stage": "district_candidate_index",
+        "ms": 23,
+        "status": "ok"
+      },
+      {
+        "stage": "official_registers",
+        "ms": 30,
+        "status": "ok"
+      },
+      {
+        "stage": "video_metadata",
+        "ms": 57,
+        "status": "ok"
+      },
+      {
+        "stage": "bigquery_github",
+        "ms": 852,
+        "status": "ok"
+      },
+      {
+        "stage": "bigquery_place",
+        "ms": 986,
+        "status": "ok"
+      },
+      {
+        "stage": "current_building_register",
+        "ms": 30,
+        "status": "unavailable"
+      },
+      {
+        "stage": "closed_building_register",
+        "ms": 30,
+        "status": "unavailable"
+      }
+    ],
+    "cache": "HIT",
+    "bigQueryStatus": "ready",
+    "diagnostic": "candidates_unlinked"
+  },
+  "limitations": [
+    "D1 approval database unconfigured in production MCP",
+    "Kakao REST coordinates unconfigured; verified external address search fallback returned",
+    "Sites write credential: Sites project not found",
+    "ChatGPT browser rendering and mobile not tested",
+    "Production image proxy returned HTTP502; title/source fallback retained"
+  ],
+  "imageHttpObservation": {
+    "proxyStatus": 502,
+    "proxyMs": 8266,
+    "originalStatus": 200,
+    "originalMime": "image/jpeg;charset=utf-8",
+    "originalBytes": 59505,
+    "originalSha256": "f69f8854d1ce42d444c581f68d3b1ab240b714521ae76f7de79828dbeae8dd12",
+    "standardPortStatus": 302,
+    "sitesImageApiStatus": 404,
+    "rootCause": "network path discrepancy, exact restriction not verified",
+    "galleryResourceStatus": 200
+  }
+}
