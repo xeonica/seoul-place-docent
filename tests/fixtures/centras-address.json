@@ -1,0 +1,16 @@
+{
+  "roadAddr": "서울특별시 성동구 왕십리로 410 (하왕십리동, 센트라스)",
+  "jibunAddr": "서울특별시 성동구 하왕십리동 1070 센트라스",
+  "siNm": "서울특별시",
+  "sggNm": "성동구",
+  "emdNm": "하왕십리동",
+  "admCd": "1120010200",
+  "bdMgtSn": "1120010200108420000000001",
+  "bdNm": "센트라스",
+  "lnbrMnnm": "1070",
+  "lnbrSlno": "0",
+  "mtYn": "0",
+  "zipNo": "04701",
+  "observationSource": "connected_seoul_history_docent_search_place",
+  "observedAt": "2026-11-20"
+}

@@ -1,4 +1,4 @@
-import {galleryHtml,galleryResource,galleryUri} from './docent-gallery';
+import {galleryHtml,galleryResource,galleryUri,legacyGalleryUris} from './docent-gallery';
 export type McpTool = {
   name: string;
   description: string;
@@ -66,8 +66,8 @@ export async function handleMcpMessage(value: unknown, tools: readonly McpTool[]
       result = {resources:[galleryResource]};
       break;
     case 'resources/read':
-      if(params.uri!==galleryUri)return rpcError(id,-32002,'Unknown resource');
-      result = {contents:[{...galleryResource,text:galleryHtml}]};
+      if(params.uri!==galleryUri&&!legacyGalleryUris.includes(String(params.uri)))return rpcError(id,-32002,'Unknown resource');
+      result = {contents:[{...galleryResource,uri:String(params.uri),text:galleryHtml}]};
       break;
     case 'tools/list':
       result = {tools};
