@@ -91,7 +91,8 @@ export function pickScenes(story:DocentStory,question:string,max=14,placeName=''
   return [...hits,...spread].sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
 }
 function proxyMuseumPhoto(imageUrl: string, alternateUrls: string[] = []) {
-  if (!isAllowedImageUrl(imageUrl) || new URL(imageUrl).hostname !== 'museum.seoul.go.kr') {
+  // Preserve main's archive-wide proxy delivery after the record/rights gate.
+  if (!isAllowedImageUrl(imageUrl)) {
     return {imageUrl, alternateUrls};
   }
   return {

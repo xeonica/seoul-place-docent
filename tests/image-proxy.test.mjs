@@ -103,9 +103,9 @@ test('answer records and guide photos proxy museum images and retain provenance'
   const museum = photos.find(photo => photo.evidenceId === '박물관 사진');
   assert.equal(museum.imageMarkdown, `![모의 기록 박물관 사진](<${museum.imageUrl}>)`);
   const archive = photos.find(photo => photo.evidenceId === '기록원 사진');
-  assert.equal(archive.imageUrl, archiveUrl);
-  assert.deepEqual(archive.alternateUrls, []);
-  assert.equal(archive.imageMarkdown, `![모의 기록 기록원 사진](<${archiveUrl}>)`);
+  assert.equal(new URL(archive.imageUrl).searchParams.get('u'), archiveUrl);
+  assert.deepEqual(archive.alternateUrls, [archiveUrl]);
+  assert.equal(archive.imageMarkdown, `![모의 기록 기록원 사진](<${archive.imageUrl}>)`);
   assert.equal(archive.credit, '서울기록원');
   assert.equal(archive.terms, '공공누리 제1유형');
   assert.equal(archive.sourceUrl, archiveSource);
