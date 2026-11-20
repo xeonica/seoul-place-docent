@@ -1,0 +1,106 @@
+{
+  "mainCommit": "6436b5621a1a4790f860ff174580bb3913a27fe5",
+  "predecessorCommit": "0adf99e9f20206f6c88fb3fbecb05d366add7690",
+  "live": [
+    {
+      "name": "세림아파트",
+      "searchMs": 5755,
+      "prepareMs": 3127,
+      "registerCount": 0,
+      "neighborhoodCount": 14,
+      "photoCount": 8,
+      "bqStatus": "ready",
+      "directHistoryEstablished": false
+    },
+    {
+      "name": "한성대학교",
+      "searchMs": 5688,
+      "prepareMs": 3505,
+      "registerCount": 0,
+      "neighborhoodCount": 14,
+      "photoCount": 8,
+      "bqStatus": "ready",
+      "directHistoryEstablished": false
+    },
+    {
+      "name": "면목한신아파트",
+      "searchMs": 5561,
+      "prepareMs": 3549,
+      "registerCount": 0,
+      "neighborhoodCount": 14,
+      "photoCount": 8,
+      "bqStatus": "ready",
+      "directHistoryEstablished": false
+    },
+    {
+      "name": "성동삼성쉐르빌",
+      "searchMs": 5606,
+      "prepareMs": 3080,
+      "registerCount": 0,
+      "neighborhoodCount": 5,
+      "photoCount": 4,
+      "bqStatus": "ready",
+      "directHistoryEstablished": false
+    }
+  ],
+  "core": [
+    {
+      "name": "세림아파트",
+      "beforeColdMs": 36.34,
+      "afterColdMs": 38.45,
+      "beforeWarmMedianMs": 8.64,
+      "afterWarmMedianMs": 4.83
+    },
+    {
+      "name": "한성대학교",
+      "beforeColdMs": 5.26,
+      "afterColdMs": 8.67,
+      "beforeWarmMedianMs": 5.0,
+      "afterWarmMedianMs": 2.83
+    },
+    {
+      "name": "면목한신아파트",
+      "beforeColdMs": 4.2,
+      "afterColdMs": 4.72,
+      "beforeWarmMedianMs": 2.87,
+      "afterWarmMedianMs": 1.43
+    },
+    {
+      "name": "성동삼성쉐르빌",
+      "beforeColdMs": 1.03,
+      "afterColdMs": 2.76,
+      "beforeWarmMedianMs": 0.89,
+      "afterWarmMedianMs": 0.4
+    }
+  ],
+  "response": [
+    {
+      "name": "세림아파트",
+      "standardBytes": 83001,
+      "fullBytes": 175813,
+      "standardRecordCount": 8,
+      "fullRecordCount": 14
+    },
+    {
+      "name": "한성대학교",
+      "standardBytes": 59657,
+      "fullBytes": 81294,
+      "standardRecordCount": 8,
+      "fullRecordCount": 14
+    },
+    {
+      "name": "면목한신아파트",
+      "standardBytes": 73640,
+      "fullBytes": 114832,
+      "standardRecordCount": 8,
+      "fullRecordCount": 14
+    },
+    {
+      "name": "성동삼성쉐르빌",
+      "standardBytes": 63346,
+      "fullBytes": 70538,
+      "standardRecordCount": 7,
+      "fullRecordCount": 7
+    }
+  ]
+}

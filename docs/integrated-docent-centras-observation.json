@@ -1,0 +1,130 @@
+{
+  "observedAt": "2026-11-20",
+  "address": "서울특별시 성동구 왕십리로 410 (하왕십리동, 센트라스)",
+  "execution": "connected production MCP from Codex; not ChatGPT browser UI",
+  "tools": [
+    "search_place",
+    "get_place_history",
+    "prepare_place_answer",
+    "validate_place_answer"
+  ],
+  "returnedRecordIds": [
+    "doc:MD20261106-T-009",
+    "doc:MD20261106-T-010",
+    "claim:E003095",
+    "doc:MD20261106-T-011",
+    "claim:E000425",
+    "claim:E003092",
+    "doc:MD20261106-T-013",
+    "doc:MD20261106-T-014",
+    "seoul-museum-5038",
+    "seoul-museum-5039",
+    "seoul-museum-5040",
+    "seoul-museum-5044",
+    "seoul-museum-5052",
+    "doc:MD20261106-T-016"
+  ],
+  "photos": [
+    {
+      "evidenceId": "seoul-museum-5039",
+      "title": "청계천과 무학로에 접한 주거지역",
+      "date": "2009",
+      "scope": "dong",
+      "imageUrl": "https://seoul-place-docent-mcp.vercel.app/img?u=https%3A%2F%2Fmuseum.seoul.go.kr%3A8088%2Fcomponent%2Farchv%2Fdata%2FND_thumbnail.tmb%3FfileSn%3D300%26fileId%3DH-TRNS-8010-387%26w%3D800%26h%3D800",
+      "sourceUrl": "https://museum.seoul.go.kr/archive/archiveNew/NR_archiveView.do?ctgryId=CTGRY385&type=A&upperNodeId=CTGRY387&fileSn=300&fileId=H-TRNS-8010-387",
+      "credit": "서울역사박물관 · 서울생활문화자료조사"
+    },
+    {
+      "evidenceId": "seoul-museum-5040",
+      "title": "늘우물길 주변 슬레이트 지붕의 공장들",
+      "date": "2009",
+      "scope": "dong",
+      "imageUrl": "https://seoul-place-docent-mcp.vercel.app/img?u=https%3A%2F%2Fmuseum.seoul.go.kr%3A8088%2Fcomponent%2Farchv%2Fdata%2FND_thumbnail.tmb%3FfileSn%3D300%26fileId%3DH-TRNS-6273-387%26w%3D800%26h%3D800",
+      "sourceUrl": "https://museum.seoul.go.kr/archive/archiveNew/NR_archiveView.do?ctgryId=CTGRY385&type=A&upperNodeId=CTGRY387&fileSn=300&fileId=H-TRNS-6273-387",
+      "credit": "서울역사박물관 · 서울생활문화자료조사"
+    },
+    {
+      "evidenceId": "seoul-museum-5038",
+      "title": "영광식당 철골보의 모습",
+      "date": "2009",
+      "scope": "dong",
+      "imageUrl": "https://seoul-place-docent-mcp.vercel.app/img?u=https%3A%2F%2Fmuseum.seoul.go.kr%3A8088%2Fcomponent%2Farchv%2Fdata%2FND_thumbnail.tmb%3FfileSn%3D300%26fileId%3DH-TRNS-4658-387%26w%3D800%26h%3D800",
+      "sourceUrl": "https://museum.seoul.go.kr/archive/archiveNew/NR_archiveView.do?ctgryId=CTGRY385&type=A&upperNodeId=CTGRY387&fileSn=300&fileId=H-TRNS-4658-387",
+      "credit": "서울역사박물관 · 서울생활문화자료조사"
+    },
+    {
+      "evidenceId": "seoul-museum-5052",
+      "title": "대중옥 식당이 시작한 첫 건물",
+      "date": "2009",
+      "scope": "dong",
+      "imageUrl": "https://seoul-place-docent-mcp.vercel.app/img?u=https%3A%2F%2Fmuseum.seoul.go.kr%3A8088%2Fcomponent%2Farchv%2Fdata%2FND_thumbnail.tmb%3FfileSn%3D300%26fileId%3DH-TRNS-4738-387%26w%3D800%26h%3D800",
+      "sourceUrl": "https://museum.seoul.go.kr/archive/archiveNew/NR_archiveView.do?ctgryId=CTGRY385&type=A&upperNodeId=CTGRY387&fileSn=300&fileId=H-TRNS-4738-387",
+      "credit": "서울역사박물관 · 서울생활문화자료조사"
+    },
+    {
+      "evidenceId": "seoul-museum-5044",
+      "title": "영광식당 지붕 모습",
+      "date": "2009",
+      "scope": "dong",
+      "imageUrl": "https://seoul-place-docent-mcp.vercel.app/img?u=https%3A%2F%2Fmuseum.seoul.go.kr%3A8088%2Fcomponent%2Farchv%2Fdata%2FND_thumbnail.tmb%3FfileSn%3D300%26fileId%3DH-TRNS-4626-387%26w%3D800%26h%3D800",
+      "sourceUrl": "https://museum.seoul.go.kr/archive/archiveNew/NR_archiveView.do?ctgryId=CTGRY385&type=A&upperNodeId=CTGRY387&fileSn=300&fileId=H-TRNS-4626-387",
+      "credit": "서울역사박물관 · 서울생활문화자료조사"
+    }
+  ],
+  "videoCandidates": [
+    {
+      "id": "video-048a3f87ba30e81da073",
+      "title": "왕십리 뉴타운 개발지구 건설업체 간 용역직원 갈등",
+      "url": "https://imnews.imbc.com/replay/2003/nwdesk/article/1905971_30767.html",
+      "independentlyVerified": false
+    },
+    {
+      "id": "video-5ca09811cb901cc41fb6",
+      "title": "PD수첩 899회: 뉴타운, 출구는 없는가?",
+      "url": "https://playvod.imbc.com/Vod/VodPlay?broadcastId=1000836100490100000",
+      "independentlyVerified": false
+    },
+    {
+      "id": "video-b220fc3f22da0e9e87c7",
+      "title": "은평·왕십리 뉴타운 1만7천가구 공급",
+      "url": "https://news.sbs.co.kr/news/endPage.do?news_id=N0311327309",
+      "independentlyVerified": false
+    }
+  ],
+  "approvalStatus": "production response has no current reviewed-evidence ledger; not independently approved",
+  "mapStatus": "map/coordinates fields absent in observed production response",
+  "answer": {
+    "question_type": "특정 장소·건물",
+    "paragraphs": [
+      {
+        "heading": "주거와 일터가 함께 있던 동네",
+        "text": "센트라스가 있는 하왕십리동에서 시선을 주변의 옛 주거지로 넓혀 보겠습니다. 서울역사박물관의 2009년 기록에는 청계천과 무학로에 접한 조밀한 주거지역과 한옥·변형된 한옥, 다세대연립주택, 소규모 공장이 함께 등장합니다.",
+        "evidence_ids": [
+          "seoul-museum-5039"
+        ]
+      },
+      {
+        "heading": "기록 사진으로 살펴보는 주변 풍경",
+        "text": "늘우물길 주변 사진에는 슬레이트 지붕의 금형공장들이 밀집한 모습이 기록되어 있습니다. 이 사진들은 센트라스 건물 자체의 과거 사진이 아니라, 당시 주변 동네의 주거와 일터를 함께 살펴보는 자료입니다.",
+        "evidence_ids": [
+          "seoul-museum-5040"
+        ]
+      }
+    ],
+    "held": []
+  },
+  "submittedUsedEvidenceIds": [
+    "seoul-museum-5039",
+    "seoul-museum-5040"
+  ],
+  "validation": {
+    "valid": true,
+    "verification": "mechanical_only",
+    "omitted": 0,
+    "sourceIds": [
+      "seoul-museum-5039",
+      "seoul-museum-5040"
+    ]
+  },
+  "requestId": "a575ed86-bf2b-4534-a791-9bc5d57005e3"
+}

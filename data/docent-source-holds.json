@@ -1,0 +1,9 @@
+{
+  "claim:E000421": {
+    "status": "held",
+    "sourceUrl": "https://encykorea.aks.ac.kr/Article/E0067004",
+    "checkedAt": "2026-11-20",
+    "reason": "source_text_not_confirmed",
+    "basis": "제공된 출처는 성동구 항목이다. 이번에 추출한 원문 텍스트에서 이 주장에 사용된 1961년 및 축산물시장 이전 설명을 확인하지 못했다. 사실 자체의 오류나 원문 전체의 부재를 확정한 것은 아니며, 정확한 근거 문단을 다시 대조할 때까지 해설에서 보류한다."
+  }
+}

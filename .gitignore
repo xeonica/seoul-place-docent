@@ -62,6 +62,7 @@ __pycache__/
 /data/video-workbooks/records-packed.json
 
 /public/research/video-records/
+/public/research/seoul-district-collection/shards/
 
 # Isolated public MCP deployment and private test receipts
 /.mcp-public/
@@ -72,3 +73,7 @@ __pycache__/
 
 # Built from versioned research CSVs on every build
 /data/research-catalog.json
+
+/data/photo-asset-proofs.json
+
+/public/research/article-evidence/

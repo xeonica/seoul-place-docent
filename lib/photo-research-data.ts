@@ -1,3 +1,4 @@
+import {photoProofFor} from './photo-proof-index';
 import legacy from '../data/photo-research/bundle.json';
 import additional from '../data/integrated-research/photo-items.json';
 import workbookPhotos from '../data/archive-workbook/photos.json';
@@ -12,7 +13,7 @@ for (const row of items) if (row.previewUrl) previews.set(row.previewUrl, (previ
 const meta = summary.meta as unknown as PhotoResearchMeta;
 const aliases = meta.integratedResearch?.idAliases || {};
 // Derived counts can change across collections; supplied IDs and original values cannot.
-export const photoResearchBundle: PhotoResearchBundle = {meta, items: items.map(row => ({...row,
+export const photoResearchBundle: PhotoResearchBundle = {meta, items: items.map(row => ({...row,assetProof:photoProofFor(row.sourceUrl),
   sameSourceCount: counts.get(row.sourceKey) || 0,
   samePreviewCount: previews.get(row.previewUrl || '') || 0,
   previousIds: [...new Set([...(row.previousIds || []), ...Object.keys(aliases).filter(id => aliases[id] === row.id)])],

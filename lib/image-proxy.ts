@@ -1,4 +1,5 @@
 export const IMAGE_RESOURCE_DOMAINS = [
+  'https://upload.wikimedia.org',
   'https://museum.seoul.go.kr:8088',
   'https://museum.seoul.go.kr',
   'https://archive-file.sb.go.kr',

@@ -1,10 +1,11 @@
+import {isRegisteredPhotoUrl} from '@/lib/photo-proof-index';
 import {NextRequest,NextResponse} from 'next/server';
 import {permittedArchiveImage,MAX_ARCHIVE_IMAGE_BYTES} from '../../../lib/archive-image-delivery';
 
 export const runtime='nodejs';
 export async function GET(request:NextRequest){
   const target=permittedArchiveImage(request.nextUrl.searchParams.get('url')||'');
-  if(!target)return new NextResponse('Invalid archive image URL',{status:400});
+  if(!target||!isRegisteredPhotoUrl(target.href))return new NextResponse('Invalid archive image URL',{status:400});
   try{
     const upstream=await fetch(target.href,{redirect:'manual',signal:AbortSignal.timeout(7000),headers:{Accept:'image/jpeg,image/png,image/webp'}});
     if(!upstream.ok||!upstream.body)return new NextResponse('Archive image unavailable',{status:502});

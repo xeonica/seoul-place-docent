@@ -1,3 +1,5 @@
+import './pack-article-evidence.mjs';
+import './pack-photo-verification.mjs';
 import './pack-research-catalog.mjs';
 import {readFileSync,writeFileSync,mkdirSync,rmSync} from 'node:fs';
 import {gzipSync} from 'node:zlib';
@@ -18,3 +20,4 @@ for(let start=0;start<items.length;start+=64){
  for(const item of batch)packed.byVideo[item.id]=key;
 }
 writeFileSync(new URL('records-packed.json',folder),JSON.stringify(packed)+'\n');
+await import('./split-district-research-index.mjs');

@@ -1,3 +1,4 @@
+import {fixturePhoto} from './fixtures/verified-photo.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {normalizeClosedBuildings, normalizeParcel, normalizePublications, parcelNumber} from '../lib/place-context.ts';
@@ -26,12 +27,13 @@ test('publication normalization strips markup and only opens official museum ebo
  assert.throws(()=>normalizePublications({RESULT:{CODE:'INFO-100'}}),e=>e.code==='PUBLICATIONS_INFO-100');
 });
 test('a public image URL alone cannot enable a thumbnail, and unknown permissions stay unchanged',()=>{
- const allowed=bundle.items.find(r=>r.previewUrl&&r.values['사이트표시가능여부']==='가능'&&r.values['썸네일표시가능여부']==='가능');
+ const allowed={...fixturePhoto('PERMISSION'),values:{...fixturePhoto('PERMISSION').values,'사이트표시가능여부':'가능','썸네일표시가능여부':'가능'}};
  assert.ok(photoResearchThumbnail(allowed));
  for(const value of ['미확인','불가',''])assert.equal(photoResearchThumbnail({...allowed,values:{...allowed.values,'썸네일표시가능여부':value}}),null);
  assert.equal(photoResearchThumbnail({...allowed,previewUrl:'https://user:password@example.test/image.jpg'}),null);
 });
 test('visual galleries paginate in place, reset invalid pages, and label district fallback without cross-district matching',()=>{
+ const bundle={meta:{id:'fixture',files:[{id:'LOCAL',collectionScope:'dong',district:'서대문구',dong:'북아현동',count:14},{id:'DISTRICT',collectionScope:'district',district:'성동구',dong:'',count:2}]},items:[...Array.from({length:14},(_,i)=>({...fixturePhoto('LOCAL-'+i),batchId:'LOCAL',district:'서대문구',dong:'북아현동',recordType:'visual'})),...Array.from({length:2},(_,i)=>({...fixturePhoto('DISTRICT-'+i),batchId:'DISTRICT',district:'성동구',dong:'',recordType:'visual'}))]};
  const first=placePhotoResearch(bundle,'서대문구',['북아현동']);const second=placePhotoResearch(bundle,'서대문구',['북아현동'],2);
  assert.equal(first.visuals.scope,'dong');assert.equal(first.visuals.rows.length,6);assert.equal(second.visuals.page,2);
  assert.ok(first.visuals.rows.every(r=>r.district==='서대문구'&&r.dong==='북아현동'&&!r.candidate));

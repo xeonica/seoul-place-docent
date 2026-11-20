@@ -45,6 +45,13 @@ export async function auditedCall(db:D1Database|undefined,tool:string,client:str
  const persisted=await recordMcpCall(db,row);
  // Structured fallback contains no inputs, exception messages, IP or raw client headers.
  if(!persisted)console.info(JSON.stringify({event:'mcp_tool_call',...row,persisted:false}));
+ try{
+  const packet=JSON.parse(result.content[0]?.text||'{}');
+  if(packet.evidence?.diagnostics)console.info(JSON.stringify({event:'mcp_evidence_retrieval',requestId,tool,status:packet.evidence.status,diagnostics:packet.evidence.diagnostics}));
+  if(packet.timing)console.info(JSON.stringify({event:'mcp_stage_timing',requestId,tool,timing:packet.timing}));
+  const records=packet.neighborhood?.records;
+  if(Array.isArray(records))for(const record of records){const photo=record.source?.photoVerification;if(photo)console.info(JSON.stringify({event:'mcp_photo_verification',requestId,tool,evidenceId:record.id,sourceRecordId:photo.sourceRecordId,mediaId:photo.mediaId,status:photo.verificationStatus,reason:photo.reason,displayable:photo.displayable===true}));}
+ }catch{/* No photo payload, input values are never logged. */}
  const {errorType: _errorType,...publicResult}=result;
  const receipt={requestId,auditPersisted:persisted,clientIdentityVerified:false};
  return {...publicResult,content:[...publicResult.content,{type:'text' as const,text:JSON.stringify({serverReceipt:receipt})}],_meta:receipt};
