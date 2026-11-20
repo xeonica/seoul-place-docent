@@ -96,11 +96,11 @@ export function parseCoordinates(documents:Record<string,any>[],a:Address):Coord
  if(!d.x||!d.y||!Number.isFinite(x)||!Number.isFinite(y)||x<126.7||x>127.3||y<37.4||y>37.8)return {status:'unconfirmed',message:'서울 주소에 해당하는 좌표를 확인하지 못했습니다.'};
  return {status:'verified',x,y,administrativeDong:typeof d.address.region_3depth_h_name==='string'?d.address.region_3depth_h_name:'',queriedAt:new Date().toISOString(),source:'카카오 로컬 API',sourceUrl:'https://developers.kakao.com/docs/ko/local/dev-guide'};
 }
-export async function coordinates(a:Address,secrets:Secrets):Promise<CoordinateResult>{
+export async function coordinates(a:Address,secrets:Secrets,options:{timeoutMs?:number}={}):Promise<CoordinateResult>{
  assertSeoul(a);
  if(!secrets.KAKAO_REST_API_KEY)return {status:'not_configured',message:'좌표 조회는 연결 준비 중입니다. 외부 지도에서 주소를 확인할 수 있습니다.'};
  const url=new URL('https://dapi.kakao.com/v2/local/search/address.json');url.searchParams.set('query',normalizeRoad(a.roadAddr));url.searchParams.set('analyze_type','exact');
- const response=await fetch(url,{headers:{Authorization:`KakaoAK ${secrets.KAKAO_REST_API_KEY}`},signal:AbortSignal.timeout(12000)});
+ const response=await fetch(url,{headers:{Authorization:`KakaoAK ${secrets.KAKAO_REST_API_KEY}`},signal:AbortSignal.timeout(options.timeoutMs||12000)});
  if(response.status===401||response.status===403)throw new ServiceError('KAKAO_AUTH','카카오 로컬 API 인증 또는 카카오맵 사용 설정을 확인해야 합니다.');
  if(response.status===429)throw new ServiceError('KAKAO_QUOTA','카카오 API 이용 한도에 도달했습니다. 개발자 콘솔의 쿼터를 확인해 주세요.',429);
  if(!response.ok)throw new ServiceError('KAKAO_PROVIDER','카카오 좌표 조회에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.');
