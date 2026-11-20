@@ -6,10 +6,12 @@ type Config = {accountId: string; databaseId: string; token: string};
 export function createD1Http(config: Config, fetcher: typeof fetch = fetch): D1Database {
   const endpoint = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(config.accountId)}/d1/database/${encodeURIComponent(config.databaseId)}/query`;
   async function query(queries: Query[], batch = false): Promise<D1Result[]> {
+    const telemetry=queries.every(q=>/^\s*(CREATE|INSERT)\b/i.test(q.sql)&&/\bmcp_(client_docent_log|tool_call_log)\b/.test(q.sql));
+    const approvalRead=queries.every(q=>/^\s*SELECT\b/i.test(q.sql)&&/\bdocent_evidence_reviews\b/.test(q.sql));
     const response = await fetcher(endpoint, {
       method: 'POST', headers: {'Content-Type': 'application/json', Authorization: `Bearer ${config.token}`},
       body: JSON.stringify(batch ? {batch: queries} : queries[0]),
-      cache: 'no-store', signal: AbortSignal.timeout(25000),
+      cache: 'no-store', signal: AbortSignal.timeout(telemetry?1500:approvalRead?5000:25000),
     });
     // Never surface the remote response, credentials or SQL through a public error.
     if (!response.ok) throw new Error(`D1 HTTP request failed (${response.status})`);

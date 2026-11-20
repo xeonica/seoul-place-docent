@@ -22,7 +22,7 @@ export const archiveAssets=sqliteTable('archive_assets',{
 },t=>[index('archive_asset_source').on(t.sourceId)]);
 export const archiveAudit=sqliteTable('archive_audit',{
  id:text('id').primaryKey(),sourceId:text('source_id'),action:text('action').notNull(),actor:text('actor').notNull(),note:text('note').notNull(),createdAt:text('created_at').notNull()
-});
+},t=>[index('archive_audit_action_actor').on(t.action,t.actor)]);
 export const archiveImports=sqliteTable('archive_imports',{
  id:text('id').primaryKey(),kind:text('kind').notNull(),sourceUrl:text('source_url').notNull(),status:text('status').notNull(),recordCount:integer('record_count').notNull(),note:text('note').notNull(),createdAt:text('created_at').notNull()
 });

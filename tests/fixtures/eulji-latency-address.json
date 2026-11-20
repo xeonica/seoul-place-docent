@@ -1,0 +1,17 @@
+{
+  "roadAddr": "서울특별시 중구 을지로 281 (을지로7가)",
+  "jibunAddr": "서울특별시 중구 을지로7가 143",
+  "siNm": "서울특별시",
+  "sggNm": "중구",
+  "emdNm": "을지로7가",
+  "admCd": "1114014900",
+  "bdMgtSn": "1114014900100020001000003",
+  "bdNm": "",
+  "lnbrMnnm": "143",
+  "lnbrSlno": "0",
+  "mtYn": "0",
+  "zipNo": "04566",
+  "observationSource": "official_JUSO_response_selected_exact_road_for_benchmark_only",
+  "observedAt": "2026-11-20",
+  "note": "User-facing short query returned two candidates; this fixture is not proof of automatic unique resolution."
+}
