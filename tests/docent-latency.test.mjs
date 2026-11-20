@@ -47,3 +47,29 @@ test('legacy identity envelopes discard unreviewed text before entering the meta
  configure();globalThis.fetch=async url=>Response.json(String(url).includes('sts.googleapis')?{access_token:'fixture'}:String(url).includes('iamcredentials')?{accessToken:'fixture'}:{jobComplete:true,rows:[{f:[{v:JSON.stringify({original_record_id:'public-id',place_id:'public-place',relation_type:'uncertain',unreviewed_body:'must-not-be-cached',private_location:'must-not-be-cached'})}]}]});
  const first=await queryBigQuery(request(),'legacy-envelope',[],{publicMetadata:true,identityDetailColumn:0}),hit=await queryBigQuery(request(),'legacy-envelope',[],{publicMetadata:true,identityDetailColumn:0});assert.equal(JSON.stringify(hit).includes('must-not-be-cached'),false);assert.deepEqual(JSON.parse(first[0].f[0].v),{original_record_id:'public-id',place_id:'public-place',relation_type:'uncertain'});
 }));
+
+test('incomplete BigQuery job is read without resubmitting SQL and only completed rows are cached',async()=>isolation(async()=>{
+ configure();let submitted=0,reads=0;
+ globalThis.fetch=async(url,init)=>{
+  if(String(url).includes('sts.googleapis'))return Response.json({access_token:'fixture'});
+  if(String(url).includes('iamcredentials'))return Response.json({accessToken:'fixture'});
+  if(init.method==='POST'){submitted++;return Response.json({jobComplete:false,jobReference:{jobId:'job/encoded',location:'asia-northeast3'}});}
+  reads++;assert.equal(new URL(url).pathname.endsWith('/job%2Fencoded'),true);assert.equal(new URL(url).searchParams.get('location'),'asia-northeast3');assert.equal(init.body,undefined);
+  return Response.json(reads===1?{jobComplete:false}:{jobComplete:true,rows:[{f:[{v:'completed'}]}]});
+ };
+ const first=await queryBigQuery(request(),'pending',[],{publicMetadata:true});
+ assert.equal(first[0].f[0].v,'completed');await queryBigQuery(request(),'pending',[],{publicMetadata:true});assert.equal(submitted,1);assert.equal(reads,2);
+}));
+
+test('unfinished jobs have bounded reads, are evicted and expose safe reason codes',async()=>isolation(async()=>{
+ configure();let reads=0;
+ globalThis.fetch=async(url,init)=>{
+  if(String(url).includes('sts.googleapis'))return Response.json({access_token:'fixture'});
+  if(String(url).includes('iamcredentials'))return Response.json({accessToken:'fixture'});
+  if(init.method!=='POST')reads++;
+  return Response.json({jobComplete:false,jobReference:{jobId:'pending'}});
+ };
+ for(let i=0;i<2;i++)assert.deepEqual((await bigQueryPlaceCandidates(request(),address)).diagnostics.reasonCodes,['query_incomplete']);assert.equal(reads,4);
+ globalThis.fetch=async()=>new Response('secret provider details',{status:403});
+ const denied=await bigQueryPlaceCandidates(request(),address);assert.deepEqual(denied.diagnostics.reasonCodes,['query_access_denied']);assert.equal(JSON.stringify(denied).includes('secret'),false);
+}));
