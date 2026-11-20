@@ -231,10 +231,13 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         let token = input.token;
         if (!token) {
           const found = await searchAddresses(input.address!, 1, env);
-          if (found.candidates.length !== 1 || found.total !== 1) {
+          const normalized = (value: string) => value.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+          const matches = found.candidates.filter(candidate => normalized(candidate.roadAddr) === normalized(input.address!) || normalized(candidate.jibunAddr) === normalized(input.address!));
+          const selected = matches.length === 1 ? matches[0] : found.candidates.length === 1 && found.total === 1 ? found.candidates[0] : undefined;
+          if (!selected) {
             return textResult({needsChoice: true, note: found.candidates.length ? '일치하는 서울 주소 후보' : '서울 주소를 찾지 못했어요. 도로명과 건물번호를 확인해 주세요.', candidates: found.candidates.slice(0, 10).map(c => ({roadAddr: c.roadAddr, jibunAddr: c.jibunAddr, token: c.token}))});
           }
-          token = found.candidates[0].token;
+          token = selected.token;
         }
         const address = await verifyAddress(token, env);
         const story = getFullDocentStory(address.sggNm, address.emdNm);
