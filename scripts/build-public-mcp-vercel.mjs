@@ -9,6 +9,7 @@ await copyFile(new URL('../.mcp-public/public/index.html',import.meta.url),new U
 await copyFile(new URL('../deploy/public-mcp/node-handler.mjs',import.meta.url),new URL('functions/mcp.func/index.mjs',output));
 await cp(new URL('../.mcp-public/public/research/video-records/',import.meta.url),new URL('functions/mcp.func/public/research/video-records/',output),{recursive:true});
 await cp(new URL('../.mcp-public/public/research/article-evidence/',import.meta.url),new URL('functions/mcp.func/public/research/article-evidence/',output),{recursive:true});
+await cp(new URL('../.mcp-public/public/research/seoul-district-collection/shards/',import.meta.url),new URL('functions/mcp.func/public/research/seoul-district-collection/shards/',output),{recursive:true});
 await writeFile(new URL('functions/mcp.func/.vc-config.json',output),JSON.stringify({runtime:'nodejs22.x',handler:'index.mjs',launcherType:'Nodejs',maxDuration:60}));
 await writeFile(new URL('config.json',output),JSON.stringify({version:3,routes:[{src:'/health',dest:'/mcp?__route=health'},{src:'/img',dest:'/mcp?__route=img'},{handle:'filesystem'},{src:'/.*',status:404}]}));
 console.log('Vercel Build Output API package prepared.');

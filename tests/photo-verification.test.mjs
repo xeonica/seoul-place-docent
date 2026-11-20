@@ -103,9 +103,11 @@ test('actual homepage PhotoPreview component renders no img for unverified recor
 });
 test('normal archive API withholds unverified preview fields while an explicit raw export remains auditable',async t=>{
  const item={...fixturePhoto('FIXTURE-API'),assetProof:undefined,district:'성동구',dong:'마장동',batchId:'FIXTURE-API',sourceKey:'fixture-api',correctionIds:[],values:{...fixturePhoto('FIXTURE-API').values}};
- t.mock.method(globalThis,'fetch',async()=>new Response(gzipSync(JSON.stringify({items:[item]}))));
- const visible=await (await photoResearchRoute(new Request('https://example.test/api/archive/photo-research?id=FIXTURE-API'))).json();
+ const {photoResearchBundle}=await import('../lib/photo-research-data.ts');
+ photoResearchBundle.items.push(item);t.after(()=>photoResearchBundle.items.splice(photoResearchBundle.items.indexOf(item),1));
+ const url='https://example.test/api/archive/photo-research?district='+encodeURIComponent('성동구')+'&id='+encodeURIComponent(item.id);
+ const visible=await (await photoResearchRoute(new Request(url))).json();
  assert.equal(visible.total,1);assert.equal(visible.rows[0].previewUrl,null);assert.equal(visible.rows[0].imageVerification.verificationStatus,'SOURCE_ONLY');
- const exported=await (await photoResearchRoute(new Request('https://example.test/api/archive/photo-research?id=FIXTURE-API&download=1'))).json();
+ const exported=await (await photoResearchRoute(new Request(url+'&download=1'))).json();
  assert.equal(exported.rows[0].previewUrl,item.previewUrl);assert.ok(exported.provenance);
 });

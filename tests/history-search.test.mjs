@@ -36,6 +36,8 @@ test('actual district shards return bounded article/photo candidates for the fiv
   ];
   const results = await Promise.all(places.map((place) => searchAddressHistory({baseUrl: 'https://example.test', address: place, question: place.bdNm || place.emdNm})));
   assert.equal(results.length, 5);
+  const cached=await searchAddressHistory({baseUrl:'https://example.test',address:places[0],question:places[0].emdNm});
+  assert.equal(cached.cacheStatus,'HIT');assert.deepEqual(cached.articles,results[0].articles);
   for (const result of results) {
     assert.ok(result.counts.articleRegisteredInDistrict > 0);
     assert.ok(result.counts.photoRegisteredInDistrict > 0);

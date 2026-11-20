@@ -1,4 +1,5 @@
 import regions from '../data/seoul-regions.json';
+import {readDistrictResearchAsset} from '@/lib/video-records-asset';
 
 export type DistrictResearchKind = 'articles' | 'photos';
 export type DistrictResearchIndex<T> = {district: string; rows: T[]; registered: number};
@@ -28,10 +29,9 @@ function parseRows(value: unknown, kind: DistrictResearchKind): unknown[] {
 }
 
 async function load<T>(baseUrl: string, kind: DistrictResearchKind, district: string): Promise<DistrictResearchIndex<T>> {
-  const url = shardUrl(baseUrl, kind, district);
-  const response = await fetch(url);
-  if (!response.ok || !response.body) throw new Error(`${district} ${kind} 인덱스를 읽지 못했습니다.`);
-  const stream = response.body.pipeThrough(new DecompressionStream('gzip'));
+  shardUrl(baseUrl, kind, district);
+  const bytes=await readDistrictResearchAsset(kind,district);
+  const stream = new Blob([new Uint8Array(bytes)]).stream().pipeThrough(new DecompressionStream('gzip'));
   const parsed = await new Response(stream).json();
   const rows = parseRows(parsed, kind);
   if (rows.some((row) => !row || typeof row !== 'object' || (row as Record<string, unknown>).district !== district)) {

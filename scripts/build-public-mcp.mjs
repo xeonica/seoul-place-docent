@@ -13,6 +13,7 @@ await build({configFile:false,root,publicDir:false,logLevel:'warn',resolve:{alia
   rollupOptions:{output:{format:'esm',entryFileNames:'public-mcp.mjs',inlineDynamicImports:true}}}});
 await cp(new URL('../public/research/video-records/',import.meta.url),new URL('public/research/video-records/',output),{recursive:true});
 await cp(new URL('../public/research/article-evidence/',import.meta.url),new URL('public/research/article-evidence/',output),{recursive:true});
+await cp(new URL('../public/research/seoul-district-collection/shards/',import.meta.url),new URL('public/research/seoul-district-collection/shards/',output),{recursive:true});
 await writeFile(new URL('package.json',output),JSON.stringify({name:'seoul-place-docent-public-mcp',private:true,type:'module',engines:{node:'22.x'}})+'\n');
 await writeFile(new URL('vercel.json',output),JSON.stringify({version:2,framework:null,buildCommand:'',installCommand:'',outputDirectory:'public',
  functions:{'api/public-mcp.mjs':{maxDuration:60,includeFiles:'public/research/**'}},

@@ -1,3 +1,5 @@
+import {storyEvidence,evidenceUsage} from '@/lib/story-evidence';
+import {searchAddressHistory} from '@/lib/history-search';
 import {resolvePlaceMap} from '@/lib/mcp-map-view';
 import {sourcePageKey} from '@/lib/photo-verification';
 import {DocentTrace} from '@/lib/docent-runtime';
@@ -178,7 +180,7 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         await logClientDocent(env.DB,{event:'validation',ms:Date.now()-started,ok:checked.omitted===0,records:scenes.length,type:checked.questionType,kept:checked.paragraphs.length,omitted:checked.omitted});
         const used=new Set(checked.paragraphs.flatMap(p=>p.evidenceIds));
         return textResult({...checked,sources:scenes.filter(s=>used.has(s.id)).map(sceneSource),evidenceValidation,valid:checked.omitted===0&&evidenceValidation.valid&&(checked.paragraphs.length>0||evidenceValidation.checked>0),
-          timing:trace.snapshot(),verificationStages:{format:{status:checked.omitted?'held':'checked',scope:'ids_numbers_length'},sourceCorrespondence:{status:evidenceValidation.checked?(evidenceValidation.valid?'checked':'held'):'not_checked',scope:'reviewed_claim_exact_text_only'},placeRelation:{status:evidenceValidation.checked?(evidenceValidation.valid?'checked':'held'):'not_checked',scope:'current_reviewed_relation_only'},semantic:{status:'not_checked',executor:'optional_calling_client_ai'}},verification:'mechanical_only',note:'근거 id·숫자·길이 검사입니다. 의미적 사실 일치와 장소 동일성은 별도로 확인해야 합니다.'});
+          ...evidenceUsage([...used],evidenceValidation.results),timing:trace.snapshot(),verificationStages:{format:{status:checked.omitted?'held':'checked',scope:'ids_numbers_length'},sourceCorrespondence:{status:evidenceValidation.checked?(evidenceValidation.valid?'checked':'held'):'not_checked',scope:'reviewed_claim_exact_text_only'},placeRelation:{status:evidenceValidation.checked?(evidenceValidation.valid?'checked':'held'):'not_checked',scope:'current_reviewed_relation_only'},semantic:{status:'not_checked',executor:'optional_calling_client_ai'}},verification:'mechanical_only',note:'근거 id·숫자·길이 검사입니다. 의미적 사실 일치와 장소 동일성은 별도로 확인해야 합니다.'});
       }
       case 'search_place': {
         const input = searchInput.parse(args);
@@ -215,13 +217,14 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           evidence: scene.evidence,
         }));
         const nextOffset = input.offset + scenes.length;
-        const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive] = await Promise.all([
+        const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive,researchCandidates] = await Promise.all([
           bigQueryPlaceCandidates(request,address,input.limit,input.offset),
           bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm,query:input.query,limit:input.limit,offset:input.offset}),
           bigQueryHansungArchive(request,{...input,roadAddr:address.roadAddr,district:address.sggNm}),
+          searchAddressHistory({baseUrl:request.url,address,question:input.query}).catch(()=>null),
         ]);
         return textResult({
-          address,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,
+          address,research,researchCandidates,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,
           place: {records: await placeRegisterRecords(address,env)},
           neighborhood: {
             district: story.district,
@@ -263,8 +266,9 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         const evidence={...newEvidence.evidence,candidates:[...newEvidence.evidence.candidates,...photoCandidates],diagnostics:{...newEvidence.evidence.diagnostics,candidateCount:newEvidence.evidence.diagnostics.candidateCount+photoCandidates.length,byMediaType:{...newEvidence.evidence.diagnostics.byMediaType,photo:{...newEvidence.evidence.diagnostics.byMediaType.photo,candidateCount:(newEvidence.evidence.diagnostics.byMediaType.photo?.candidateCount||0)+photoCandidates.length}}}};
         const rawResearch=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
         const research=input.detailLevel==='full'?rawResearch:{...rawResearch,records:rawResearch.records.map(r=>({...r,observations:r.observations.slice(0,2),observationsTruncated:r.observations.length>2,detailMode:'detailLevel=full'}))};
-        const guide=textResult({...packet,map,coordinates:{latitude:map.latitude,longitude:map.longitude,coordinateSystem:map.coordinateSystem,verificationStatus:map.verificationStatus},experience:docentExperience(packet,evidence.records),registerDiagnostics:registers,provenance:{provider:'seoul_place_docent_mcp',returnedEvidenceIds:[...packet.neighborhood.records.map(r=>r.id),...evidence.records.map(r=>r.evidenceId)],unobserved:['클라이언트 별도 웹 검색','사용자 AI 최종 해설'],externalMaterialMayClaimMcpOrigin:false},timing:trace.snapshot(),evidence,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,videos,visuals:{photos,comparisons:[],comparisonStatus:'subject_and_direction_not_checked',sourceOnlyRecords,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:'지도는 map.externalUrl로 안내하세요. latitude는 위도, longitude는 경도이며 null이면 지도 핀을 추정하지 마세요. ChatGPT 자체 지도 렌더링은 서버가 보장하지 않습니다. '+(input.detailLevel==='full'?packet.instructions:FIELD_DOCENT_RULES)+evidenceInstructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\n기록 사진은 이 도구의 MCP Apps 갤러리에서 자동 표시합니다. ChatGPT와 Claude에서는 사진을 MCP Apps 갤러리에서 보여주고, 답변 본문에는 캡션과 원문 링크를 사용하세요. 갤러리가 보이지 않는 환경에서는 날짜·소장기관·장소 범위와 함께 sourceUrl 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색은 현재 모습 보충용으로만 구분하여 사용하고 MCP 사진인 것처럼 표현하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
-        return {...guide,structuredContent:{photos,sourceOnlyRecords,evidence,map}};
+        const storytelling=storyEvidence(evidence.records,photos);
+        const guide=textResult({...packet,storytelling,researchCandidates:newEvidence.researchCandidates,map,coordinates:{latitude:map.latitude,longitude:map.longitude,coordinateSystem:map.coordinateSystem,verificationStatus:map.verificationStatus},experience:docentExperience(packet,evidence.records),registerDiagnostics:registers,provenance:{provider:'seoul_place_docent_mcp',returnedEvidenceIds:[...packet.neighborhood.records.map(r=>r.id),...evidence.records.map(r=>r.evidenceId)],unobserved:['클라이언트 별도 웹 검색','사용자 AI 최종 해설'],externalMaterialMayClaimMcpOrigin:false},timing:trace.snapshot(),evidence,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,videos,visuals:{photos,comparisons:[],comparisonStatus:'subject_and_direction_not_checked',sourceOnlyRecords,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:storytelling.instructions+' 지도는 map.externalUrl로 안내하세요. latitude는 위도, longitude는 경도이며 null이면 지도 핀을 추정하지 마세요. ChatGPT 자체 지도 렌더링은 서버가 보장하지 않습니다. '+(input.detailLevel==='full'?packet.instructions:FIELD_DOCENT_RULES)+evidenceInstructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\n기록 사진은 이 도구의 MCP Apps 갤러리에서 자동 표시합니다. ChatGPT와 Claude에서는 사진을 MCP Apps 갤러리에서 보여주고, 답변 본문에는 캡션과 원문 링크를 사용하세요. 갤러리가 보이지 않는 환경에서는 날짜·소장기관·장소 범위와 함께 sourceUrl 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색은 현재 모습 보충용으로만 구분하여 사용하고 MCP 사진인 것처럼 표현하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'});
+        return {...guide,structuredContent:{photos,sourceOnlyRecords,evidence,map,storytelling}};
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);

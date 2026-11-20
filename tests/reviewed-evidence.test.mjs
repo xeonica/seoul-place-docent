@@ -1,3 +1,4 @@
+import {storyEvidence} from '../lib/story-evidence.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
@@ -93,7 +94,7 @@ test('wrong original record cannot be combined with an unrelated reviewed source
  const {db,input}=await fixture();await assert.rejects(()=>reviewEvidence(db,{...input,recordId:'ANOTHER-ARTICLE-ID'},'reviewer'),e=>e.code==='EVIDENCE_SOURCE');
 });
 test('approved article flows through prepare and validation while returned static articles remain candidates',async()=>{
- const {db,input}=await fixture();await reviewEvidence(db,input,'reviewer');const result=await prepareEvidence(new Request('https://fixture.test/mcp'),db,addresses[0]);const e=result.evidence.records[0];assert.equal(e.usableAsVerifiedEvidence,true);assert.equal(result.evidence.status,'approved_records_available');assert.equal(result.evidence.diagnostics.byMediaType.article.usableEvidenceCount,1);assert.equal(validateEvidenceClaims(result.evidence.records,[{evidenceId:e.evidenceId,claimId:e.claims[0].claimId,text:e.claims[0].text}]).valid,true);assert.ok(result.evidence.candidates.every(r=>!r.usableAsVerifiedEvidence));
+ const {db,input}=await fixture();await reviewEvidence(db,input,'reviewer');const result=await prepareEvidence(new Request('https://fixture.test/mcp'),db,addresses[0]);const e=result.evidence.records[0];assert.equal(e.usableAsVerifiedEvidence,true);assert.equal(result.evidence.status,'approved_records_available');assert.equal(result.evidence.diagnostics.byMediaType.article.usableEvidenceCount,1);assert.equal(validateEvidenceClaims(result.evidence.records,[{evidenceId:e.evidenceId,claimId:e.claims[0].claimId,text:e.claims[0].text}]).valid,true);assert.ok(result.evidence.candidates.every(r=>!r.usableAsVerifiedEvidence));const story=storyEvidence(result.evidence.records);assert.equal(story.articles[0].evidenceId,e.evidenceId);assert.equal(story.historicalEvents[0].claimId,e.claims[0].claimId);assert.equal(story.articles[0].verifiedExcerpt,e.claims[0].text);
 });
 
 test('expired approval is retained in history but supplies no claims or aliases',async()=>{

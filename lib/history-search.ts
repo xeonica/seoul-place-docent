@@ -3,12 +3,14 @@ import type {PhotoResearchItem} from './photo-research';
 import {loadDistrictResearchIndex} from './district-history-index';
 import type {Address} from './providers';
 import type {VideoRelation} from './video-catalog-types';
+import {DocentCache} from './docent-runtime';
+const candidateCache=new DocentCache<HistorySearchResult>(300000,32);
 
 export type HistoryRelationCode = 'A' | 'B' | 'C' | 'D' | 'U';
 export type HistoryCandidate = {
   id: string;
   originalRecordId: string;
-  mediaType: 'article' | 'photo' | 'map';
+  mediaType: 'article' | 'photo' | 'map' | 'video';
   title: string;
   description: string | null;
   sourceInstitution: string | null;
@@ -33,6 +35,7 @@ export type HistoryCandidate = {
 };
 
 export type HistorySearchResult = {
+  cacheStatus?: string;
   placeId: string;
   articles: HistoryCandidate[];
   photos: HistoryCandidate[];
@@ -242,7 +245,14 @@ export function normalizeVideoCandidate(video: DocentVideoCandidate, address: Ad
   };
 }
 
-export async function searchAddressHistory(input: {baseUrl: string; address: Address; question?: string; page?: number}): Promise<HistorySearchResult> {
+type HistoryInput={baseUrl: string; address: Address; question?: string; page?: number};
+export async function searchAddressHistory(input:HistoryInput):Promise<HistorySearchResult>{
+ const started=Date.now();
+ const key=JSON.stringify([new URL(input.baseUrl).origin,input.address,(input.question||'').normalize('NFKC').trim(),input.page||1]);
+ const result=await candidateCache.get(key,()=>searchUncachedAddressHistory(input));
+ return {...result.value,cacheStatus:result.cache,counts:{...result.value.counts,elapsedMs:Date.now()-started}};
+}
+async function searchUncachedAddressHistory(input: HistoryInput): Promise<HistorySearchResult> {
   const startedAt = Date.now();
   const page = Math.min(MAX_PAGE, Math.max(1, Math.floor(input.page || 1)));
   const [articleIndex, photoIndex] = await Promise.all([
