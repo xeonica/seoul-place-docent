@@ -16,7 +16,15 @@ async function post<T>(url: string, body: unknown, signal: AbortSignal, token?: 
   return await response.json() as T;
 }
 
-type QueryResult = {jobComplete: boolean; errors?: unknown[]; rows?: {f: {v: string | null}[]}[]};
+type QueryResult = {jobComplete: boolean; jobReference?:{projectId?:string;jobId?:string;location?:string}; errors?: unknown[]; rows?: {f: {v: string | null}[]}[]};
+function queryFailureReason(error:unknown){
+  const message=error instanceof Error?error.message:'';
+  if(error instanceof Error&&['TimeoutError','AbortError'].includes(error.name))return 'query_timeout_or_cancelled';
+  if(message==='Upstream HTTP 403'||message==='Upstream HTTP 401')return 'query_access_denied';
+  if(message==='Query still running')return 'query_incomplete';
+  if(message==='Query returned errors')return 'query_execution_error';
+  return 'query_failed';
+}
 const publicQueries=new DocentCache<NonNullable<QueryResult['rows']>>(60000,64);
 const authorizations=new WeakMap<Request,{signal:AbortSignal;ready:Promise<string>}>();
 const measurements=new WeakMap<Request,{queries:number;cacheHits:number;cacheMisses:number;authExchanges:number}>();
@@ -39,7 +47,7 @@ export async function queryBigQuery(request: Request, query: string, queryParame
   const load=async()=>{
   let authorization=authorizations.get(request);
   if(!authorization){
-   const signal=AbortSignal.any([request.signal,AbortSignal.timeout(5000)]);
+   const signal=AbortSignal.any([request.signal,AbortSignal.timeout(8000)]);
    const ready=(async()=>{
    metrics(request).authExchanges++;
    const federated = await post<{access_token: string}>('https://sts.googleapis.com/v1/token', {
@@ -55,12 +63,24 @@ export async function queryBigQuery(request: Request, query: string, queryParame
    })();authorization={signal,ready};authorizations.set(request,authorization);
   }
   const token=await authorization.ready;
-  const result = await post<QueryResult>(
+  let result = await post<QueryResult>(
     'https://bigquery.googleapis.com/bigquery/v2/projects/' + encodeURIComponent(project) + '/queries',
     {query, parameterMode: 'NAMED', queryParameters, useLegacySql: false, location,
       timeoutMs: 3500, maximumBytesBilled: '1000000000'}, authorization.signal, token,
   );
-  if (!result.jobComplete || result.errors?.length) throw new Error('Query did not complete');
+  // jobs.query may return HTTP 200 before its job has finished. Read that same
+  // job (never resubmit SQL), at most twice and within the shared 8s deadline.
+  const job=result.jobReference;
+  for(let attempt=0;!result.jobComplete&&job?.jobId&&attempt<2;attempt++){
+    const url=new URL('https://bigquery.googleapis.com/bigquery/v2/projects/'+encodeURIComponent(project)+'/queries/'+encodeURIComponent(job.jobId));
+    url.searchParams.set('location',job.location||location);
+    url.searchParams.set('timeoutMs','1500');
+    const response=await fetch(url,{headers:{Authorization:'Bearer '+token},signal:authorization.signal});
+    if(!response.ok)throw new Error('Upstream HTTP '+response.status);
+    result=await response.json() as QueryResult;
+  }
+  if (!result.jobComplete) throw new Error('Query still running');
+  if (result.errors?.length) throw new Error('Query returned errors');
   const rows=result.rows??[];
   if(options.identityDetailColumn===undefined)return rows;
   // Legacy SQL can return a whole-row identity envelope. Strip all unrelated
@@ -101,7 +121,7 @@ export async function bigQueryPlaceCandidates(request: Request, address: Partial
         let detail:Record<string,unknown>={};try{detail=JSON.parse(row.f[fields.length]?.v||'{}');}catch{}
         return {...Object.fromEntries(fields.map((name,index)=>[name,row.f[index]?.v??null])),originalRecordId:typeof detail.original_record_id==='string'?detail.original_record_id:null,placeId:typeof detail.place_id==='string'?detail.place_id:null,relation_type:normalizeRelation(String(detail.relation_type||row.f[6]?.v||'uncertain')),usableAsVerifiedEvidence:false};
       }),diagnostics:{backendStatus:'ready',candidateCount:Math.min(rows.length,limit),placeLinkedCount:0,approvedCount:0,usableEvidenceCount:0,reasonCodes:rows.length?['candidate_approval_not_authoritative']:['no_matching_serving_rows']}};
-  } catch {return {source:'bigquery',status:'unavailable',diagnosticStatus:'query_error',records:[],nextOffset:null,diagnostics:{backendStatus:'unavailable',candidateCount:0,placeLinkedCount:0,approvedCount:0,usableEvidenceCount:0,reasonCodes:['query_failed']}};}
+  } catch(error) {return {source:'bigquery',status:'unavailable',diagnosticStatus:'query_error',records:[],nextOffset:null,diagnostics:{backendStatus:'unavailable',candidateCount:0,placeLinkedCount:0,approvedCount:0,usableEvidenceCount:0,servingVersion:process.env.BIGQUERY_PLACE_SERVING_VERSION==='v2'?'v2':'legacy',reasonCodes:[queryFailureReason(error)]}};}
 }
 
 const githubFields = ['research_id', 'title', 'source_url', 'media_type', 'district', 'location',
