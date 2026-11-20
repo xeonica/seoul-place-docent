@@ -71,8 +71,9 @@ test('GET returns the image and caching headers, HEAD returns the same headers',
   assert.equal(head.body, null);
 });
 
-test('answer records and guide photos proxy museum images and retain provenance', () => {
+test('answer records and guide photos proxy allowlisted images and retain provenance', () => {
   const archiveUrl = 'https://archives-files.seoul.go.kr/photo.jpg';
+  const seongbukUrl = 'https://archive-file.sb.go.kr/files/serviceFile/archive/item/2020/05/06/photo';
   const museumUrl = 'https://museum.seoul.go.kr/archive/record';
   const archiveSource = 'https://archives.seoul.go.kr/record';
   const scene = (id, imageUrl, sourceUrl, credit) => ({
@@ -84,6 +85,7 @@ test('answer records and guide photos proxy museum images and retain provenance'
     story: {dong: '대조동', scenes: [
       scene('박물관 사진', original, museumUrl, '서울역사박물관'),
       scene('기록원 사진', archiveUrl, archiveSource, '서울기록원'),
+      scene('성북 사진', seongbukUrl, 'https://archive.sb.go.kr/item/5158', '성북마을아카이브'),
     ]},
   });
   const photos = guidePhotos(packet);
@@ -100,10 +102,18 @@ test('answer records and guide photos proxy museum images and retain provenance'
   const museum = photos.find(photo => photo.evidenceId === '박물관 사진');
   assert.equal(museum.imageMarkdown, `![박물관 사진](<${museum.imageUrl}>)`);
   const archive = photos.find(photo => photo.evidenceId === '기록원 사진');
-  assert.equal(archive.imageUrl, archiveUrl);
-  assert.deepEqual(archive.alternateUrls, []);
-  assert.equal(archive.imageMarkdown, `![기록원 사진](<${archiveUrl}>)`);
+  assert.equal(new URL(archive.imageUrl).searchParams.get('u'), archiveUrl);
+  assert.deepEqual(archive.alternateUrls, [archiveUrl]);
+  assert.equal(archive.imageMarkdown, `![기록원 사진](<${archive.imageUrl}>)`);
   assert.equal(archive.credit, '서울기록원');
   assert.equal(archive.terms, '공공누리 제1유형');
   assert.equal(archive.sourceUrl, archiveSource);
+  const seongbuk = photos.find(photo => photo.evidenceId === '성북 사진');
+  assert.equal(new URL(seongbuk.imageUrl).searchParams.get('u'), seongbukUrl);
+  assert.deepEqual(seongbuk.alternateUrls, [seongbukUrl]);
+  assert.equal(seongbuk.sourceUrl, 'https://archive.sb.go.kr/item/5158');
+  assert.equal(seongbuk.credit, '성북마을아카이브');
+  assert.equal(seongbuk.terms, '공공누리 제1유형');
+  const sourceRecord = packet.neighborhood.records.find(record => record.id === '성북 사진').source.photo;
+  assert.equal(new URL(sourceRecord.imageUrl).searchParams.get('u'), seongbukUrl);
 });
