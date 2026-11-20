@@ -69,6 +69,10 @@ test('all eight actual MCP tools run without operator model calls; address and G
   assert.equal((await invoke('prepare_place_answer',{token:'forged'})).isError,true);
   assert.equal((await invoke('get_archive_stats')).isError,true);
   assert.equal(data(await invoke('get_answer_stats')).available,false);
+  candidates=[address,{...address,roadAddr:'서울특별시 종로구 사직로7안길 161',jibunAddr:'서울특별시 종로구 세종로 2-1'}];
+  assert.equal(data(await invoke('prepare_place_answer',{address:address.roadAddr})).needsChoice,undefined);
+  assert.equal(data(await invoke('prepare_place_answer',{address:'서울특별시 종로구 사직로 161 (세종로)'})).needsChoice,undefined);
+  assert.equal(data(await invoke('prepare_place_answer',{address:'사직로'})).needsChoice,true);
   candidates=[address,address];assert.equal(data(await invoke('prepare_place_answer',{address:address.roadAddr})).needsChoice,true);
   candidates=[];assert.equal(data(await invoke('search_place',{query:'없는주소'})).candidates.length,0);
   candidates=[{...address,siNm:'부산광역시',admCd:'2629010100'}];assert.equal(data(await invoke('search_place',{query:'부산주소'})).candidates.length,0);
