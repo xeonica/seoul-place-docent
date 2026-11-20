@@ -43,7 +43,3 @@ test('queries using a caller coordinate do not enter the shared public metadata 
  configure();let queries=0;globalThis.fetch=async url=>{if(String(url).includes('sts.googleapis'))return Response.json({access_token:'fixture'});if(String(url).includes('iamcredentials'))return Response.json({accessToken:'fixture'});queries++;return Response.json({jobComplete:true,rows:[]});};
  for(let i=0;i<2;i++){const r=request();await bigQueryPlaceCandidates(r,address,6,0,[],{latitude:37.56,longitude:127.04});assert.equal(bigQueryMetrics(r).cacheHits,0);}assert.equal(queries,2);
 }));
-test('legacy identity envelopes discard unreviewed text before entering the metadata cache',async()=>isolation(async()=>{
- configure();globalThis.fetch=async url=>Response.json(String(url).includes('sts.googleapis')?{access_token:'fixture'}:String(url).includes('iamcredentials')?{accessToken:'fixture'}:{jobComplete:true,rows:[{f:[{v:JSON.stringify({original_record_id:'public-id',place_id:'public-place',relation_type:'uncertain',unreviewed_body:'must-not-be-cached',private_location:'must-not-be-cached'})}]}]});
- const first=await queryBigQuery(request(),'legacy-envelope',[],{publicMetadata:true,identityDetailColumn:0}),hit=await queryBigQuery(request(),'legacy-envelope',[],{publicMetadata:true,identityDetailColumn:0});assert.equal(JSON.stringify(hit).includes('must-not-be-cached'),false);assert.deepEqual(JSON.parse(first[0].f[0].v),{original_record_id:'public-id',place_id:'public-place',relation_type:'uncertain'});
-}));

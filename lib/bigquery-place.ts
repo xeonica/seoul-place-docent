@@ -28,7 +28,7 @@ const parameter = (name: string, value: string | number): QueryParameter => ({
   name, parameterType: {type: typeof value === 'number' ? 'INT64' : 'STRING'}, parameterValue: {value: String(value)},
 });
 
-export async function queryBigQuery(request: Request, query: string, queryParameters: QueryParameter[],options:{publicMetadata?:boolean;identityDetailColumn?:number}={}) {
+export async function queryBigQuery(request: Request, query: string, queryParameters: QueryParameter[],options:{publicMetadata?:boolean}={}) {
   const settings = process.env;
   const subjectToken = request.headers.get('x-vercel-oidc-token');
   const {GCP_PROJECT_ID: project, GCP_PROJECT_NUMBER: number, GCP_WORKLOAD_IDENTITY_POOL_ID: pool,
@@ -61,22 +61,18 @@ export async function queryBigQuery(request: Request, query: string, queryParame
       timeoutMs: 3500, maximumBytesBilled: '1000000000'}, authorization.signal, token,
   );
   if (!result.jobComplete || result.errors?.length) throw new Error('Query did not complete');
-  const rows=result.rows??[];
-  if(options.identityDetailColumn===undefined)return rows;
-  // Legacy SQL can return a whole-row identity envelope. Strip all unrelated
-  // fields before either caching or returning it; never retain unreviewed text.
-  return rows.map(row=>({f:row.f.map((field,index)=>{if(index!==options.identityDetailColumn)return field;let raw:Record<string,unknown>={};try{raw=JSON.parse(field.v||'{}');}catch{}return {v:JSON.stringify(Object.fromEntries(['original_record_id','place_id','relation_type'].map(k=>[k,typeof raw?.[k]==='string'?raw[k]:null])))};})}));
+  return result.rows ?? [];
   };
   const m=metrics(request);m.queries++;
   // Only public candidate metadata. Current D1 approvals and credentials are never
   // stored here. Authorization is shared only within this Request, not across users.
-  const key=JSON.stringify([settings.VERCEL_GIT_COMMIT_SHA||'process',project,number,pool,provider,account,location,query,queryParameters,options.identityDetailColumn??null]);
+  const key=JSON.stringify([settings.VERCEL_GIT_COMMIT_SHA||'process',project,number,pool,provider,account,location,query,queryParameters]);
   const cached=(!options.publicMetadata||settings.MCP_PUBLIC_METADATA_CACHE==='off')?{value:await load(),cache:'MISS'}:await publicQueries.get(key,load);
   if(cached.cache==='HIT')m.cacheHits++;else m.cacheMisses++;
   return structuredClone(cached.value);
 }
 
-const queryCandidateMetadata=(request:Request,sql:string,params:QueryParameter[],identityDetailColumn?:number)=>queryBigQuery(request,sql,params,{identityDetailColumn,publicMetadata:!params.some(p=>p.name==='has_point'&&p.parameterValue.value==='true')});
+const queryCandidateMetadata=(request:Request,sql:string,params:QueryParameter[])=>queryBigQuery(request,sql,params,{publicMetadata:!params.some(p=>p.name==='has_point'&&p.parameterValue.value==='true')});
 
 export async function bigQueryPlaceCandidates(request: Request, address: Partial<Address>, limit = 6, offset = 0, aliases:string[] = [], point?:{latitude:number;longitude:number;radiusM?:number}) {
   const place=evidencePlace(address),road=normalizePlaceText(address.roadAddr),jibun=normalizePlaceText(address.jibunAddr);
@@ -85,15 +81,15 @@ export async function bigQueryPlaceCandidates(request: Request, address: Partial
   const radius=Math.floor(Math.min(2000,Math.max(1,point?.radiusM||500)));
   const selected=process.env.BIGQUERY_PLACE_SERVING_VERSION==='v2'?'seoul-docent-archive.docent_serving.place_evidence_candidates_v2':view;
   // JSON field extraction is additive-compatible with the legacy serving view.
-  const field=(name:string)=>`JSON_VALUE(TO_JSON_STRING(r), '$.${name}')`;
-  const detail='TO_JSON_STRING(r)';
+  const field=(name:string)=>selected===view?`JSON_VALUE(TO_JSON_STRING(r), '$.${name}')`:name==='alias_verified'?`CAST(r.${name} AS STRING)`:`r.${name}`;
+  const detail=`TO_JSON_STRING(STRUCT(${field('original_record_id')} AS original_record_id,${field('place_id')} AS place_id,${field('relation_type')} AS relation_type))`;
   const clean=(name:string)=>`REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(REGEXP_REPLACE(COALESCE(${field(name)}, ''), r'^서울\\s', '서울특별시 '), NFKC), r'\\s+', '')`;
   const near=`(@has_point='true' AND ST_DWITHIN(SAFE.ST_GEOGPOINT(SAFE_CAST(${field('longitude')} AS FLOAT64),SAFE_CAST(${field('latitude')} AS FLOAT64)),ST_GEOGPOINT(@longitude,@latitude),@radius))`;
   const match=`${near} OR (@building != '' AND ${field('building_management_number')}=@building) OR (@pnu != '' AND ${field('pnu')}=@pnu) OR (@road != '' AND ${clean('road_address')}=@road) OR (@jibun != '' AND ${clean('jibun_address')}=@jibun) OR (@district != '' AND ${field('district')}=@district AND ((@dong != '' AND ${field('legal_dong')}=@dong) OR (@name != '' AND ${clean('place_name')}=@name))) OR (@district != '' AND ${field('district')}=@district AND COALESCE(${field('legal_dong')},'')='' AND COALESCE(${field('place_id')},'')='') OR (@alias != '' AND ${field('alias_verified')}='true' AND STRPOS(@alias, CONCAT('|',${clean('alias_name')},'|'))>0)`;
   try {
     const rows = await queryCandidateMetadata(request,
       'SELECT '+fields.map(field).join(', ')+', '+detail+' FROM `'+selected+'` r WHERE ('+match+") AND STARTS_WITH(source_url, 'https://') ORDER BY CASE WHEN "+field('building_management_number')+"=@building AND @building!='' THEN 0 WHEN "+field('pnu')+"=@pnu AND @pnu!='' THEN 1 WHEN "+clean('road_address')+"=@road THEN 2 ELSE 3 END, record_id LIMIT @limit OFFSET @offset",
-      [parameter('has_point',pointValid?'true':'false'),{name:'latitude',parameterType:{type:'FLOAT64'},parameterValue:{value:String(pointValid?point!.latitude:0)}},{name:'longitude',parameterType:{type:'FLOAT64'},parameterValue:{value:String(pointValid?point!.longitude:0)}},parameter('radius',radius),parameter('road',road),parameter('jibun',jibun),parameter('building',place.buildingManagementNumber||''),parameter('pnu',place.pnu||''),parameter('district',place.district||''),parameter('dong',place.legalDong||''),parameter('name',normalizePlaceText(place.placeName||'')),parameter('alias',aliases.slice(0,10).map(value=>'|'+normalizePlaceText(value)+'|').join('')),parameter('limit',limit+1),parameter('offset',offset)],fields.length);
+      [parameter('has_point',pointValid?'true':'false'),{name:'latitude',parameterType:{type:'FLOAT64'},parameterValue:{value:String(pointValid?point!.latitude:0)}},{name:'longitude',parameterType:{type:'FLOAT64'},parameterValue:{value:String(pointValid?point!.longitude:0)}},parameter('radius',radius),parameter('road',road),parameter('jibun',jibun),parameter('building',place.buildingManagementNumber||''),parameter('pnu',place.pnu||''),parameter('district',place.district||''),parameter('dong',place.legalDong||''),parameter('name',normalizePlaceText(place.placeName||'')),parameter('alias',aliases.slice(0,10).map(value=>'|'+normalizePlaceText(value)+'|').join('')),parameter('limit',limit+1),parameter('offset',offset)]);
     if (!rows) return {source:'bigquery',status:'unavailable',diagnosticStatus:'backend_unavailable',records:[],nextOffset:null,diagnostics:{backendStatus:'unavailable',candidateCount:0,placeLinkedCount:0,approvedCount:0,usableEvidenceCount:0,reasonCodes:['workload_identity_unconfigured']}};
     return {source:'bigquery',status:'ready',diagnosticStatus:rows.length?'candidates_unlinked':'no_candidates',nextOffset:rows.length>limit?offset+limit:null,
       note:'후보 검색 결과입니다. 문자열·식별자 일치만으로 승인되지 않습니다. D1의 현재 검토·권리 이력이 별도로 필요합니다.',
