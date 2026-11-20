@@ -64,7 +64,3 @@ export const archivePassageCorrections=sqliteTable('archive_passage_corrections'
  beforeSnapshot:text('before_snapshot').notNull(),afterSnapshot:text('after_snapshot').notNull(),
  reason:text('reason').notNull(),evidence:text('evidence').notNull(),actor:text('actor').notNull(),createdAt:text('created_at').notNull()
 },t=>[uniqueIndex('archive_passage_correction_revision').on(t.passageId,t.revision)]);
-
-export const docentEvidenceReviews=sqliteTable('docent_evidence_reviews',{
- id:text('id').primaryKey(),evidenceId:text('evidence_id').notNull(),recordId:text('record_id').notNull(),passageId:text('passage_id').notNull().references(()=>archivePassages.id),placeKey:text('place_key').notNull(),mediaType:text('media_type').notNull(),relationType:text('relation_type').notNull(),status:text('status').notNull(),revision:integer('revision').notNull(),contentReviewKey:text('content_review_key').notNull(),snapshotJson:text('snapshot_json').notNull(),payloadJson:text('payload_json').notNull(),actor:text('actor').notNull(),checkedAt:text('checked_at').notNull()
-},t=>[uniqueIndex('docent_evidence_revision').on(t.evidenceId,t.revision),index('docent_evidence_place').on(t.placeKey,t.evidenceId,t.revision)]);

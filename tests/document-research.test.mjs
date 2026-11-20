@@ -75,10 +75,10 @@ test('address context requires the exact district and legal dong and labels dist
 
 test('API paginates, validates table/target, and exports all rows matching the current filters',async()=>{
  const query=p=>GET(new Request('https://example.test/api/archive/document-research?'+p));
- const paged=await (await query('table=claims&page=2')).json();assert.equal(paged.total,1070);assert.equal(paged.rows.length,20);assert.equal(paged.page,2);assert.notEqual(paged.rows[0].id,bundle.tables.claims[0].id);
- const capped=await (await query('table=claims&page=99999')).json();assert.equal(capped.page,54);assert.equal(capped.rows.length,10);
- assert.equal((await query('table=invalid')).status,400);assert.equal((await query('target=invalid')).status,400);assert.equal((await query('mode=place&district=부산')).status,400);
- const response=await query('table=timeline&district=강남구&download=1');assert.match(response.headers.get('content-disposition'),/^attachment;/);assert.match(response.headers.get('cache-control'),/private/);
+ const paged=await query('table=claims&page=2').json();assert.equal(paged.total,1070);assert.equal(paged.rows.length,20);assert.equal(paged.page,2);assert.notEqual(paged.rows[0].id,bundle.tables.claims[0].id);
+ const capped=await query('table=claims&page=99999').json();assert.equal(capped.page,54);assert.equal(capped.rows.length,10);
+ assert.equal(query('table=invalid').status,400);assert.equal(query('target=invalid').status,400);assert.equal(query('mode=place&district=부산').status,400);
+ const response=query('table=timeline&district=강남구&download=1');assert.match(response.headers.get('content-disposition'),/^attachment;/);assert.match(response.headers.get('cache-control'),/private/);
  const exported=await response.json();assert.ok(exported.rows.length>20);assert.ok(exported.rows.every(r=>r.district==='강남구'));assert.equal(exported.provenance.id,bundle.meta.id);
  assert.equal(safeDocumentUrl('javascript:alert(1)'),null);assert.equal(safeDocumentUrl('미확인'),null);assert.equal(safeDocumentUrl('https://www.seoul.go.kr'),'https://www.seoul.go.kr/');
 });
