@@ -11,6 +11,7 @@ import {prepareEvidence,evidenceInstructions,validateEvidenceClaims} from '@/lib
 import {reviewedEvidence} from '@/lib/reviewed-evidence';
 import {verifyPhotoAsset} from '@/lib/photo-verification';
 import {bigQueryGitHubCandidates,bigQueryHansungArchive,bigQueryPlaceCandidates} from '@/lib/bigquery-place';
+import {galleryUri} from '@/lib/docent-gallery';
 import {env} from '@/lib/runtime-env';
 import {searchResearchRecords,placeResearchCandidates} from '@/lib/research-catalog';
 import {z} from 'zod';
@@ -45,6 +46,7 @@ const tools: McpTool[] = [
   },
   {
     name:'prepare_place_answer',
+    _meta:{ui:{resourceUri:galleryUri}},
     description:'빠른 기본 경로: 명확한 주소를 address로 넣고 detailLevel=brief로 한 번 호출하세요. 후보가 여러 개면 선택을 요청하고, 추가 자료가 필요할 때만 full 또는 get_place_history를 사용하세요. brief의 validationContext로 검증할 수 있습니다. 사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 도구의 기록 사진 갤러리에서 자동 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token과 address 중 정확히 하나만 전달하세요. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
     inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]},detailLevel:{type:'string',enum:['brief','standard','full']},videoLimit:{type:'integer',minimum:1,maximum:12},videoOffset:{type:'integer',minimum:0,maximum:100}},additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
@@ -91,6 +93,7 @@ const tools: McpTool[] = [
   },
   {
     name: 'generate_place_answer',
+    _meta:{ui:{resourceUri:galleryUri}},
     description: '호환용 이름입니다. prepare_place_answer와 같은 근거 묶음을 반환합니다. 서버는 답변을 생성하지 않습니다. 호출한 당신의 AI가 질문을 분류하고 사진·출처를 포함한 도슨트 답변을 작성하세요.',
     inputSchema: {
       type: 'object',
