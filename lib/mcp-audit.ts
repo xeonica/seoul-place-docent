@@ -27,6 +27,11 @@ export function returnedRecords(result:McpToolResult):number {
  }catch { /* Non-JSON text is not a returned source record. */ }
  return 0;
 }
+function resultFailure(result:McpToolResult):string|null {
+ if(result.isError)return result.errorType||'tool_error';
+ try{const value=JSON.parse(result.content[0]?.text||'{}');if(isObject(value)&&value.available===false)return typeof value.errorCode==='string'?value.errorCode:'unavailable';}catch{/* Ordinary successful text result. */}
+ return null;
+}
 export async function recordMcpCall(db:D1Database|undefined,row:AuditRow) {
  if(!db)return sendMcpAudit(row);
  try {
@@ -41,7 +46,8 @@ export async function auditedCall(db:D1Database|undefined,tool:string,client:str
  let result:McpToolResult;
  try { result=await execute(); }
  catch { result={content:[{type:'text',text:'자료 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.'}],isError:true,errorType:'internal_error'}; }
- const row:AuditRow={requestId,tool,at,ok:!result.isError,records:returnedRecords(result),ms:Math.max(0,Date.now()-at),errorType:result.isError?(result.errorType||'tool_error'):null,client,validation:tool==='validate_place_answer'&&!result.isError};
+ const failure=resultFailure(result);
+ const row:AuditRow={requestId,tool,at,ok:failure===null,records:returnedRecords(result),ms:Math.max(0,Date.now()-at),errorType:failure,client,validation:tool==='validate_place_answer'&&failure===null};
  const persisted=await recordMcpCall(db,row);
  // Structured fallback contains no inputs, exception messages, IP or raw client headers.
  if(!persisted)console.info(JSON.stringify({event:'mcp_tool_call',...row,persisted:false}));

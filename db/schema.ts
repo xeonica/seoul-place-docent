@@ -1,4 +1,4 @@
-import {sqliteTable,text,integer,index,uniqueIndex} from 'drizzle-orm/sqlite-core';
+import {sqliteTable,text,integer,real,index,uniqueIndex} from 'drizzle-orm/sqlite-core';
 export const archiveRegions=sqliteTable('archive_regions',{
  id:text('id').primaryKey(),parentId:text('parent_id'),name:text('name').notNull(),level:text('level').notNull(),officialCode:text('official_code'),aliases:text('aliases').notNull().default('[]'),sourceUrl:text('source_url').notNull(),sourceNote:text('source_note').notNull().default(''),asOf:text('as_of').notNull(),createdAt:text('created_at').notNull()
 },t=>[index('archive_region_parent').on(t.parentId),uniqueIndex('archive_region_identity').on(t.parentId,t.name,t.level)]);
@@ -64,3 +64,31 @@ export const archivePassageCorrections=sqliteTable('archive_passage_corrections'
  beforeSnapshot:text('before_snapshot').notNull(),afterSnapshot:text('after_snapshot').notNull(),
  reason:text('reason').notNull(),evidence:text('evidence').notNull(),actor:text('actor').notNull(),createdAt:text('created_at').notNull()
 },t=>[uniqueIndex('archive_passage_correction_revision').on(t.passageId,t.revision)]);
+
+// Place identity is stored separately from regional catalog tags. A place row
+// must be reviewed before links can be approved as an exact building/site match.
+export const archivePlaces=sqliteTable('archive_places',{
+ id:text('id').primaryKey(),placeId:text('place_id').notNull(),placeType:text('place_type').notNull(),name:text('name').notNull(),
+ roadAddress:text('road_address').notNull().default(''),jibunAddress:text('jibun_address').notNull().default(''),district:text('district').notNull().default(''),legalDong:text('legal_dong').notNull().default(''),
+ buildingManagementNumber:text('building_management_number'),pnu:text('pnu'),latitude:real('latitude'),longitude:real('longitude'),coordinateSource:text('coordinate_source').notNull().default(''),
+ identitySourceUrl:text('identity_source_url').notNull().default(''),createdBy:text('created_by').notNull(),createdAt:text('created_at').notNull()
+},t=>[uniqueIndex('archive_place_place_id').on(t.placeId),index('archive_place_bmgt').on(t.buildingManagementNumber),index('archive_place_pnu').on(t.pnu),index('archive_place_district_dong').on(t.district,t.legalDong)]);
+
+// Identity verification is recorded as append-only history instead of mutating a place row.
+export const archivePlaceReviews=sqliteTable('archive_place_reviews',{
+ id:text('id').primaryKey(),placeId:text('place_id').notNull().references(()=>archivePlaces.placeId),revision:integer('revision').notNull(),status:text('status').notNull(),sourceUrl:text('source_url').notNull(),evidence:text('evidence').notNull(),actor:text('actor').notNull(),checkedAt:text('checked_at').notNull()
+},t=>[uniqueIndex('archive_place_review_revision').on(t.placeId,t.revision),index('archive_place_review_status').on(t.status)]);
+
+// Append-only source-to-place observations. Link status is independent from
+// archive source approval and rights; no relation is inferred from a name alone.
+export const archiveSourcePlaces=sqliteTable('archive_source_places',{
+ id:text('id').primaryKey(),sourceId:text('source_id').notNull().references(()=>archiveSources.id),placeId:text('place_id').notNull().references(()=>archivePlaces.placeId),
+ relation:text('relation').notNull(),matchMethod:text('match_method').notNull(),distanceMeters:real('distance_meters'),evidenceId:text('evidence_id').notNull().default(''),evidence:text('evidence').notNull(),
+ sourceUrl:text('source_url').notNull(),sourceInstitution:text('source_institution').notNull(),originalChecked:integer('original_checked',{mode:'boolean'}).notNull().default(false),rightsStatus:text('rights_status').notNull().default('unknown'),
+ reviewStatus:text('review_status').notNull().default('pending'),reviewEvidence:text('review_evidence').notNull().default(''),actor:text('actor').notNull(),createdAt:text('created_at').notNull()
+},t=>[index('archive_source_place_source').on(t.sourceId),index('archive_source_place_place').on(t.placeId),index('archive_source_place_relation_status').on(t.relation,t.reviewStatus)]);
+
+// Human decisions are immutable events; a later correction adds a new revision.
+export const archiveSourcePlaceReviews=sqliteTable('archive_source_place_reviews',{
+ id:text('id').primaryKey(),linkId:text('link_id').notNull().references(()=>archiveSourcePlaces.id),revision:integer('revision').notNull(),status:text('status').notNull(),relation:text('relation').notNull(),originalChecked:integer('original_checked',{mode:'boolean'}).notNull(),rightsStatus:text('rights_status').notNull(),evidence:text('evidence').notNull(),actor:text('actor').notNull(),checkedAt:text('checked_at').notNull()
+},t=>[uniqueIndex('archive_source_place_review_revision').on(t.linkId,t.revision),index('archive_source_place_review_status').on(t.status)]);

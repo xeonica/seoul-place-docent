@@ -43,6 +43,27 @@
       "when": 1792789862332,
       "tag": "0005_amused_hiroim",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795284108186,
+      "tag": "0006_tired_jack_flag",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1795284311893,
+      "tag": "0007_tearful_the_renegades",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795348800000,
+      "tag": "0008_careful_place_review",
+      "breakpoints": true
     }
   ]
 }

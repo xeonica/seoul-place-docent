@@ -67,7 +67,7 @@ test('all eight actual MCP tools run without operator model calls; address and G
   assert.equal((await invoke('resolve_photo_location',{latitude:35,longitude:129})).isError,true);
   assert.equal((await invoke('search_place',{query:'x'})).isError,true);
   assert.equal((await invoke('prepare_place_answer',{token:'forged'})).isError,true);
-  assert.equal((await invoke('get_archive_stats')).isError,true);
+  const archiveStats=await invoke('get_archive_stats');assert.equal(archiveStats.isError,undefined);assert.equal(data(archiveStats).available,false);assert.equal(data(archiveStats).errorCode,'ARCHIVE_NOT_CONFIGURED');
   assert.equal(data(await invoke('get_answer_stats')).available,false);
   candidates=[address,address];assert.equal(data(await invoke('prepare_place_answer',{address:address.roadAddr})).needsChoice,true);
   candidates=[];assert.equal(data(await invoke('search_place',{query:'없는주소'})).candidates.length,0);

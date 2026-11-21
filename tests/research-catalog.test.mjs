@@ -29,6 +29,8 @@ test('current GitHub CSVs are searchable, paginated, and never promoted into vis
  for(const r of first.records){assert.equal(r.candidate,true);assert.equal(r.usableAsVerifiedEvidence,false);assert.equal(r.imageUrl,null);assert.equal(r.buildingMatch,'unverified');assert.ok(r.observations.every(o=>o.provenance.path.startsWith('research-data/')));}
  const restricted=searchResearchRecords({query:'당인리발전소',limit:12}).records.filter(r=>r.contentUse==='prohibited');
  assert.ok(restricted.length);assert.ok(restricted.every(r=>r.observations.every(o=>!o.description)));
+ const candidates=searchResearchRecords({query:'당인리발전소',limit:12}).records.flatMap(r=>r.observations.flatMap(o=>o.relations));
+ assert.ok(candidates.length);assert.ok(candidates.every(r=>r.reviewStatus!=='approved'&&!r.approvable));assert.ok(candidates.every(r=>r.relation!=='exact_site'), 'Unverified CSV labels must not be served as exact-site approval');
  const local=placeResearchCandidates('종로구','화동','정독도서관');assert.ok(local.total>0);
  assert.equal(placeResearchCandidates('종로구','없는동','없는건물').total,0);
  assert.equal(searchResearchRecords({query:'정독도서관',district:'마포구'}).total,0);
