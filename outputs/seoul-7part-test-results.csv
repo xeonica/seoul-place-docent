@@ -1,0 +1,10 @@
+test_case,address,test_origin,part_id,verification_status,relation_scope,evidence_ids,missing_reason,result
+schema_and_allocation,fixtures/마장로42길-16,local_unit_fixture,part_1_place,supported,building_register,register:current-1,공식 건물정보 fixture,PASS
+schema_and_allocation,fixtures/마장로42길-16,local_unit_fixture,part_2_name,partial,unknown,scene:name-1,동네 지명 fixture이며 장소 직접 자료가 아님,PASS
+schema_and_allocation,fixtures/마장로42길-16,local_unit_fixture,part_3_change,partial,unknown,scene:industry-1,동네 사건·산업 fixture이며 장소 직접 자료가 아님,PASS
+schema_and_allocation,fixtures/마장로42길-16,local_unit_fixture,part_4_site,supported,exact_parcel,evidence:building,승인 직접근거 fixture를 사용한 테스트 시나리오,PASS
+schema_and_allocation,fixtures/마장로42길-16,local_unit_fixture,part_5_urban_space,partial,unknown,scene:urban-1,동네 도시공간 fixture이며 장소 직접 자료가 아님,PASS
+schema_and_allocation,fixtures/마장로42길-16,local_unit_fixture,part_6_present_change,missing,unknown,,최신 공식 사업기록 없음,PASS
+schema_and_allocation,fixtures/마장로42길-16,local_unit_fixture,part_7_meaning,partial,mixed,fixture_ids_only,앞선 근거 요약이며 의미 검증은 미실시,PASS
+actual_remote_lookup,서울특별시 성동구 마장로42길 16,not_run,all,미측정,uncertain,,Preview 권한과 연결 미확인,NOT_RUN
+actual_remote_lookup,서울특별시 성동구 독서당로 218,not_run,all,미측정,uncertain,,Preview 권한과 연결 미확인,NOT_RUN
