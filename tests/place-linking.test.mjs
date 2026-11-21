@@ -15,6 +15,14 @@ test('verified building/PNU identity remains a pending exact-site candidate unti
  const parcel=classifyPlaceMatch({...base,relationDeclared:'parcel',reviewStatus:'pending',placeReviewStatus:'verified',placeType:'parcel',recordPnu:'P-1',placePnu:'P-1'});
  assert.equal(parcel.relation,'parcel');assert.equal(parcel.matchMethod,'pnu');assert.equal(parcel.reviewStatus,'pending');assert.equal(parcel.approvable,true);
 });
+
+test('a parcel PNU shared by multiple buildings cannot identify either building as exact-site',()=>{
+ const sharedPnu='1120010500007840000';
+ const building=classifyPlaceMatch({...base,relationDeclared:'exact_site',reviewStatus:'pending',placeReviewStatus:'verified',placeType:'building',recordPnu:sharedPnu,placePnu:sharedPnu});
+ assert.notEqual(building.relation,'exact_site');assert.notEqual(building.matchMethod,'pnu');assert.equal(building.approvable,false);
+ const parcel=classifyPlaceMatch({...base,relationDeclared:'parcel',reviewStatus:'pending',placeReviewStatus:'verified',placeType:'parcel',recordPnu:sharedPnu,placePnu:sharedPnu});
+ assert.equal(parcel.relation,'parcel');assert.equal(parcel.matchMethod,'pnu');
+});
 test('coordinates classify nearby with measured distance, never exact-site',()=>{
  const result=classifyPlaceMatch({...base,recordLatitude:37.55,recordLongitude:126.92,recordCoordinateSource:'official-address-api',placeLatitude:37.551,placeLongitude:126.92,placeCoordinateSource:'official-address-api'});
  assert.equal(result.relation,'nearby');assert.ok(result.distanceMeters>100&&result.distanceMeters<120);assert.equal(result.approvable,false);

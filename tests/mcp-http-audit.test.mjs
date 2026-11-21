@@ -30,8 +30,9 @@ test('HTTP initialize/list, notifications, parse errors and stateless methods',a
 test('transport rejects origins, media types, oversized streams and invalid modern headers',async()=>{
  assert.equal((await POST(request(envelope('ping'),{origin:'https://evil.test'}))).status,403);
  assert.equal(GET(new Request('https://docent.test/mcp',{headers:{origin:'null'}})).status,403);
- assert.equal((await POST(request(envelope('ping'),{accept:'application/json'}))).status,406);
+ const jsonOnly=await POST(request(envelope('initialize',{protocolVersion:'2025-11-25'}),{accept:'application/json'}));assert.equal(jsonOnly.status,200);assert.match(jsonOnly.headers.get('content-type'),/application\/json/);assert.equal((await jsonOnly.json()).result.protocolVersion,'2025-11-25');
  assert.equal((await POST(request(envelope('ping'),{accept:'application/json;q=0, text/event-stream'}))).status,406);
+ assert.equal((await POST(request(envelope('ping'),{accept:'text/event-stream'}))).status,406);
  assert.equal((await POST(request(envelope('ping'),{'content-type':'text/plain'}))).status,415);
  assert.equal((await POST(request({x:'가'.repeat(12000)}))).status,413);
  assert.equal((await POST(request(envelope('ping'),{'content-length':'40000'}))).status,413);

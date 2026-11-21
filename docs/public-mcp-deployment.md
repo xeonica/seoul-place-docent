@@ -54,7 +54,7 @@ node scripts/probe-public-mcp.mjs https://ACTUAL-PRODUCTION-HOST/mcp
 
 위 호스트는 형식 예시이며 성공 URL이 아닙니다. 프로브는 쿠키·Bearer·보호 우회 키 없이 initialize, tools/list, 최신 프로토콜 헤더, search_place, prepare_place_answer를 실행합니다. 기본값은 공개 장소 주소이며 여러 후보 중 기본 0번을 쓰는 합성 검사입니다. 실제 사용자 흐름에서는 후보 선택을 받아야 합니다.
 
-결과는 `.mcp-test-results/public-probe.json`에 저장됩니다. 주소 token·API 키는 결과 파일에 넣지 않습니다. 이 검사는 **ChatGPT 실제 계정 연결 검사가 아닙니다**. 로그인 HTML·401·403을 성공으로 처리하지 않습니다. `Accept`는 MCP 사양대로 application/json과 text/event-stream을 모두 전송합니다. 무조건적인 CORS 허용이나 Origin 검사 제거를 하지 않습니다.
+결과는 `.mcp-test-results/public-probe.json`에 저장됩니다. 주소 token·API 키는 결과 파일에 넣지 않습니다. 이 검사는 **ChatGPT 실제 계정 연결 검사가 아닙니다**. 로그인 HTML·401·403을 성공으로 처리하지 않습니다. `Accept`는 MCP 사양대로 application/json과 text/event-stream을 모두 전송합니다. 이전 호환성으로 JSON만 허용하는 클라이언트도 수용하지만, JSON을 명시적으로 거부하는 `q=0` 및 SSE 단독 요청은 406으로 거부합니다. 무조건적인 CORS 허용이나 Origin 검사 제거를 하지 않습니다.
 
 ## ChatGPT 계정에서 최종 검사
 

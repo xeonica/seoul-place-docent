@@ -7,9 +7,11 @@ import {archivePlaceEvidenceLinks} from '../lib/archive-db.ts';
 
 function dbFixture(){
  const sqlite=new DatabaseSync(':memory:');sqlite.exec("PRAGMA foreign_keys=ON; CREATE TABLE archive_sources(id TEXT PRIMARY KEY,url TEXT NOT NULL,institution TEXT NOT NULL,rights TEXT NOT NULL,review_status TEXT NOT NULL,title TEXT NOT NULL DEFAULT '',kind TEXT NOT NULL DEFAULT 'web',publication_date TEXT NOT NULL DEFAULT '');");
+ sqlite.prepare('INSERT INTO archive_sources (id,url,institution,rights,review_status) VALUES (?,?,?,?,?)').run('baseline-keep','https://legacy.example/source','기존 자료','unknown','pending');
  sqlite.exec(readFileSync(new URL('../drizzle/0006_tired_jack_flag.sql',import.meta.url),'utf8'));
  sqlite.exec(readFileSync(new URL('../drizzle/0007_tearful_the_renegades.sql',import.meta.url),'utf8'));
  sqlite.exec(readFileSync(new URL('../drizzle/0008_careful_place_review.sql',import.meta.url),'utf8'));
+ assert.equal(sqlite.prepare('SELECT url FROM archive_sources WHERE id=?').get('baseline-keep').url,'https://legacy.example/source');
  return {sqlite,prepare(sql){let params=[];const stmt=sqlite.prepare(sql);const wrap=()=>({bind(...values){params=values;return wrap();},async run(){return stmt.run(...params);},async first(){return stmt.get(...params)??null;},async all(){return {results:stmt.all(...params)};}});return wrap();}};
 }
 test('additive archive place pipeline stores candidate evidence and append-only review without mutating source',async()=>{
@@ -30,6 +32,8 @@ test('additive archive place pipeline stores candidate evidence and append-only 
  assert.equal(review.revision,1);assert.equal(db.sqlite.prepare('SELECT review_status,rights FROM archive_sources WHERE id=?').get('news-1').review_status,'pending');
  assert.equal(db.sqlite.prepare('SELECT count(*) AS n FROM archive_source_place_reviews').get().n,1);
  const approved=await archivePlaceEvidenceLinks(db,'1120010500100210000021801');assert.equal(approved.items.find(x=>x.linkId==='link-1').usableAsDirectEvidence,true);
+ await assert.rejects(()=>reviewArchiveSourcePlaceLink(db,{id:'review-1',linkId:'link-1',status:'approved',relation:'exact_site',originalChecked:true,rightsStatus:'unknown',evidence:'원문 주소와 건물관리번호를 확인했으며 공간 일치를 승인'},'reviewer'));
+ assert.equal(db.sqlite.prepare('SELECT count(*) AS n FROM archive_source_place_reviews WHERE link_id=?').get('link-1').n,1);
  await reviewArchivePlaceIdentity(db,{id:'identity-review-2',placeId:'PLACE-1',status:'rejected',evidence:'재검토 결과 주소 식별 일치를 확인할 수 없어 검증을 철회'},'reviewer');
  const revoked=await archivePlaceEvidenceLinks(db,'1120010500100210000021801');assert.equal(revoked.items.find(x=>x.linkId==='link-1').usableAsDirectEvidence,false);
  await assert.rejects(()=>registerArchivePlace(db,{id:'place-row-2',placeId:'PLACE-1',placeType:'building',name:'다른 건물'},'reviewer'));

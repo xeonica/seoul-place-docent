@@ -109,3 +109,51 @@
 4. 기사 URL 90건, 사진 URL 3,195건과 사진 미리보기 0건의 원문/권리 확인 및 링크 복구는 자료 제공기관 원문을 확인할 수 있을 때 별도 진행해야 한다.
 5. 전체 주소 표본 125건은 주소 인식 점검이다. 장소 관계 승인 및 역사자료 원문 검증을 완료한 수는 0건이다.
 6. 오프라인 의존성 설치는 pnpm 공급망 정책 검사에서 중단됐다. 마지막 PNU 조회 변경 이후 TypeScript 검사와 Next.js 빌드를 다시 실행하지 못했다. 앞선 변경 시점의 빌드 성공 기록을 이번 최종 변경의 빌드 통과로 간주하지 않는다.
+
+## 10. PR #77 안정화 및 실증 보완 (2026-11-22)
+
+### GitHub Actions HTTP 계약 실패
+
+PR SHA `20bb068e20aae632a88fe94d8b5f614d9de84c95`에서 `MCP client AI contract`와 `Public MCP deployment contract`가 모두 `tests/mcp-http-audit.test.mjs:33`의 `406 expected / 200 actual`에서 실패했다. 두 워크플로의 원인은 동일한 Accept 헤더 테스트였다. 공개 MCP는 JSON 응답만 제공하며, 기존 main의 `lib/mcp-http.ts`도 `application/json`을 허용하고 JSON을 거부하는 Accept 값에만 406을 반환한다. 따라서 JSON만 허용한 클라이언트에 406을 기대하던 테스트가 서버 계약과 맞지 않았다.
+
+테스트를 JSON-only `initialize` 요청의 200 응답 및 JSON content-type 검증으로 고쳤다. `application/json;q=0, text/event-stream` 및 SSE-only는 계속 406을 기대한다. Origin, Content-Type, 크기 제한 및 현대 MCP 메타데이터 검증은 그대로 둬 안전 검증을 우회하지 않았다. 설명 주석과 MCP 문서도 JSON 호환 동작에 맞췄다.
+
+### 검사 재실행
+
+| 검사 | 결과 |
+|---|---|
+| GitHub `types` 체크, 기준 SHA 20bb068 | 통과 기록 확인 |
+| 로컬 `pnpm run typecheck` | 통과 (설치된 Node v24.22.3; 저장소 엔진 선언은 Node 22) |
+| Next.js Production 빌드 | 통과, 별도 `.next-pr77-build` 경로 사용. 기본 `.next`를 사용하는 개발 서버와 충돌을 피함 |
+| MCP 공개 패키지 빌드 | 통과 |
+| Vercel MCP Build Output 패키지 | 통과 |
+| MCP HTTP 표적 테스트 | 8/8 통과 |
+| 관계·마이그레이션·권한 표적 테스트 | 10/10 통과 |
+| 전체 자동 테스트 | 339개 중 321 통과, 18 실패 |
+
+PR SHA의 이전 전체 테스트 결과(338개 중 319 통과·19 실패)에서 HTTP Accept 실패 1건이 해소됐다. 실패했던 나머지 18개 테스트는 앞선 기준 main 대조에서도 확인된 자료 번들·사진 조사 fixture 불일치다. 이번 수정으로 추가된 데이터 처리 실패는 확인되지 않았다. 공급망 검사는 비활성화하지 않았다. 참고로 pnpm 스크립트가 기본 PATH의 Node 26에선 테스트 전용 `--experimental-transform-types` 옵션을 인식하지 않아 테스트는 Node 24.22.3 실행 파일로 직접 구동했다.
+
+### Migration 및 권한 검증 범위
+
+`drizzle/0006`~`0008`을 독립 메모리 SQLite fixture에 적용했다. migration 전 존재하던 archive source 행이 적용 후에도 보존됨을 확인했다. 같은 승인 ID의 재등록은 거절되고 검토 이력은 한 건으로 유지됐다. PNU가 같은 건물 유형 장소 후보에는 `exact_site` 근거로 인정되지 않으며, 필지 유형에서만 `parcel` 후보가 되는 회귀 테스트를 추가했다. 관리자 API는 인증 누락과 교차 출처 요청을 각각 403으로 차단했다. 표적 테스트는 10/10 통과했다.
+
+이 검증은 로컬 메모리 SQLite만 대상으로 했다. 로컬 환경에는 Cloudflare account/API token/D1 ID가 설정되지 않았고 로컬 `.env`도 없었다. Vercel Preview의 변수를 읽는 연결도 제공되지 않아 Preview D1의 실제 ID·바인딩 상태를 검증하거나 migration을 적용하지 않았다. Production D1에는 접속하거나 변경하지 않았다.
+
+### 주소별 읽기 전용 MCP 실증
+
+연결된 테스트 도슨트 MCP에 `search_place → get_place_history → prepare_place_answer → validate_place_answer`를 주소별로 실행했다. `search_place`의 출처 표시는 주소기반산업지원서비스이며 두 건 모두 후보 1개와 공식 건물관리번호가 반환됐다.
+
+| 주소 | 반환 건물관리번호 | PNU 상태 | 장소 직접 자료 / 반환 근거 ID | 검증 |
+|---|---|---|---|---|
+| 성동구 마장로42길 16 세림아파트 (지번 마장동 784) | `1120010500100210000021801` | 지번에서 산출한 후보 `1120010500007840000`; 별도 공식 지적 API 확인은 미완료 | 직접 자료 0건, `unverified`; 동네 근거 `claim:E000421` (준비 응답에는 `claim:E000420`도 포함) | `claim:E000421` 동네 배경 문단 `valid: true`; 건물·필지 역사 held |
+| 성동구 독서당로 218 옥수삼성아파트 (지번 옥수동 250) | `1120011300102500000010289` | 지번에서 산출한 후보 `1120011300002500000`; 별도 공식 지적 API 확인은 미완료 | 직접 자료 0건, `unverified`; 동네 근거 `claim:E000430`, `claim:E000431`, `claim:E000432` | `claim:E000430`을 사용한 제출 문단이 제외되어 `valid: false`, `omitted: 1` |
+
+두 주소 모두 테스트 MCP의 `dataSources.bigQuery`는 `disabled`, 사진·영상 URL 수는 0이었다. 근거는 각각 동네 범위(`dong`)로만 다뤘으며 건물의 직접 역사로 사용하지 않았다. MCP 응답의 서버 영수증은 `auditPersisted:false`이므로 서버 감사 로그에 저장된 호출이라고 주장하지 않는다. 사용한 근거 ID는 테스트 MCP 응답에서 반환된 ID다.
+
+공식 건물관리번호는 주소 검색 응답의 값을 기록했다. PNU는 응답의 법정동 코드와 지번으로 계산한 검증 후보이며 공식 지적 API의 결과가 아니므로 확정값으로 표시하지 않는다. 직접 원문 대조 및 개별 기사·사진 검토를 하지 않았고 테스트 D1 등록도 하지 않았다. 따라서 `exact_site`/`parcel`로 승인된 근거는 두 주소 모두 0건이다.
+
+### Preview / Production 구분 및 남은 작업
+
+기준 SHA `20bb068`의 GitHub Vercel 상태는 성공이며 프로젝트 경로는 `seoul-place-docent-mcp`로 표시됐다. 이것은 해당 SHA의 Vercel 배포 체크 성공만 뜻하고 Preview D1 바인딩 또는 Production 배포 여부를 검증한 증거가 아니다. 이 작업에서 Preview 재배포를 요청하거나 Production을 배포하지 않았다.
+
+남은 확인: PR 브랜치의 새 커밋에 대한 GitHub Actions 재실행, Vercel Preview에 필요한 비밀 없는 환경변수 존재 여부와 Preview 전용 D1 DB ID/바인딩 확인, 독립 Preview DB에만 migration 적용, 공식 PNU 조회, 직접 자료 원문과 권리 확인, 두 번째 주소의 근거 문단 검증 실패 분석. BigQuery의 비활성 상태와 R2 접근 여부는 Preview D1 상태와 별개이며 이번 세션에서는 확인하지 못했다.

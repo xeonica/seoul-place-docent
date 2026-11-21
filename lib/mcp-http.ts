@@ -21,7 +21,8 @@ export const allowMcpRequest=createMcpLimiter();
 export function acceptError(request:Request) {
  const accept=request.headers.get('accept');
  if(!accept?.trim())return;
- // POST responses are JSON. SSE support is optional for compatible clients.
+ // The endpoint emits JSON. JSON-only clients are accepted for backward
+ // compatibility; reject requests whose quality weights exclude JSON.
  let bestSpecificity=-1;
  let bestQuality=0;
  for(const entry of accept.toLowerCase().split(',')) {
