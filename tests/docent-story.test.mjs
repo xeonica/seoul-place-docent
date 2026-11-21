@@ -14,10 +14,10 @@ test('historical date takes precedence over capture/publication date and keeps u
  assert.ok(historicalDate({'역사적대상시기':'1975년 12월'}).order>historicalDate({'역사적대상시기':'1975년 7월'}).order);
 });
 const item=(id,sourceUrl,previewUrl=null,type='record')=>({id,sourceUrl,previewUrl,sourceLinkType:type,values:{}});
-test('cuts of one museum record group by record identity; reused previews and collection pages do not collapse unrelated records',()=>{
+test('cuts of one museum record and reused previews group; collection pages do not collapse unrelated records',()=>{
  const rows=[item('a','https://museum.seoul.go.kr/view?fileId=A&fileSn=1'),item('b','https://museum.seoul.go.kr/view?fileId=A&fileSn=2'),item('c','https://museum.seoul.go.kr/view?fileId=B&fileSn=1')];assert.deepEqual(groupStoryPhotos(rows).map(r=>r.length),[2,1]);
  assert.equal(groupStoryPhotos([item('d','https://example.org/collection',null,'collection'),item('e','https://example.org/collection',null,'collection')]).length,2);
- assert.equal(groupStoryPhotos([item('a','https://example.org/a','https://example.org/image.jpg'),item('b','https://example.org/b','https://example.org/image.jpg')]).length,2);
+ assert.equal(groupStoryPhotos([item('a','https://example.org/a','https://example.org/image.jpg'),item('b','https://example.org/b','https://example.org/image.jpg')]).length,1);
 });
 test('reading text removes evidence markers without removing uncertainty and uses at most three complete sentences',()=>{
  assert.equal(readingText('추정된다[E000366, E000367]. 사진만으로는 확인되지 않아요. 세 번째입니다. 네 번째입니다.'),'추정된다. 사진만으로는 확인되지 않아요. 세 번째입니다.');

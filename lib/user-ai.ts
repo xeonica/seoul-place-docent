@@ -8,5 +8,5 @@ export function photoHistoryQuestion(){
 }
 export function historyQuestion(address:string) {
  const place=address.trim().slice(0,100)||'사용자가 지정할 서울 주소';
- return `${place}에 대해 서울 장소 역사 도슨트 MCP 서버를 사용하여 역사와 공간 변화를 조사해 줘. 먼저 prepare_place_answer를 address 입력과 detailLevel=brief로 실제 호출해 공식 자료와 출처를 가져와. 후보가 여러 개면 내가 선택하도록 물어봐. 이미 선택한 token이 있으면 주소를 재검색하지 말고 그 token을 써. search_place는 별도 주소 검색이 필요할 때만 호출하고 get_place_history를 의무적으로 중복 호출하지 마. 추가 자료가 필요하면 같은 token으로 detailLevel=full 조회를 해. 웹 검색만으로 대신하지 말고 MCP 연결이 없으면 연결이 필요하다고 알려 줘. 반환된 근거만으로 네가 최종 해설을 작성하고 건물 자체의 역사와 주변 동네 역사를 구분해 줘. 가능한 경우 반환된 validationContext의 token과 question으로 validate_place_answer를 호출해 기계적으로 검증해 줘. 출처·자료의 시기·검증 범위·미확인 사항을 표시해 줘. 사진과 관련 영상 후보가 있으면 원문 링크를 보여주고, 영상 시간 구간은 반환된 원자료 표기와 검증 상태를 구분해 줘. 그리고 사실 전체가 검증됐다고 단정하지 마. 도구 결과의 요청 ID도 보여 줘.`;
+ return `${place}에 대해 서울 장소 역사 도슨트 MCP 서버를 사용하여 역사와 공간 변화를 조사해 줘. 먼저 search_place를 실제 호출하고, 후보가 여러 개면 내가 선택하도록 물어봐. 선택한 token으로 prepare_place_answer를 호출해 공식 자료와 출처를 가져와. 웹 검색만으로 대신하지 말고 MCP 연결이 없으면 연결이 필요하다고 알려 줘. 반환된 근거만으로 네가 최종 해설을 작성하고 건물 자체의 역사와 주변 동네 역사를 구분해 줘. 가능한 경우 같은 token과 question으로 validate_place_answer를 호출해 기계적으로 검증해 줘. 출처·자료의 시기·검증 범위·미확인 사항을 표시해 줘. 사진과 관련 영상 후보가 있으면 원문 링크를 보여주고, 영상 시간 구간은 반환된 원자료 표기와 검증 상태를 구분해 줘. 그리고 사실 전체가 검증됐다고 단정하지 마. 도구 결과의 요청 ID도 보여 줘.`;
 }

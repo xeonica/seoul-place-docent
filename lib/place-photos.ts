@@ -1,9 +1,7 @@
-import {isAllowedImageUrl} from './image-proxy';
-import type {PhotoAssetProof} from './photo-verification';
 import type {PhotoResearchItem} from './photo-research';
 import type {StoryScene} from './docent-story';
 /** Nearby historical photos from open-licensed sources with clear provenance. Fail-open; presentation only. */
-export type PlacePhoto = {assetProof?:PhotoAssetProof;id:string;provider:string;title:string;year:number|null;date:string;description:string;imageUrl:string;fullUrl:string;sourceUrl:string;creator:string;license:string;licenseUrl:string|null;distance:number|null;match:'nearby'|'place'|'neighborhood';via?:string;scope?:'dong'|'district'};
+export type PlacePhoto = {id:string;provider:string;title:string;year:number|null;date:string;description:string;imageUrl:string;fullUrl:string;sourceUrl:string;creator:string;license:string;licenseUrl:string|null;distance:number|null;match:'nearby'|'place'|'neighborhood';via?:string;scope?:'dong'|'district'};
 export type PlacePhotoResult = {photos:PlacePhoto[];providers:{id:string;name:string;ok:boolean;count:number}[]};
 const UA='SeoulPlaceDocent/1.0 (https://github.com/xeonica/seoul-place-docent)';
 const COMMONS='https://commons.wikimedia.org/w/api.php';
@@ -19,7 +17,7 @@ type Page={pageid?:number;title?:string;imageinfo?:{url?:string;thumburl?:string
 export function commonsPhoto(page:Page,distance:number|null,match:PlacePhoto['match']):PlacePhoto|null{
   const info=page.imageinfo?.[0];if(!info||!page.title||page.pageid==null)return null;
   const meta=info.extmetadata||{};const license=stripHtml(meta.LicenseShortName?.value);
-  if(!license||!LICENSE_OK.test(license)||/(?:-|\s)(?:NC|ND)(?:-|\s|$)|제\s*[234]\s*유형/i.test(license))return null;
+  if(!license||!LICENSE_OK.test(license))return null;
   if(String(meta.NonFree?.value||'').toLowerCase()==='true'||String(meta.Restrictions?.value||'').trim()&&/trademark|personality|insignia|nonfree/i.test(String(meta.Restrictions?.value)))return null;
   const full=info.url||'';const thumb=info.thumburl||full;
   if(!/^https:\/\/upload\.wikimedia\.org\//.test(thumb)||!/^image\/(?:jpeg|png|webp|gif|tiff)$/i.test(info.mime||''))return null;
@@ -29,8 +27,7 @@ export function commonsPhoto(page:Page,distance:number|null,match:PlacePhoto['ma
   // Upload/scan dates often stand in for the shooting date; a year written in the title is usually the real one.
   const years=[parseYear(dateText),parseYear(title)].filter((y):y is number=>y!==null);const year=years.length?Math.min(...years):parseYear(description);
   const rawCreator=stripHtml(meta.Artist?.value)||stripHtml(meta.Credit?.value);const creator=!rawCreator||/^(?:unknown|anonymous|author unknown|작자\s*미상|미상)/i.test(rawCreator)?'작성자 미상':rawCreator;
-  if(!isAllowedImageUrl(thumb)||!isAllowedImageUrl(full||thumb))return null;
-  return {assetProof:{title,date:dateText||'',provider:'Wikimedia Commons',sourceRecordId:String(page.pageid),mediaId:page.title,sourcePageUrl:info.descriptionurl||'https://commons.wikimedia.org/wiki/'+encodeURIComponent(page.title.replace(/ /g,'_')),originalImageUrl:full||thumb,displayImageUrls:[thumb,full].filter(Boolean),license,displayAllowed:true,basis:'provider_api',provenance:'Wikimedia Commons imageinfo API'},id:'pp:commons:'+page.pageid,provider:'Wikimedia Commons',title,year,date:year!==null&&parseYear(dateText)===year&&dateText.length<40?dateText:year!==null?String(year):'시기 미상',description:description.slice(0,400),imageUrl:thumb,fullUrl:full||thumb,sourceUrl:info.descriptionurl||'https://commons.wikimedia.org/wiki/'+encodeURIComponent(page.title.replace(/ /g,'_')),creator:creator.slice(0,120),license,licenseUrl:/^https?:\/\//.test(stripHtml(meta.LicenseUrl?.value))?stripHtml(meta.LicenseUrl?.value):null,distance,match};
+  return {id:'pp:commons:'+page.pageid,provider:'Wikimedia Commons',title,year,date:year!==null&&parseYear(dateText)===year&&dateText.length<40?dateText:year!==null?String(year):'시기 미상',description:description.slice(0,400),imageUrl:thumb,fullUrl:full||thumb,sourceUrl:info.descriptionurl||'https://commons.wikimedia.org/wiki/'+encodeURIComponent(page.title.replace(/ /g,'_')),creator:creator.slice(0,120),license,licenseUrl:/^https?:\/\//.test(stripHtml(meta.LicenseUrl?.value))?stripHtml(meta.LicenseUrl?.value):null,distance,match};
 }
 async function getJson(url:string,fetcher:typeof fetch,tries=3):Promise<unknown>{
   let last:unknown;
@@ -89,7 +86,7 @@ export async function findPlacePhotos(x:number|null,y:number|null,district:strin
 /** Wrap a found photo as a story scene so it flows through the same card, timeline and credit UI. */
 export function placePhotoScene(p:PlacePhoto,district:string,dong:string):StoryScene{
   const near=p.match==='nearby';const place=p.match==='place';
-  const item:PhotoResearchItem={assetProof:p.assetProof,id:p.id,batchId:'place-photos',district,dong,dataRow:0,collectionScope:'dong',recordType:'visual',mediaType:'사진',correctionOf:null,correctionIds:[],sourceUrl:p.sourceUrl,sourceKey:p.id,sourceLinkType:'record',previewUrl:p.imageUrl,provider:p.provider,reviewStatus:'자동 수집',relation:p.provider==='서울기록원'?'기관 기록 검색':near?'근처 위치 태그':place?'근처 장소':'동네 이름 검색',scope:'동',candidate:false,conflictMentioned:false,sameSourceCount:1,samePreviewCount:1,
+  const item:PhotoResearchItem={id:p.id,batchId:'place-photos',district,dong,dataRow:0,collectionScope:'dong',recordType:'visual',mediaType:'사진',correctionOf:null,correctionIds:[],sourceUrl:p.sourceUrl,sourceKey:p.id,sourceLinkType:'record',previewUrl:p.imageUrl,provider:p.provider,reviewStatus:'자동 수집',relation:p.provider==='서울기록원'?'기관 기록 검색':near?'근처 위치 태그':place?'근처 장소':'동네 이름 검색',scope:'동',candidate:false,conflictMentioned:false,sameSourceCount:1,samePreviewCount:1,
     values:{'자료명':p.title,'제공기관·채널':p.provider,'촬영자·제작자':p.creator,'필수출처표시문구':p.provider==='서울기록원'?`서울기록원 · ${p.creator}`:`${p.provider} · ${p.creator} · ${p.license}`,'이용조건':`${p.license}${p.licenseUrl?' ('+p.licenseUrl+')':''} — 이용 조건을 지켜 표시합니다.`,'내용설명':p.description,'촬영·제작일':p.date}};
   const archive=p.provider==='서울기록원';
   const where=archive?(p.scope==='district'?`${district} 전체를 다룬 서울기록원 기록이에요. 이 동네를 직접 찍은 사진은 아닐 수 있어요.`:`서울기록원 서울사진아카이브에서 ‘${p.via||dong}’(으)로 찾은 기록이에요.`):p.match==='neighborhood'&&p.year!==null&&!p.distance&&!near&&!place?`‘${dong}’·${district}과(와) 관련해 검색된 옛 사진이에요.`:place?`근처 장소 ‘${p.via||''}’와(과) 관련된 사진이에요.`:near?(p.distance!=null?`이 주소에서 약 ${Math.round(p.distance)}m 안에 위치가 표시된 사진이에요.`:'이 주소 근처에 위치가 표시된 사진이에요.'):`‘${dong}’이(가) 언급된 사진이에요.`;

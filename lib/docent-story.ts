@@ -42,7 +42,9 @@ function recordKey(item:PhotoResearchItem) {
 export function groupStoryPhotos(items:PhotoResearchItem[]) {
   const groups=new Map<string,PhotoResearchItem[]>();
   for(const item of items){const key=recordKey(item);const rows=groups.get(key)||[];rows.push(item);groups.set(key,rows);}
-  // A reused image URL does not prove that two historical records are identical.
+  // A reused preview also denotes a duplicate, but shared collection URLs alone do not.
+  const previewOwner=new Map<string,string>();
+  for(const [key,rows] of groups){const image=rows[0].previewUrl;if(!image)continue;const previous=previewOwner.get(image);if(previous&&groups.has(previous)){groups.get(previous)!.push(...rows);groups.delete(key);}else previewOwner.set(image,key);}
   return [...groups.values()];
 }
 /** Research workflow notes (what the researcher did not verify) belong in "자료 보기", not in the visitor-facing story. */
@@ -80,18 +82,16 @@ export function composeByYear(scenes:StoryScene[],focus:string[]=[]):StoryScene[
   const rank=(a:StoryScene,b:StoryScene)=>hit(b)-hit(a)||(ceremony(a)-ceremony(b))||(view(b)-view(a))||(a.scope==='dong'?0:1)-(b.scope==='dong'?0:1)||b.text.length-a.text.length;
   for(const [k,list] of [...groups].sort((a,b)=>a[0].localeCompare(b[0]))){
     if(k==='undated')continue;
-    const docs=list.filter(s=>!s.photos.some(photo=>photoResearchThumbnail(photo))&&!usedText.has(norm(s.text))).sort(rank);
-    const pics=list.filter(s=>s.photos.some(photo=>photoResearchThumbnail(photo))&&!photoKey(s).some(x=>x&&usedPhoto.has(x))).sort(rank);
-    const story=docs[0];
-    // Same year is not evidence that a photo depicts this event.
-    const pic=story?pics.find(candidate=>candidate.evidence.some(photo=>photo.url&&story.evidence.some(record=>record.url===photo.url))):pics[0];
+    const docs=list.filter(s=>!s.photos.length&&!usedText.has(norm(s.text))).sort(rank);
+    const pics=list.filter(s=>s.photos.length&&!photoKey(s).some(x=>x&&usedPhoto.has(x))).sort(rank);
+    const story=docs[0],pic=pics[0];
     // Years with nothing but official ceremonies: keep only a couple, so the walk stays about the neighborhood.
     if(!story&&pic&&ceremony(pic)&&!hit(pic)){if(ceremonies>=2)continue;ceremonies++;}
     if(!story&&!pic)continue;
-    const base=story||pic!;const text=story?story.text:pic!.text;if(usedText.has(norm(text)))continue;
+    const base=story||pic;const text=story?story.text:pic.text;if(usedText.has(norm(text)))continue;
     usedText.add(norm(text));if(pic){for(const x of photoKey(pic))if(x)usedPhoto.add(x);usedText.add(norm(pic.text));}
     const date=base.date.replace(/^(.+?)\s*[-~]\s*\1$/,'$1');
-    out.push({...base,id:base.id,date,kind:pic?'photo':'document',title:story&&!(pic&&hit(pic)>hit(story))?story.title:pic!.title,text:story&&pic&&hit(pic)>hit(story)?pic.text:text,photos:pic?pic.photos:[],cutCount:pic?pic.cutCount:0,evidence:[...(story?.evidence||[]),...(pic&&pic!==story?pic.evidence:[])],scope:(story?.scope==='dong'||pic?.scope==='dong')?'dong':'district'});
+    out.push({...base,id:base.id,date,kind:pic?'photo':'document',title:story&&!(pic&&hit(pic)>hit(story))?story.title:pic.title,text:story&&pic&&hit(pic)>hit(story)?pic.text:text,photos:pic?pic.photos:[],cutCount:pic?pic.cutCount:0,evidence:[...(story?.evidence||[]),...(pic&&pic!==story?pic.evidence:[])],scope:(story?.scope==='dong'||pic?.scope==='dong')?'dong':'district'});
   }
   // Undated records only when nothing dated exists, and never repeating what is already shown.
   if(!out.length)for(const s of (groups.get('undated')||[]).sort(rank).slice(0,6))if(!usedText.has(norm(s.text))){usedText.add(norm(s.text));out.push(s);}
@@ -106,16 +106,16 @@ export function buildDocentStory(photos:PhotoResearchBundle, documents:DocumentB
   const manualDistrict=manual.filter(i=>i.district===district&&!i.dong);
   // Fall back to district photos when the neighborhood has records but none with a displayable image.
   const localRows=[...local,...manualLocal];const localPictured=localRows.filter(i=>photoResearchThumbnail(i));
-  const scope=localRows.length?'dong':'district';
-  const rows=localRows.length?localRows:[...eligible.filter(i=>districtBatchIds.has(i.batchId)),...manualDistrict];
+  const scope=localPictured.length?'dong':'district';
+  const rows=localPictured.length?localRows:[...eligible.filter(i=>districtBatchIds.has(i.batchId)),...manualDistrict];
   const pictured=rows.filter(i=>photoResearchThumbnail(i));
-  const allGroups=groupStoryPhotos(rows);
+  const allGroups=groupStoryPhotos(pictured);
   // District background is context, not the story: keep at most 24 photos, spread evenly through time.
   const groups=scope==='district'&&allGroups.length>24?(()=>{const dated=[...allGroups].sort((a,b)=>historicalDate(a[0].values).order-historicalDate(b[0].values).order);const step=dated.length/24;return Array.from({length:24},(_,k)=>dated[Math.floor(k*step)]);})():allGroups;
   const scenes:StoryScene[]=groups.map(cuts=>{
     const item=cuts.find(i=>i.values['내용설명'])||cuts[0];const time=historicalDate(item.values);
     const unique=[...new Map(cuts.map(i=>[photoResearchThumbnail(i),i])).values()];
-    return {id:item.id,kind:photoResearchThumbnail(item)?'photo':'document',date:time.label,year:time.year,order:time.order,title:readingText(item.values['자료명']||item.id),text:readingText(item.values['사이트용캡션초안']||item.values['내용설명']||'이 시각자료의 내용은 제공기관 원문에서 확인할 수 있어요.',50),scope,photos:unique.slice(0,20),cutCount:cuts.length,evidence:cuts.slice(0,20).map(i=>({title:photoResearchText(i.values['자료명']||i.id),url:i.sourceUrl,institution:i.values['제공기관·채널']||i.provider,locator:i.values['페이지·도판번호'],note:i.metadataWarnings?.join(' · ')||i.values['주소관계근거']||i.relation}))};
+    return {id:item.id,kind:'photo',date:time.label,year:time.year,order:time.order,title:readingText(item.values['자료명']||item.id),text:readingText(item.values['사이트용캡션초안']||item.values['내용설명']||'이 시각자료의 내용은 제공기관 원문에서 확인할 수 있어요.',50),scope,photos:unique.slice(0,20),cutCount:cuts.length,evidence:cuts.slice(0,20).map(i=>({title:photoResearchText(i.values['자료명']||i.id),url:i.sourceUrl,institution:i.values['제공기관·채널']||i.provider,locator:i.values['페이지·도판번호'],note:i.metadataWarnings?.join(' · ')||i.values['주소관계근거']||i.relation}))};
   });
   const exact=documents.targets.filter(t=>t.district===district&&t.level==='법정동'&&t.name===dong);const ids=new Set(exact.map(t=>t.id));
   const timeline=documents.tables.timeline.filter(r=>r.targetIds.some(id=>ids.has(id))&&!r.issues.length&&!/상충 확인/.test(r.status));
@@ -135,5 +135,5 @@ export function buildDocentStory(photos:PhotoResearchBundle, documents:DocumentB
   }}
   scenes.sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
   const visible=scenes.map(visitorScene);
-  return {district,dong,scenes:visible,total:scenes.length,photoRecords:pictured.length,photoGroups:groups.filter(cuts=>cuts.some(photo=>photoResearchThumbnail(photo))).length,unpictured:rows.length-pictured.length,version:'docent-20261106-2'};
+  return {district,dong,scenes:visible,total:scenes.length,photoRecords:pictured.length,photoGroups:groups.length,unpictured:rows.length-pictured.length,version:'docent-20261106-2'};
 }

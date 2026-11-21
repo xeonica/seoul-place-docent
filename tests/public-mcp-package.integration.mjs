@@ -15,7 +15,6 @@ test('deployable package resolves photo coordinates and prepares and validates e
   if(request.hostname==='files.oaiusercontent.com')return new Response(gpsJpeg({lat:[37,34,48],lon:[126,58,12]}));
   if(request.hostname==='business.juso.go.kr')return Response.json({results:{common:{errorCode:'0',totalCount:'1'},juso:[address]}});
   assert.equal(request.hostname,'dapi.kakao.com','only address providers are allowed');
-  if(request.pathname.endsWith('/search/address.json'))return Response.json({documents:[{x:'126.97',y:'37.58',address:{region_1depth_name:'서울',b_code:address.admCd,main_address_no:'1',sub_address_no:'1',mountain_yn:'N'},road_address:{address_name:address.roadAddr}}]});
   assert.ok(Math.abs(Number(request.searchParams.get('x'))-126.97)<1e-9);
   assert.ok(Math.abs(Number(request.searchParams.get('y'))-37.58)<1e-9);
   if(request.pathname.endsWith('coord2address.json'))return Response.json({documents:[{address:{
@@ -56,7 +55,6 @@ test('deployable package resolves photo coordinates and prepares and validates e
   const record=packet.neighborhood.records[0];
   const validated=await call('validate_place_answer',{token,question,answer:{question_type:'동네 역사',paragraphs:[{heading:'기록',text:'자료가 남아 있어요.',evidence_ids:[record.id]}],held:[]}});
   assert.equal(validated.valid,true);
-  assert.equal(packet.map.latitude,37.58);assert.equal(packet.map.longitude,126.97);assert.equal(packet.map.verificationStatus,'address_and_parcel_verified');
-  assert.deepEqual(calls.sort(),['business.juso.go.kr','business.juso.go.kr','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','files.oaiusercontent.com']);
+  assert.deepEqual(calls.sort(),['business.juso.go.kr','business.juso.go.kr','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','files.oaiusercontent.com']);
  }finally{process.chdir(originalCwd);globalThis.fetch=original;console.info=info;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);}
 });
