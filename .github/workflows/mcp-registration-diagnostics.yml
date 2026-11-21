@@ -1,0 +1,36 @@
+name: MCP registration diagnostics
+on: push
+permissions: {}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check public MCP endpoint
+        run: |
+          python - <<'PY'
+          import json, urllib.request, urllib.error, time
+          url = 'https://seoul-place-docent-mcp.vercel.app/mcp'
+          def call(method, params, ident=None, extra=None):
+              data = dict(jsonrpc='2.0', method=method, params=params)
+              if ident is not None: data['id'] = ident
+              headers = {'Content-Type':'application/json','Accept':'application/json'}
+              headers.update(extra or {})
+              t=time.monotonic()
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(url, data=json.dumps(data).encode(), headers=headers), timeout=20) as resp:
+                      raw=resp.read()
+                      response=json.loads(raw) if raw else {}
+                      print(method,resp.status,round(time.monotonic()-t,3),resp.headers.get('Content-Type'),flush=True)
+                      return response
+              except urllib.error.HTTPError as e:
+                  print(method,e.code,e.read()[:900],flush=True)
+                  return {}
+          for version in ['2025-03-26','2025-06-18','2025-11-25']:
+              init=call('initialize',dict(protocolVersion=version,capabilities={},clientInfo=dict(name='diagnostic',version='1.0')),1)
+              print('initialize result:',init.get('result',{}).get('protocolVersion'),init.get('error'),flush=True)
+              if not init.get('result'):continue
+              headers={'MCP-Protocol-Version':init['result']['protocolVersion']}
+              call('notifications/initialized',{},extra=headers)
+              tools=call('tools/list',{},2,headers)
+              print('tool schemas:',[(t['name'], t.get('inputSchema',{}).get('type'), list(t.get('inputSchema',{}))) for t in tools.get('result',{}).get('tools',[])],tools.get('error'),flush=True)
+          PY
