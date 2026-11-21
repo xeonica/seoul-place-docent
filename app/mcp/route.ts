@@ -47,18 +47,18 @@ const tools: McpTool[] = [
   {
     name:'prepare_place_answer',
     _meta:galleryToolMeta,
-    description:'빠른 기본 경로: 명확한 주소를 address로 넣고 detailLevel=brief로 한 번 호출하세요. 후보가 여러 개면 선택을 요청하고, 추가 자료가 필요할 때만 full 또는 get_place_history를 사용하세요. brief의 validationContext로 검증할 수 있습니다. 사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 도구의 기록 사진 갤러리에서 자동 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token 또는 address 중 하나가 필요합니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
-    inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]},detailLevel:{type:'string',enum:['brief','standard','full']},videoLimit:{type:'integer',minimum:1,maximum:12},videoOffset:{type:'integer',minimum:0,maximum:100}},oneOf:[{required:['token']},{required:['address']}],additionalProperties:false},
+    description:'빠른 기본 경로: 명확한 주소를 address로 넣고 detailLevel=brief로 한 번 호출하세요. 후보가 여러 개면 선택을 요청하고, 추가 자료가 필요할 때만 full 또는 get_place_history를 사용하세요. brief의 validationContext로 검증할 수 있습니다. 사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 도구의 기록 사진 갤러리에서 자동 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token과 address 중 정확히 하나만 전달하세요. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
+    inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]},detailLevel:{type:'string',enum:['brief','standard','full']},videoLimit:{type:'integer',minimum:1,maximum:12},videoOffset:{type:'integer',minimum:0,maximum:100}},additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
   },
   {
     name:'validate_place_answer',
-    description:'MCP 동네 기록을 사용한 문단만 같은 token·question의 근거 기록과 기계적으로 대조합니다. 미등록 근거 id·추가 숫자·과도한 문장 길이를 걸러 냅니다. AI를 호출하지 않으며 의미적 사실 전체를 보증하지 않습니다. 거절된 문단은 수정하거나 보류하세요.',
+    description:'MCP 동네 기록을 사용한 문단만 같은 token·question의 근거 기록과 기계적으로 대조합니다. 미등록 근거 id·추가 숫자·과도한 문장 길이를 걸러 냅니다. answer 또는 evidenceClaims 중 하나 이상을 전달하세요. AI를 호출하지 않으며 의미적 사실 전체를 보증하지 않습니다. 거절된 문단은 수정하거나 보류하세요.',
     inputSchema:{type:'object',properties:{
       token:{type:'string',minLength:1,maxLength:6000},question:{type:'string',maxLength:300},
       evidenceClaims:{type:'array',minItems:1,maxItems:20,items:{type:'object',properties:{evidenceId:{type:'string',maxLength:200},claimId:{type:'string',maxLength:200},text:{type:'string',minLength:1,maxLength:1200},relationType:{type:'string',maxLength:40},eventDate:{type:['string','null']},publishedAt:{type:['string','null']},segmentId:{type:'string',maxLength:200}},required:['evidenceId','claimId','text'],additionalProperties:false}},
       answer:{type:'object',properties:{question_type:{type:'string',enum:[...QUESTION_TYPES]},paragraphs:{type:'array',minItems:1,maxItems:6,items:{type:'object',properties:{media_ids:{type:'array',maxItems:8,items:{type:'string',maxLength:2000}},heading:{type:'string',maxLength:40},text:{type:'string',minLength:1,maxLength:600},evidence_ids:{type:'array',minItems:1,maxItems:14,items:{type:'string',maxLength:200}}},required:['heading','text','evidence_ids'],additionalProperties:false}},held:{type:'array',maxItems:4,items:{type:'string',maxLength:200}}},required:['question_type','paragraphs','held'],additionalProperties:false}
-    },required:['token'],anyOf:[{required:['answer']},{required:['evidenceClaims']}],additionalProperties:false},
+    },required:['token'],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false}
   },
   {
@@ -77,7 +77,7 @@ const tools: McpTool[] = [
   },
   {
     name: 'get_place_history',
-    description: '주소 token으로 동네 역사·사진과 GitHub 조사자료 후보를 조회합니다. token 없이 query(예: 세운상가, 정독도서관)로 GitHub CSV 메타데이터를 직접 검색할 수 있습니다. 후보는 검토·권리·장소 상태와 출처행을 보존하며 확정 근거가 아닙니다. 동네 기록을 해당 건물의 역사로 단정하지 마세요.',
+    description: '주소 token으로 동네 역사·사진과 GitHub 조사자료 후보를 조회합니다. token과 query 중 하나 이상을 전달하세요. token 없이 query(예: 세운상가, 정독도서관)로 GitHub CSV 메타데이터를 직접 검색할 수 있습니다. 후보는 검토·권리·장소 상태와 출처행을 보존하며 확정 근거가 아닙니다. 동네 기록을 해당 건물의 역사로 단정하지 마세요.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -87,7 +87,6 @@ const tools: McpTool[] = [
         offset: {type: 'integer', minimum: 0, maximum: 10000, default: 0},
         limit: {type: 'integer', minimum: 1, maximum: 12, default: 6},
       },
-      anyOf: [{required: ['token']}, {required: ['query']}],
       additionalProperties: false,
     },
     annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false},
