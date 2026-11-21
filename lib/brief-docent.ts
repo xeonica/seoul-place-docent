@@ -1,16 +1,27 @@
 import {FIELD_DOCENT_RULES} from './docent-experience';
-type ObjectValue=Record<string,any>;
+type ObjectValue=Record<string,unknown>;
+type BriefPacket=ObjectValue&{
+ evidence:ObjectValue&{candidates:ObjectValue[];records:ObjectValue[]};
+ visuals:ObjectValue&{photos:ObjectValue[];sourceOnlyRecords:unknown};
+ neighborhood:ObjectValue&{records:ObjectValue[]};
+ storytelling:ObjectValue&{historicalEvents:ObjectValue[]};
+ videos:ObjectValue&{records:ObjectValue[]};
+ registerDiagnostics:ObjectValue&{sections:Record<string,ObjectValue>};
+ bigQueryResearch:ObjectValue&{status:string};
+ instructions:string;
+};
+const asObject=(value:unknown):ObjectValue=>value&&typeof value==='object'&&!Array.isArray(value)?value as ObjectValue:{};
 const pick=(value:ObjectValue,names:string[])=>Object.fromEntries(names.filter(k=>value[k]!==undefined).map(k=>[k,value[k]]));
 /** Explicit opt-in DTO. standard/full retain the previous response contract. */
-export function briefDocent(packet:ObjectValue,token:string){
- const original=packet.evidence.candidates as ObjectValue[],counts=new Map<string,number>();
- const candidates=original.filter(r=>{const n=counts.get(r.mediaType)||0;counts.set(r.mediaType,n+1);return n<2;}).map(r=>pick(r,['evidenceId','recordId','mediaType','title','sourceUrl','sourceInstitution','publishedAt','eventDate','relationType','reviewStatus','rightsStatus','usableAsVerifiedEvidence','usageMode']));
+export function briefDocent(packet:BriefPacket,token:string){
+ const original=packet.evidence.candidates,counts=new Map<unknown,number>();
+ const candidates=original.filter(r=>{const mediaType=r.mediaType,n=counts.get(mediaType)||0;counts.set(mediaType,n+1);return n<2;}).map(r=>pick(r,['evidenceId','recordId','mediaType','title','sourceUrl','sourceInstitution','publishedAt','eventDate','relationType','reviewStatus','rightsStatus','usableAsVerifiedEvidence','usageMode']));
  const photos=packet.visuals.photos.map((p:ObjectValue)=>pick(p,['evidenceId','title','date','scope','credit','caption','note','imageUrl','displayImageUrl','originalImageUrl','sourceUrl','sourcePageUrl','sourceRecordId','mediaId','license','displayable','verificationStatus','alternateUrls','relation_type','locationVerification']));
  // All current approvals, all their claims, and reviewed counter-evidence remain.
  const records=packet.evidence.records.map((r:ObjectValue)=>pick(r,['evidenceId','recordId','mediaType','title','sourceInstitution','sourceUrl','eventDate','publishedAt','placeId','relationType','relationReviewStatus','reviewStatus','rightsStatus','usableAsVerifiedEvidence','claims','media','verification','videoVerificationStatus','usageMode']));
  return {version:'brief-docent-1',mode:packet.mode,status:packet.status,generation:packet.generation,address:packet.address,district:packet.district,dong:packet.dong,question:packet.question,
   place:packet.place,map:packet.map,coordinates:packet.coordinates,
-  neighborhood:{...pick(packet.neighborhood,['district','dong','selected','available']),records:packet.neighborhood.records.map((r:ObjectValue)=>({...pick(r,['id','date','year','title','text','scope','cutCount','evidence']),source:pick(r.source,['institution','url'])}))},
+  neighborhood:{...pick(packet.neighborhood,['district','dong','selected','available']),records:packet.neighborhood.records.map((r:ObjectValue)=>({...pick(r,['id','date','year','title','text','scope','cutCount','evidence']),source:pick(asObject(r.source),['institution','url'])}))},
   evidence:{...packet.evidence,records,candidates},
   historicalEvents:packet.storytelling.historicalEvents.map((e:ObjectValue)=>pick(e,['eventId','placeId','eventDate','claimId','classification','relationType','documentEvidenceIds','articleEvidenceIds','photoEvidenceIds','videoEvidenceIds','verificationStatus','crossSourceEventIdentity'])),
   videos:{...pick(packet.videos,['candidateCount','searchedCount','returnedCount']),records:packet.videos.records.slice(0,2).map((v:ObjectValue)=>pick(v,['id','title','provider','date','dateType','url','relation','verificationStatus','contentVerified','independentlyVerified','verifiedSegments','playbackStatus']))},

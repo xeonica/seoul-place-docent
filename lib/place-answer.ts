@@ -5,15 +5,15 @@ import {imageProxyOrigin,isAllowedImageUrl,toProxyUrl} from './image-proxy';
 import type {DocentStory,StoryScene} from './docent-story';
 import {sceneConnections} from './docent-scene-connections';
 import {imageDeliveryUrl} from './archive-image-delivery';
-import {photoResearchCredit,photoResearchImageCandidates} from './photo-research';
-import {buildings,ServiceError,type Secrets as ProviderSecrets,type Address} from './providers';
+import {photoResearchCredit} from './photo-research';
+import {ServiceError,type Secrets as ProviderSecrets,type Address} from './providers';
 /** MCP prepares evidence; the calling user's AI classifies and writes the answer. */
 export const QUESTION_TYPES=['동네 역사','시대별 모습','특정 장소·건물','사진 찾기','지명 유래','기타'] as const;
 export type QuestionType=typeof QUESTION_TYPES[number];
 export type AnswerParagraph={heading:string;text:string;scope:'동네'|'자치구';evidenceIds:string[]};
 type VerifiedPhoto=ReturnType<typeof verifyPhotoAsset>&{imageUrl:string;deliveryPath?:string|null;sourceUrl:string|null;credit:string;terms:string};
 export type AnswerSource={id:string;date:string;title:string;institution:string;url:string|null;photoVerification?:ReturnType<typeof verifyPhotoAsset>;photo:VerifiedPhoto|null};
-import {closedBuildings,type PlaceContextSecrets} from './place-context';
+import {type PlaceContextSecrets} from './place-context';
 type Secrets={DB?:D1Database};
 export const ANSWER_VERSION='client-docent-11';
 

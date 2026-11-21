@@ -20,7 +20,6 @@ import {archiveStats, database} from '@/lib/archive-db';
 import {getDocentStory, getFullDocentStory} from '@/lib/docent-data';
 import {resolveMcpMapAddress as mapAddress} from '@/lib/mcp-map-address';
 import {readAttachedPhoto} from '@/lib/mcp-photo';
-import {photoResearchThumbnail} from '@/lib/photo-research';
 import {searchAddresses, ServiceError, verifyAddress} from '@/lib/providers';
 import {guidePhotos, placeRegisterRecords, generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, sceneSource, logClientDocent, QUESTION_TYPES} from '@/lib/place-answer';
 import {handleMcpMessage, rpcError, textResult, type McpTool, type McpToolResult} from '@/lib/mcp-protocol';
@@ -30,6 +29,7 @@ import {originError,configuredMcpOrigins,acceptError,protocolError,allowMcpReque
 export const dynamic = 'force-dynamic';
 const MAX_BODY_BYTES = 32768;
 const headers = {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'};
+const omitImageMarkdown=<T extends {imageMarkdown:string}>(photo:T):Omit<T,'imageMarkdown'>=>{const safePhoto={...photo};Reflect.deleteProperty(safePhoto,'imageMarkdown');return safePhoto as Omit<T,'imageMarkdown'>;};
 
 const tools: McpTool[] = [
   {
@@ -264,7 +264,7 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
         const {videos,bigQueryResearch,bigQueryGitHubResearch,hansungArchive}=newEvidence;
         const sourceOnlyRecords=packet.neighborhood.records.filter(record=>!record.source.photo&&record.source.url&&record.source.photoVerification?.verificationStatus!=='REJECTED').map(record=>({evidenceId:record.id,title:record.title,date:record.date,sourceUrl:record.source.url,verificationStatus:record.source.photoVerification?.verificationStatus||'SOURCE_ONLY',note:'원문 기록은 있으나 표시 가능한 원본 사진은 확인되지 않았습니다.'}));
-        const photos=visitorPhotos(guidePhotos(packet,new Map(newEvidence.evidence.records.filter(e=>e.usableAsVerifiedEvidence&&e.mediaType==='photo').map(e=>[sourcePageKey(e.sourceUrl)||'',relationPriority[e.relationType as keyof typeof relationPriority]??6]))),newEvidence.evidence.records).map(({imageMarkdown: _imageMarkdown, ...photo}) => photo);
+        const photos=visitorPhotos(guidePhotos(packet,new Map(newEvidence.evidence.records.filter(e=>e.usableAsVerifiedEvidence&&e.mediaType==='photo').map(e=>[sourcePageKey(e.sourceUrl)||'',relationPriority[e.relationType as keyof typeof relationPriority]??6]))),newEvidence.evidence.records).map(omitImageMarkdown);
         const photoCandidates=packet.neighborhood.records.filter(r=>r.source.photoVerification).map(r=>({evidenceId:'candidate:photo:'+r.id,recordId:r.id,mediaType:'photo',title:r.title,sourceInstitution:r.source.institution,sourceUrl:r.source.url,eventDate:r.date,publishedAt:null,placeId:null,relationType:r.scope==='district'?'district_context':'dong_context',relationReviewStatus:'unverified',reviewStatus:'candidate',rightsStatus:'metadata_link_only',license:r.source.photoVerification?.license||null,usableAsVerifiedEvidence:false,claims:[],media:{videoUrl:null,verifiedSegments:[]},imageVerification:r.source.photoVerification?.verificationStatus,usageMode:'candidate_link_only'}));
         const evidence={...newEvidence.evidence,candidates:[...newEvidence.evidence.candidates,...photoCandidates],diagnostics:{...newEvidence.evidence.diagnostics,candidateCount:newEvidence.evidence.diagnostics.candidateCount+photoCandidates.length,byMediaType:{...newEvidence.evidence.diagnostics.byMediaType,photo:{...newEvidence.evidence.diagnostics.byMediaType.photo,candidateCount:(newEvidence.evidence.diagnostics.byMediaType.photo?.candidateCount||0)+photoCandidates.length}}}};
         const research=input.detailLevel==='brief'?undefined:(()=>{const rawResearch=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);return input.detailLevel==='full'?rawResearch:{...rawResearch,records:rawResearch.records.map(r=>({...r,observations:r.observations.slice(0,2),observationsTruncated:r.observations.length>2,detailMode:'detailLevel=full'}))};})();
