@@ -8,6 +8,7 @@ import {signAddress} from '../lib/providers.ts';
 import {auditedCall,recordMcpCall,mcpUsageStats,clientHint} from '../lib/mcp-audit.ts';
 import {createMcpLimiter} from '../lib/mcp-http.ts';
 import {historyQuestion} from '../lib/user-ai.ts';
+import {validateDocentTourV2} from '../lib/docent-tour-schema.ts';
 
 const headers={'content-type':'application/json',accept:'application/json, text/event-stream'};
 const envelope=(method,params={},id=1)=>({jsonrpc:'2.0',id,method,params});
@@ -58,7 +59,7 @@ test('all eight actual MCP tools run without operator model calls; address and G
  try{
   const search=await invoke('search_place',{query:'사직로 161'});const token=data(search).candidates[0].token;
   assert.ok(search._meta.requestId);assert.equal(search._meta.auditPersisted,false);
-  const packet=data(await invoke('prepare_place_answer',{token}));assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);assert.ok(packet.researchCandidates.articles.length>0);assert.ok(packet.researchCandidates.photos.length>0);assert.ok([...packet.researchCandidates.articles,...packet.researchCandidates.photos].every(item=>item.citationEligible===false));
+  const packet=data(await invoke('prepare_place_answer',{token}));assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);assert.ok(packet.tourPlan);assert.equal(packet.tourPlan.sections.length,7);assert.equal(validateDocentTourV2(packet.tourPlan).valid,true);assert.ok(packet.researchCandidates.articles.length>0);assert.ok(packet.researchCandidates.photos.length>0);assert.ok([...packet.researchCandidates.articles,...packet.researchCandidates.photos].every(item=>item.citationEligible===false));
   assert.deepEqual(data(await invoke('generate_place_answer',{token})).neighborhood,packet.neighborhood);
   const history=data(await invoke('get_place_history',{token}));assert.ok(history.neighborhood.scenes.length>0);assert.ok(history.researchCandidates.articles.length>0);
   const record=packet.neighborhood.records[0];
