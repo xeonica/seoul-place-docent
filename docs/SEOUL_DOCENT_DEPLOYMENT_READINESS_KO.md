@@ -27,11 +27,11 @@ PR #77의 migration 0006–0008은 코드·테스트 대상으로만 유지했�
 
 ## 다음 단계
 
-1. PR #76·#77 코드를 보존하는 새 통합 PR을 검토 대상으로 제출합니다.
+1. PR #78 통합 초안을 검토하고 GitHub Actions 결과를 확인합니다.
 2. GitHub Actions에서 저장소가 요구하는 Node 22로 전체 테스트를 실행하고 현재 main 기준 결과와 비교합니다.
 3. Preview 전용 환경변수와 D1 식별자를 확인한 뒤 격리된 테스트 DB에만 migration을 적용합니다.
 4. 25개 구 × 5개 장소 유형의 공식 주소를 확보해 주소 검색과 역사 근거 확인을 별도 집계합니다.
 5. Preview HTTP의 MCP initialize/tools/list와 두 지정 아파트 흐름을 재검증합니다.
 6. 검토 승인 후에만 Production 병합·배포 계획을 별도 수립합니다.
 
-PR 링크: 브랜치 push 및 PR 생성 전 — 아직 없음.
+PR 링크: https://github.com/xeonica/seoul-place-docent/pull/78 (Draft, main 미병합)
