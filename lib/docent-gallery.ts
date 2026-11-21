@@ -7,7 +7,7 @@ export const galleryToolMeta = {ui:{resourceUri:galleryUri}, 'openai/outputTempl
 const resourceDomains = [...new Set([...IMAGE_RESOURCE_DOMAINS, imageProxyOrigin()])];
 export const galleryResource = {
   uri:galleryUri, name:'서울 기록 사진', mimeType:galleryMime,
-  _meta:{ui:{csp:{resourceDomains}},'openai/widgetCSP':{resource_domains:resourceDomains},'openai/widgetDescription':'서울 장소 기록 사진과 날짜, 출처, 원문 링크를 표시합니다.'},
+  _meta:{ui:{csp:{resourceDomains}}},
 };
 /** Host variants differ: ChatGPT globals may carry the full text payload. */
 export function galleryPayload(value:unknown,depth=0):Record<string,unknown>|null{
