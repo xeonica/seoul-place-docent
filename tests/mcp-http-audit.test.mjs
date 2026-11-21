@@ -60,6 +60,7 @@ test('all eight actual MCP tools run without operator model calls; address and G
   const search=await invoke('search_place',{query:'사직로 161'});const token=data(search).candidates[0].token;
   assert.ok(search._meta.requestId);assert.equal(search._meta.auditPersisted,false);
   const packet=data(await invoke('prepare_place_answer',{token}));assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);assert.ok(packet.tourPlan);assert.equal(packet.tourPlan.sections.length,7);assert.equal(validateDocentTourV2(packet.tourPlan).valid,true);assert.ok(packet.researchCandidates.articles.length>0);assert.ok(packet.researchCandidates.photos.length>0);assert.ok([...packet.researchCandidates.articles,...packet.researchCandidates.photos].every(item=>item.citationEligible===false));
+  const brief=data(await invoke('prepare_place_answer',{token,detailLevel:'brief',question:'사직로 161의 역사를 도슨트로 해설해 줘'}));assert.equal(brief.tourPlan.responseScope,'comprehensive_tour');assert.equal(brief.tourPlan.detailLevel,'brief');assert.equal(brief.tourPlan.sections.length,7);assert.equal(brief.tourPlan.provenance.operatorAiCalls,0);assert.match(brief.instructions,/7부/);
   assert.deepEqual(data(await invoke('generate_place_answer',{token})).neighborhood,packet.neighborhood);
   const history=data(await invoke('get_place_history',{token}));assert.ok(history.neighborhood.scenes.length>0);assert.ok(history.researchCandidates.articles.length>0);
   const record=packet.neighborhood.records[0];
