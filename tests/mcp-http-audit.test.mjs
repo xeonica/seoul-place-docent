@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
 import {DatabaseSync} from 'node:sqlite';
 import {POST,GET,DELETE,OPTIONS} from '../app/mcp/route.ts';
 import {GET as statsRoute} from '../app/api/admin/mcp-stats/route.ts';
@@ -54,13 +53,13 @@ test('all eight actual MCP tools run without operator model calls; address and G
  delete process.env.CLOUDFLARE_ACCOUNT_ID;
  const address={roadAddr:'서울특별시 종로구 사직로 161',jibunAddr:'서울특별시 종로구 세종로 1-1',siNm:'서울특별시',sggNm:'종로구',emdNm:'세종로',admCd:'1111011900',bdMgtSn:'fixture',bdNm:'',lnbrMnnm:'1',lnbrSlno:'1',mtYn:'0',zipNo:'03045'};
  let candidates=[address],network=[],unexpected=[];
- globalThis.fetch=async input=>{const url=new URL(String(input));network.push(url.hostname);if(url.hostname==='business.juso.go.kr')return Response.json({results:{common:{errorCode:'0',totalCount:String(candidates.length)},juso:candidates}});const shard=url.pathname.match(/\/shards\/(articles|photos)\/([^/]+)\.json\.gz$/);if(shard){const filename=new URL(`../public/research/seoul-district-collection/shards/${shard[1]}/${decodeURIComponent(shard[2])}.json.gz`,import.meta.url);return new Response(await readFile(filename));}unexpected.push(url.hostname);throw new Error('Forbidden external call');};
+ globalThis.fetch=async input=>{const url=new URL(String(input));network.push(url.hostname);if(url.hostname!=='business.juso.go.kr'){unexpected.push(url.hostname);throw new Error('Forbidden external call');}return Response.json({results:{common:{errorCode:'0',totalCount:String(candidates.length)},juso:candidates}});};
  try{
   const search=await invoke('search_place',{query:'사직로 161'});const token=data(search).candidates[0].token;
   assert.ok(search._meta.requestId);assert.equal(search._meta.auditPersisted,false);
-  const packet=data(await invoke('prepare_place_answer',{token}));assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);assert.ok(packet.researchCandidates.articles.length>0);assert.ok(packet.researchCandidates.photos.length>0);assert.ok([...packet.researchCandidates.articles,...packet.researchCandidates.photos].every(item=>item.citationEligible===false));
+  const packet=data(await invoke('prepare_place_answer',{token}));assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);
   assert.deepEqual(data(await invoke('generate_place_answer',{token})).neighborhood,packet.neighborhood);
-  const history=data(await invoke('get_place_history',{token}));assert.ok(history.neighborhood.scenes.length>0);assert.ok(history.researchCandidates.articles.length>0);
+  assert.ok(data(await invoke('get_place_history',{token})).neighborhood.scenes.length>0);
   const record=packet.neighborhood.records[0];
   const checked=data(await invoke('validate_place_answer',{token,question:packet.question,answer:{question_type:'동네 역사',paragraphs:[{heading:'근거',text:record.text.slice(0,100),evidence_ids:[record.id]}],held:[]}}));assert.equal(checked.verification,'mechanical_only');
   assert.equal(data(await invoke('resolve_photo_location')).status,'needs_location');

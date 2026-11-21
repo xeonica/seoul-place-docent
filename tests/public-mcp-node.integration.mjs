@@ -1,4 +1,3 @@
-import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
@@ -18,10 +17,7 @@ test('Vercel Node HTTP adapter serves real unauthenticated MCP HTTP and health r
 
 test('built image rewrite and Node adapter preserve the source query and response headers', async t => {
  const {default:config}=await import('../.vercel/output/config.json',{with:{type:'json'}});
- // Transport must use a registered asset: the source identity gate remains active.
- const proofs=JSON.parse(readFileSync(new URL('../data/photo-asset-proofs.json',import.meta.url),'utf8'));
- const original=Object.values(proofs).filter(p=>p.displayAllowed).flatMap(p=>p.displayImageUrls).find(url=>url.includes('?'));
- assert.ok(original,'registered query-bearing image fixture required');
+ const original='https://museum.seoul.go.kr:8088/component/archv/data/ND_thumbnail.tmb?fileSn=300&fileId=H-1&w=800&h=800';
  const requestPath='/img?u='+encodeURIComponent(original);
  const bytes=Buffer.from([255,216,255]);
  const fetchRequest=globalThis.fetch;

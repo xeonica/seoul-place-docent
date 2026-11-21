@@ -1,4 +1,4 @@
-import {galleryHtml,galleryResource,galleryUri,legacyGalleryUris} from './docent-gallery';
+import {galleryHtml,galleryResource,galleryUri} from './docent-gallery';
 export type McpTool = {
   name: string;
   description: string;
@@ -43,7 +43,7 @@ export async function handleMcpMessage(value: unknown, tools: readonly McpTool[]
       result = {
         supportedVersions: MCP_SUPPORTED_VERSIONS,
         _meta: {'io.modelcontextprotocol/serverInfo': {name: 'seoul-place-docent', version: '2.0.0'}},
-        instructions: '빠른 주소 해설은 prepare_place_answer에 address와 detailLevel=brief를 전달하세요. 유일한 공식 주소만 진행하며 모호하면 반환된 후보를 사용자가 고르게 하세요. 기본 근거가 충분하면 search_place/get_place_history/prepare를 중복 호출하지 마세요. 상세 외부 후보가 필요할 때만 full로 추가 조회하세요. validationContext의 token과 question으로 필요한 검증을 진행하세요. 원본 사진은 extract_photo_location으로 실제 EXIF GPS를 읽고 주소 후보를 확인하세요. 파일이 전달되지 않거나 GPS가 없으면 웹 원본 선택·주소 입력을 안내하고 외관으로 위치를 추측하지 마세요. 주소는 위 직접 조회 경로로 확인하고 모호하면 후보만 표시하세요. prepare_place_answer로 근거를 받은 뒤 호출한 AI가 사진·영상·출처와 시기를 붙여 최종 해설을 작성하세요. 같은 token·question으로 validate_place_answer를 호출할 수 있습니다. 장소 이야기 다음에 동네 이야기와 사진을 배치하고 빈 항목과 후속 질문은 생략하세요. GitHub 조사 후보는 get_place_history의 query로 검색할 수 있으며 research의 미검증 자료를 확정 근거로 승격하지 마세요. 주소가 확인되면 기록 수와 무관하게 호출한 AI가 현장 해설을 완성하고, 관련 있는 기록과 사진을 해설 속에 더하세요. 서버는 모델 API를 호출하지 않습니다.',
+        instructions: '원본 사진은 extract_photo_location으로 실제 EXIF GPS를 읽고 주소 후보를 확인하세요. 파일이 전달되지 않거나 GPS가 없으면 웹 원본 선택·주소 입력을 안내하고 외관으로 위치를 추측하지 마세요. 주소 입력은 search_place로 조회하고 유일하게 식별된 주소는 즉시 해설하고 모호하면 후보 주소만 표시하세요. prepare_place_answer로 근거를 받은 뒤 호출한 AI가 사진·영상·출처와 시기를 붙여 최종 해설을 작성하세요. 같은 token·question으로 validate_place_answer를 호출할 수 있습니다. 장소 이야기 다음에 동네 이야기와 사진을 배치하고 빈 항목과 후속 질문은 생략하세요. GitHub 조사 후보는 get_place_history의 query로 검색할 수 있으며 research의 미검증 자료를 확정 근거로 승격하지 마세요. 주소가 확인되면 기록 수와 무관하게 호출한 AI가 현장 해설을 완성하고, 관련 있는 기록과 사진을 해설 속에 더하세요. 서버는 모델 API를 호출하지 않습니다.',
         capabilities: {tools: {}, resources: {}},
         serverInfo: {name: 'seoul-place-docent', version: '2.0.0'},
       };
@@ -66,8 +66,8 @@ export async function handleMcpMessage(value: unknown, tools: readonly McpTool[]
       result = {resources:[galleryResource]};
       break;
     case 'resources/read':
-      if(params.uri!==galleryUri&&!legacyGalleryUris.includes(String(params.uri)))return rpcError(id,-32002,'Unknown resource');
-      result = {contents:[{...galleryResource,uri:String(params.uri),text:galleryHtml}]};
+      if(params.uri!==galleryUri)return rpcError(id,-32002,'Unknown resource');
+      result = {contents:[{...galleryResource,text:galleryHtml}]};
       break;
     case 'tools/list':
       result = {tools};

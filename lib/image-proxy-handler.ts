@@ -1,11 +1,10 @@
-import {isRegisteredPhotoUrl} from './photo-proof-index';
 import {isAllowedImageUrl} from './image-proxy';
 
 const maxImageBytes = 5 * 1024 * 1024;
 const corsHeaders = {'Access-Control-Allow-Origin': '*'};
 const allowedMethods = 'GET, HEAD, OPTIONS';
 
-export async function handleImageProxy(request: Request, authorize:(url:string)=>boolean=isRegisteredPhotoUrl): Promise<Response> {
+export async function handleImageProxy(request: Request): Promise<Response> {
   if (request.method === 'OPTIONS') {
     return new Response(null, {status: 204, headers: {
       ...corsHeaders, Allow: allowedMethods, 'Access-Control-Allow-Methods': allowedMethods,
@@ -16,7 +15,7 @@ export async function handleImageProxy(request: Request, authorize:(url:string)=
   }
 
   const original = new URL(request.url).searchParams.get('u');
-  if (!original || !isAllowedImageUrl(original)||!authorize(original)) {
+  if (!original || !isAllowedImageUrl(original)) {
     return new Response(null, {status: 400, headers: corsHeaders});
   }
 
@@ -32,7 +31,7 @@ export async function handleImageProxy(request: Request, authorize:(url:string)=
       },
     });
     const contentType = upstream.headers.get('content-type');
-    if (!upstream.ok || !['image/jpeg','image/png','image/webp','image/gif'].includes((contentType||'').split(';')[0].toLowerCase())
+    if (!upstream.ok || !contentType?.toLowerCase().startsWith('image/')
         || !upstream.body || Number(upstream.headers.get('content-length')) > maxImageBytes) {
       await upstream.body?.cancel();
       return badGateway();
@@ -49,18 +48,19 @@ export async function handleImageProxy(request: Request, authorize:(url:string)=
         await reader.cancel();
         return badGateway();
       }
-      chunks.push(value);
+      if (request.method === 'GET') chunks.push(value);
     }
 
     const headers = {
       ...corsHeaders,
-      'Content-Type': contentType!,
+      'Content-Type': contentType,
       'Content-Length': String(length),
       'Cache-Control': 'public, max-age=86400, s-maxage=604800',
       'X-Content-Type-Options': 'nosniff',
       // Disable active content if an upstream SVG is opened as a document.
       'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'",
     };
+    if (request.method === 'HEAD') return new Response(null, {headers});
 
     const body = new Uint8Array(length);
     let offset = 0;
@@ -68,13 +68,7 @@ export async function handleImageProxy(request: Request, authorize:(url:string)=
       body.set(chunk, offset);
       offset += chunk.byteLength;
     }
-    const type=(contentType||'').split(';')[0].toLowerCase();
-    const valid=type==='image/jpeg'&&body[0]===255&&body[1]===216&&body[2]===255
-      ||type==='image/png'&&body[0]===137&&body[1]===80&&body[2]===78&&body[3]===71
-      ||type==='image/webp'&&String.fromCharCode(...body.slice(0,4))==='RIFF'&&String.fromCharCode(...body.slice(8,12))==='WEBP'
-      ||type==='image/gif'&&/^GIF8[79]a$/.test(String.fromCharCode(...body.slice(0,6)));
-    if(!valid)return badGateway();
-    return new Response(request.method==='HEAD'?null:body, {headers});
+    return new Response(body, {headers});
   } catch {
     return badGateway();
   }
