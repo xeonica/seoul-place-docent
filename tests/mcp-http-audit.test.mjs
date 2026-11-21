@@ -8,6 +8,7 @@ import {signAddress} from '../lib/providers.ts';
 import {auditedCall,recordMcpCall,mcpUsageStats,clientHint} from '../lib/mcp-audit.ts';
 import {createMcpLimiter} from '../lib/mcp-http.ts';
 import {historyQuestion} from '../lib/user-ai.ts';
+import {validateDocentTourV2} from '../lib/docent-tour-schema.ts';
 
 const headers={'content-type':'application/json',accept:'application/json, text/event-stream'};
 const envelope=(method,params={},id=1)=>({jsonrpc:'2.0',id,method,params});
@@ -31,7 +32,7 @@ test('HTTP initialize/list, notifications, parse errors and stateless methods',a
 test('transport rejects origins, media types, oversized streams and invalid modern headers',async()=>{
  assert.equal((await POST(request(envelope('ping'),{origin:'https://evil.test'}))).status,403);
  assert.equal(GET(new Request('https://docent.test/mcp',{headers:{origin:'null'}})).status,403);
- assert.equal((await POST(request(envelope('ping'),{accept:'application/json'}))).status,406);
+ assert.equal((await POST(request(envelope('ping'),{accept:'application/json'}))).status,200);
  assert.equal((await POST(request(envelope('ping'),{accept:'application/json;q=0, text/event-stream'}))).status,406);
  assert.equal((await POST(request(envelope('ping'),{'content-type':'text/plain'}))).status,415);
  assert.equal((await POST(request({x:'가'.repeat(12000)}))).status,413);
@@ -58,7 +59,8 @@ test('all eight actual MCP tools run without operator model calls; address and G
  try{
   const search=await invoke('search_place',{query:'사직로 161'});const token=data(search).candidates[0].token;
   assert.ok(search._meta.requestId);assert.equal(search._meta.auditPersisted,false);
-  const packet=data(await invoke('prepare_place_answer',{token}));assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);assert.ok(packet.researchCandidates.articles.length>0);assert.ok(packet.researchCandidates.photos.length>0);assert.ok([...packet.researchCandidates.articles,...packet.researchCandidates.photos].every(item=>item.citationEligible===false));
+  const packet=data(await invoke('prepare_place_answer',{token}));assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);assert.ok(packet.tourPlan);assert.equal(packet.tourPlan.sections.length,7);assert.equal(validateDocentTourV2(packet.tourPlan).valid,true);assert.ok(packet.researchCandidates.articles.length>0);assert.ok(packet.researchCandidates.photos.length>0);assert.ok([...packet.researchCandidates.articles,...packet.researchCandidates.photos].every(item=>item.citationEligible===false));
+  const brief=data(await invoke('prepare_place_answer',{token,detailLevel:'brief',question:'사직로 161의 역사를 도슨트로 해설해 줘'}));assert.equal(brief.tourPlan.responseScope,'comprehensive_tour');assert.equal(brief.tourPlan.detailLevel,'brief');assert.equal(brief.tourPlan.sections.length,7);assert.equal(brief.tourPlan.provenance.operatorAiCalls,0);assert.match(brief.instructions,/7부/);
   assert.deepEqual(data(await invoke('generate_place_answer',{token})).neighborhood,packet.neighborhood);
   const history=data(await invoke('get_place_history',{token}));assert.ok(history.neighborhood.scenes.length>0);assert.ok(history.researchCandidates.articles.length>0);
   const record=packet.neighborhood.records[0];
