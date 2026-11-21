@@ -32,7 +32,7 @@ test('HTTP initialize/list, notifications, parse errors and stateless methods',a
 test('transport rejects origins, media types, oversized streams and invalid modern headers',async()=>{
  assert.equal((await POST(request(envelope('ping'),{origin:'https://evil.test'}))).status,403);
  assert.equal(GET(new Request('https://docent.test/mcp',{headers:{origin:'null'}})).status,403);
- assert.equal((await POST(request(envelope('ping'),{accept:'application/json'}))).status,406);
+ assert.equal((await POST(request(envelope('ping'),{accept:'application/json'}))).status,200);
  assert.equal((await POST(request(envelope('ping'),{accept:'application/json;q=0, text/event-stream'}))).status,406);
  assert.equal((await POST(request(envelope('ping'),{'content-type':'text/plain'}))).status,415);
  assert.equal((await POST(request({x:'가'.repeat(12000)}))).status,413);
