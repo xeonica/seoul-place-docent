@@ -19,8 +19,23 @@ export function createMcpLimiter(limit=120,windowMs=60000) {
 }
 export const allowMcpRequest=createMcpLimiter();
 export function acceptError(request:Request) {
- const accepted=(request.headers.get('accept')||'').toLowerCase().split(',').filter(part=>! /;\s*q=0(?:\.0*)?(?:\s*;|\s*$)/.test(part)).map(part=>part.split(';')[0].trim());
- if(!accepted.includes('application/json')||!accepted.includes('text/event-stream'))return Response.json(rpcError(null,-32600,'Accept must include application/json and text/event-stream'),{status:406,headers:mcpHeaders});
+ const accept=request.headers.get('accept');
+ if(!accept?.trim())return;
+ // POST responses are JSON. SSE support is optional for compatible clients.
+ let bestSpecificity=-1;
+ let bestQuality=0;
+ for(const entry of accept.toLowerCase().split(',')) {
+  const [range,...parameters]=entry.split(';').map(part=>part.trim());
+  const specificity=['*/*','application/*','application/json'].indexOf(range);
+  if(specificity<0||specificity<bestSpecificity)continue;
+  const weight=parameters.find(parameter=>/^q\s*=/.test(parameter));
+  const quality=weight===undefined?1:Number(weight.split('=')[1]);
+  if(!Number.isFinite(quality)||quality<0||quality>1)continue;
+  if(specificity>bestSpecificity)bestQuality=0;
+  bestSpecificity=specificity;
+  bestQuality=Math.max(bestQuality,quality);
+ }
+ if(bestQuality===0)return Response.json(rpcError(null,-32600,'Accept must allow application/json'),{status:406,headers:mcpHeaders});
 }
 function decodeName(value:string|null) {
  if(value===null)return null;
