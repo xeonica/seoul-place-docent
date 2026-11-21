@@ -342,6 +342,14 @@ export async function POST(request: Request) {
   const invalidProtocol=protocolError(request,message);
   if(invalidProtocol)return invalidProtocol;
   const response = await handleMcpMessage(message, tools, (name, args) => auditedCall(env.DB,name,clientHint(request),()=>execute(request, name, args)));
+  if (process.env.VERCEL_ENV === 'preview') {
+    const method = (message as {method?: unknown} | null)?.method;
+    const knownMethods = ['initialize', 'notifications/initialized', 'server/discover', 'tools/list', 'resources/list', 'resources/read', 'tools/call', 'ping'];
+    console.info('MCP_REGISTRATION_CHECK', JSON.stringify({
+      method: typeof method === 'string' && knownMethods.includes(method) ? method : 'other',
+      result: response === undefined ? 'notification' : 'error' in response ? response.error.code : 'ok',
+    }));
+  }
   if (response === undefined) return new Response(null, {status: 202, headers});
   const serializationStart=performance.now(),serialized=JSON.stringify(response),serializationMs=performance.now()-serializationStart;
   return new Response(serialized,{headers:{...headers,'Content-Type':'application/json','Server-Timing':`mcp;dur=${(performance.now()-transportStart).toFixed(1)}, serialize;dur=${serializationMs.toFixed(1)}`,'X-MCP-Response-Bytes':String(new TextEncoder().encode(serialized).byteLength)},status:'error' in response?(response.error.code===-32601?404:400):200});
