@@ -19,7 +19,7 @@ test('HTTP initialize/list, notifications, parse errors and stateless methods',a
  const r=await POST(request(envelope('initialize',{protocolVersion:'2025-11-25'})));
  assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/application\/json/);assert.equal(r.headers.has('mcp-session-id'),false);
  assert.equal((await r.json()).result.protocolVersion,'2025-11-25');
- assert.equal((await (await POST(request(envelope('tools/list')))).json()).result.tools.length,10);
+ assert.equal((await (await POST(request(envelope('tools/list')))).json()).result.tools.length,11); // +show_place_photos
  const n=await POST(request({jsonrpc:'2.0',method:'notifications/initialized'}));assert.equal(n.status,202);assert.equal(await n.text(),'');
  assert.equal((await POST(new Request('https://docent.test/mcp',{method:'POST',headers,body:'{'}))).status,400);
  for(const handler of [GET,DELETE])assert.equal(handler(new Request('https://docent.test/mcp')).status,405);
