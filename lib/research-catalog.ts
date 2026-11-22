@@ -35,7 +35,7 @@ export function searchResearchRecords(input:ResearchSearch={}){
     return {...link,declaredRelation:declared,relation:match.relation,matchMethod:match.matchMethod,distanceMeters:match.distanceMeters,reviewStatus:match.reviewStatus,approvable:match.approvable,classificationReason:match.reason};
    })})),
    otherProvenance:record.observations.filter(o=>!matched.includes(o)).map(o=>({path:o.file,line:o.line,recordId:o.recordId,reviewStatus:o.reviewStatus,rights:o.rights,permissions:o.permissions}))})),
-  note:'GitHub 조사 CSV의 메타데이터 후보입니다. 원문 URL별로 중복을 묶고 각 조사행의 출처·검토·권리·장소 판정을 보존했습니다. 현재 건물·필지와의 일치와 촬영 장면은 미검증입니다. 원문 확인 전 확정 역사 근거로 인용하거나 이미지·영상을 표시하지 마세요.'};
+  note:'GitHub 조사 CSV의 메타데이터 후보입니다. 원문 URL별로 중복을 묶고 각 조사행의 출처·검토·권리·장소 판정을 보존했습니다. 현재 건물·필지와의 일치와 촬영 장면은 미검증입니다. 검토 전 자료이지만 해설에 사용할 수 있습니다. 소장기관과 함께 기록 내용을 서술하고 원문 링크를 붙이세요. 검토 상태는 본문에서 반복하지 말고 출처 목록에만 적으세요. 이 목록에는 이미지 주소가 없습니다.'};
 }
 export function placeResearchCandidates(district:string,dong:string,placeName=''){
  // Prefer explicit neighborhood/place mentions; a broad district alone cannot prove a local match.
