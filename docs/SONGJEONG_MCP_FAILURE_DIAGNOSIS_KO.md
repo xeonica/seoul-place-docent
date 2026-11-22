@@ -40,6 +40,20 @@
 - Vercel Preview: 아직 생성·호출 검증하지 않았습니다.
 - Production 배포: 수행하지 않았습니다.
 
-## 다음 확인 단계
+## PR Preview 실증 및 잔여 단계
 
-수정 커밋을 PR #100에 올린 뒤 Node 22 전체 CI를 재실행하고, Preview에서 두 주소의 `prepare_place_answer`를 호출해야 합니다. 송정동 응답이 정상인지 확인하고 Preview의 `mcp_stage` 이벤트에서 `build_place_docent_tour_v2` 실패가 사라졌는지 대조합니다. Production 로그 접근 권한이 없어 운영 요청의 최초 예외 단계는 아직 직접 입증되지 않았습니다. 운영 배포는 별도 승인 전까지 수행하지 않습니다.
+최신 PR Preview `https://seoul-place-docent-mcp-git-codex-songjeo-aa5184-smn0365465-1518.vercel.app`에서 `/health`가 HTTP 200과 `ready`를 반환했습니다. MCP HTTP 호출도 실제 실행했습니다.
+
+| 주소/도구 | 실제 Preview 결과 |
+|---|---|
+| 송정4길 5 `search_place` | 후보 1건 |
+| 송정4길 5 `get_place_history` | 장면 6건 |
+| 송정4길 5 `prepare_place_answer` | 정상, 7부, 사진 1건, 4부는 `missing` 유지 |
+| 송정4길 5 `generate_place_answer` | 정상, 7부 |
+| 마장로42길 16 `search_place` | 후보 1건 |
+| 마장로42길 16 `get_place_history` | 장면 6건 |
+| 마장로42길 16 `prepare_place_answer` | 정상, 7부, 4부는 `missing` 유지 |
+
+Preview MCP initialize는 프로토콜 버전 `2025-11-25`로 성공했고 `tools/list`는 11개 도구를 반환했습니다. Preview에서 D1 및 건물 식별 상태가 선택적 실패로 반환되어도 두 주소의 근거 packet 생성이 성공했으며, 동네 자료는 4부의 직접 건물 이력으로 승격되지 않았습니다. 진단 저장소는 `auditConfigured=false`이므로 Preview 서버 내부 `mcp_stage` 로그의 개별 이벤트는 조회하지 못했습니다.
+
+PR #100의 최신 커밋 `16522ac3c2ea469e27dc9e7201d9cc4b3c7a6de1`에서 Node 22 GitHub Actions 406개 테스트가 모두 통과했고 `types`, `contract`, `public-mcp`, Vercel Preview 빌드도 통과했습니다. Production은 미배포이며, 운영 MCP의 요청 ID에 대한 최초 예외는 운영 서버 로그 접근 권한이 없어 독립 확인하지 못했습니다. 이 PR 병합 후 Production 배포와 동일한 MCP 호출 재검증은 별도 진행이 필요합니다.
