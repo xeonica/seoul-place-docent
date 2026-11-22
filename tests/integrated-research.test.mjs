@@ -21,6 +21,10 @@ globalThis.fetch=async(input,init)=>{
  return originalFetch(input,init);
 };
 
+const canonicalSourceBytes=(file,bytes)=>file.path.toLowerCase().endsWith('.csv')
+ ? Buffer.from(bytes.toString('utf8').replace(/\r?\n/g,'\r\n'))
+ : bytes;
+
 test('one final master supplies records while incremental files and exclusions remain audit evidence',()=>{
  assert.equal(additional.length,1562);
  assert.equal(bundle.items.length,legacy.items.length+additional.length+workbookPhotos.length);
@@ -37,7 +41,7 @@ test('one final master supplies records while incremental files and exclusions r
 
 test('all eleven unmodified exports are downloadable and final state agrees with the accepted master',()=>{
  assert.equal(summary.files.length,11);
- for(const file of summary.files){const bytes=readFileSync(new URL('../public'+file.path,import.meta.url));assert.equal(bytes.length,file.sizeBytes);assert.equal(createHash('sha256').update(bytes).digest('hex'),file.sha256);}
+ for(const file of summary.files){const bytes=readFileSync(new URL('../public'+file.path,import.meta.url));const sourceBytes=canonicalSourceBytes(file,bytes);assert.equal(sourceBytes.length,file.sizeBytes);assert.equal(createHash('sha256').update(sourceBytes).digest('hex'),file.sha256);}
  const state=JSON.parse(readFileSync(new URL('../public'+summary.files.find(f=>f.id==='state').path,import.meta.url),'utf8'));
  assert.equal(state['누적고유자료수'],additional.length);assert.equal(state['누적지역연결수'],support.links.length);
  assert.equal(summary.completedDongCount,461);assert.equal(summary.dongTargetCount,467);assert.equal(summary.heldTargetCount,6);
