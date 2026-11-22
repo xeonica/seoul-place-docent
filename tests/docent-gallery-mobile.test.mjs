@@ -16,3 +16,8 @@ test('failed images have a visible source-link fallback rather than silently dis
   assert.match(source,/사진을 불러오지 못했습니다/);
   assert.match(source,/사진 원문 보기/);
 });
+test('gallery renders source-matched photo previews and relation notes from MCP result',()=>{
+  assert.match(source,/photoPreviews\|\|result\.structuredContent\.photos/);
+  assert.match(source,/photo\.relationNote/);
+  assert.match(source,/photo\.sourceUrl/);
+});

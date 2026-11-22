@@ -13,7 +13,7 @@ test('historical date takes precedence over capture/publication date and keeps u
  assert.ok(historicalDate({'역사적대상시기':'1930년대 후반'}).order>historicalDate({'역사적대상시기':'1934년'}).order);
  assert.ok(historicalDate({'역사적대상시기':'1975년 12월'}).order>historicalDate({'역사적대상시기':'1975년 7월'}).order);
 });
-const item=(id,sourceUrl,previewUrl=null,type='record')=>({id,sourceUrl,previewUrl,sourceLinkType:type,values:{}});
+const item=(id,sourceUrl,previewUrl=null,type='record')=>({id,sourceUrl,previewUrl,sourceLinkType:type,values:{'사이트표시가능여부':'가능','썸네일표시가능여부':'가능'}});
 test('cuts of one museum record and reused previews group; collection pages do not collapse unrelated records',()=>{
  const rows=[item('a','https://museum.seoul.go.kr/view?fileId=A&fileSn=1'),item('b','https://museum.seoul.go.kr/view?fileId=A&fileSn=2'),item('c','https://museum.seoul.go.kr/view?fileId=B&fileSn=1')];assert.deepEqual(groupStoryPhotos(rows).map(r=>r.length),[2,1]);
  assert.equal(groupStoryPhotos([item('d','https://example.org/collection',null,'collection'),item('e','https://example.org/collection',null,'collection')]).length,2);
@@ -30,7 +30,7 @@ test('five neighborhoods retain chronological scope; missing records stay empty'
  }
 });
 test('story never includes candidate/conflicting records and district fallback stays district scoped',()=>{
- const a={...item('a','https://example.org/1','https://example.org/a.jpg'),recordType:'visual',candidate:false,conflictMentioned:false,batchId:'district',values:{'역사적대상시기':'1975年'}};
+ const a={...item('a','https://example.org/1','https://example.org/a.jpg'),recordType:'visual',candidate:false,conflictMentioned:false,batchId:'district',values:{'역사적대상시기':'1975年','사이트표시가능여부':'가능','썸네일표시가능여부':'가능'}};
  const photos={meta:{files:[{id:'district',collectionScope:'district',district:'테스트구'}]},items:[a,{...a,id:'candidate',candidate:true},{...a,id:'conflict',conflictMentioned:true}]};
  const docs={targets:[],tables:{timeline:[],claims:[]}};const s=buildDocentStory(photos,docs,'테스트구','테스트동');assert.equal(s.total,1);assert.equal(s.scenes[0].scope,'district');
 });

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {IMAGE_RESOURCE_DOMAINS, isAllowedImageUrl, toProxyUrl} from '../lib/image-proxy.ts';
 import {handleImageProxy} from '../lib/image-proxy-handler.ts';
-import {guidePhotos, preparePlaceAnswer} from '../lib/place-answer.ts';
+import {guidePhotos, presentGuidePhoto, preparePlaceAnswer} from '../lib/place-answer.ts';
 
 const origin = 'https://seoul-place-docent-mcp.vercel.app';
 const original = 'https://museum.seoul.go.kr:8088/component/archv/data/ND_thumbnail.tmb?fileSn=300&fileId=H-1&w=800&h=800';
@@ -101,6 +101,10 @@ test('answer records and guide photos proxy allowlisted images and retain proven
   }
   const museum = photos.find(photo => photo.evidenceId === '박물관 사진');
   assert.equal(museum.imageMarkdown, `![박물관 사진](<${museum.imageUrl}>)`);
+  const presented=presentGuidePhoto(museum,{district:'성동구',dong:'마장동',buildingName:'세림아파트'});
+  assert.equal(presented.previewPurpose,'illustration_only');assert.equal(presented.formalEvidenceApproval,'unchanged');
+  assert.match(presented.relationNote,/마장동 지역 역사 참고 사진/);assert.match(presented.relationNote,/세림아파트 자체의 사진이.*아닙니다/);
+  assert.equal(presented.imageUrl,museum.imageUrl);assert.equal(presented.evidenceId,museum.evidenceId);assert.equal(presented.sourceUrl,museum.sourceUrl);
   const archive = photos.find(photo => photo.evidenceId === '기록원 사진');
   assert.equal(new URL(archive.imageUrl).searchParams.get('u'), archiveUrl);
   assert.deepEqual(archive.alternateUrls, [archiveUrl]);

@@ -7,6 +7,8 @@ test('public entry requires no cookie or bearer and exposes only MCP and health'
  const init=await app.fetch(rpc('initialize',{protocolVersion:'2025-11-25'}));assert.equal(init.status,200);assert.equal(init.headers.has('www-authenticate'),false);
  assert.equal((await init.json()).result.protocolVersion,'2025-11-25');
  const list=await (await app.fetch(rpc('tools/list'))).json();assert.ok(list.result.tools.some(t=>t.name==='search_place'));assert.ok(list.result.tools.some(t=>t.name==='prepare_place_answer'));
+ const prepare=list.result.tools.find(t=>t.name==='prepare_place_answer');assert.equal(prepare._meta.ui.resourceUri,'ui://seoul-docent/archive-photos-v4.html');assert.equal(prepare._meta['openai/outputTemplate'],'ui://seoul-docent/archive-photos-v4.html');
+ const resources=await (await app.fetch(rpc('resources/list'))).json();assert.ok(resources.result.resources.some(r=>r.uri===prepare._meta.ui.resourceUri));
  assert.equal((await app.fetch(new Request('https://public.test/mcp'))).status,405);
  assert.equal((await app.fetch(new Request('https://public.test/api/admin/mcp-stats'))).status,404);
  assert.equal((await app.fetch(rpc('ping',{}, {origin:'https://evil.test'}))).status,403);
