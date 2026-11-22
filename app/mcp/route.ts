@@ -1,3 +1,4 @@
+import {livePublicDataTool, lookupLivePublicData} from '@/lib/live-public-data';
 import {bigQueryGitHubCandidates,bigQueryHansungArchive,bigQueryPlaceCandidates} from '@/lib/bigquery-place';
 import {env} from '@/lib/runtime-env';
 import {searchResearchRecords,placeResearchCandidates} from '@/lib/research-catalog';
@@ -23,6 +24,7 @@ const MAX_BODY_BYTES = 32768;
 const headers = {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'};
 
 const tools: McpTool[] = [
+  livePublicDataTool,
   {
     name:'extract_photo_location',
     description:'사용자가 첨부한 원본 JPEG/HEIC 사진 파일에서 실제 EXIF GPS·촬영일을 읽고 서울 주소 후보를 반환합니다. 이미지 외관으로 추측하지 않습니다. 파일 첨부를 file로 전달하세요. GPS가 제거됐으면 원본 재첨부·웹 원본 선택·주소 입력을 안내하세요. 반환된 주소는 촬영 위치이며 사용자가 확인한 후보 token으로 prepare_place_answer를 호출한 뒤 사진·영상·출처를 포함한 도슨트를 작성하세요. 원본은 처리 중 메모리에서만 읽고 저장하지 않습니다.',
@@ -144,6 +146,8 @@ async function execute(request: Request, name: string, args: Record<string, unkn
   const startedAt=Date.now();
   try {
     switch (name) {
+      case 'lookup_live_public_data':
+        return textResult(await lookupLivePublicData(args, name => (env as unknown as Record<string,string|undefined>)[name]));
       case 'extract_photo_location': {
         const {file}=photoInput.parse(args);
         if(!file)return textResult({status:'needs_file',nextAction:'GPS가 보존된 원본 JPEG/HEIC를 파일로 첨부해 주세요. 첨부가 MCP에 전달되지 않으면 https://seoul-place-history.xeonire.chatgpt.site 에서 원본 사진을 선택하고 확인된 주소를 공유하세요.',note:'이미지 미리보기만으로 좌표를 추측하지 마세요.'});
