@@ -12,7 +12,25 @@ const packet=({direct=true,media=true,candidate=true,rich=true,photos=null,video
 test('rich place produces deterministic seven ordered parts and references returned identifiers only',()=>{
  const value=packet(),first=buildDocentTourV2(value),second=buildDocentTourV2(value);
  assert.deepEqual(first,second);assert.deepEqual(first.sections.map(s=>s.id),TOUR_SECTION_IDS);assert.deepEqual(first.sections.map(s=>s.order),[1,2,3,4,5,6,7]);assert.equal(first.placeName,'마장동 세림아파트');
- assert.ok(first.sections[3].evidenceIds.includes('evidence:building'));assert.deepEqual(first.sections[4].photoIds,['scene:urban-1']);assert.deepEqual(first.sections[2].videoIds,['video:market']);assert.equal(validateDocentTourV2(first).valid,true);assert.equal(first.provenance.operatorAiCalls,0);
+ assert.ok(first.sections[3].evidenceIds.includes('evidence:building'));assert.deepEqual(first.sections[4].photoIds,['scene:urban-1']);assert.deepEqual(first.sections[2].videoIds,['video:market']);assert.equal(first.currentChange.status,'not_checked');assert.equal(first.currentChange.asOfDate,null);assert.deepEqual(first.sections[6].evidenceIds,[...new Set(first.sections.slice(0,5).flatMap(section=>section.evidenceIds))]);assert.equal(validateDocentTourV2(first).valid,true);assert.equal(first.provenance.operatorAiCalls,0);
+});
+
+test('part six only claims current urban planning with an official reviewed source and 기준일',()=>{
+ const input=packet({photos:[],videos:[]});input.evidence.records.push({evidenceId:'plan:current',title:'공식 정비계획',sourceUrl:'https://gov.example/plan',sourceInstitution:'서울특별시',mediaType:'document',historyKind:'urban_space',currentStatus:'current',asOfDate:'2026-10-01',relationType:'exact_parcel',usableAsVerifiedEvidence:true,claims:[{claimId:'claim:plan',text:'고시 문서에 기재된 계획 상태입니다.'}]});
+ const tour=buildDocentTourV2(input);assert.equal(tour.currentChange.status,'official_current');assert.equal(tour.currentChange.asOfDate,'2026-10-01');assert.deepEqual(tour.currentChange.sourceIds,['plan:current']);assert.equal(validateDocentTourV2(tour).valid,true);
+ const invalid=structuredClone(tour);invalid.currentChange.sourceIds=[];assert.ok(validateDocentTourV2(invalid).reasonCodes.includes('current_change_not_source_verified'));
+});
+
+test('part six distinguishes source-checked no-update from historical-only and not-checked states',()=>{
+ const noUpdate=packet({photos:[],videos:[]});noUpdate.evidence.records=[{evidenceId:'plan:checked',title:'정비사업 현황 조회',sourceUrl:'https://gov.example/status',sourceInstitution:'서울특별시',mediaType:'document',historyKind:'urban_space',currentStatus:'no_current_update',asOfDate:'2026-10-15',relationType:'exact_parcel',usableAsVerifiedEvidence:true,claims:[{claimId:'claim:checked',text:'기준일 현재 해당 주소에 진행 중인 도시정비 사업이 없다고 조회했습니다.'}]}];
+ const checkedTour=buildDocentTourV2(noUpdate);assert.equal(checkedTour.currentChange.status,'no_current_update');assert.equal(checkedTour.currentChange.asOfDate,'2026-10-15');assert.equal(validateDocentTourV2(checkedTour).valid,true);
+ const historical=packet({photos:[],videos:[]});historical.evidence.records=[{evidenceId:'plan:old',title:'과거 도시공간 기록',sourceUrl:'https://archive.example/old',sourceInstitution:'기록관',mediaType:'document',historyKind:'urban_space',relationType:'dong_context',usableAsVerifiedEvidence:true,claims:[{claimId:'claim:old',text:'과거 도시공간 변화 기록입니다.'}]}];
+ const historicTour=buildDocentTourV2(historical);assert.equal(historicTour.currentChange.status,'historical_only');assert.equal(historicTour.currentChange.asOfDate,null);assert.equal(validateDocentTourV2(historicTour).valid,true);
+});
+
+test('part seven cannot introduce evidence that was not used in parts one through five',()=>{
+ const tour=buildDocentTourV2(packet({photos:[],videos:[]})),mutated=structuredClone(tour);mutated.sources.push({...mutated.sources[0],id:'unrelated:source',claimIds:[]});mutated.provenance.returnedEvidenceIds.push('unrelated:source');mutated.sections[6].evidenceIds.push('unrelated:source');mutated.sections[6].sourceIds.push('unrelated:source');
+ assert.ok(validateDocentTourV2(mutated).reasonCodes.includes('conclusion_evidence_not_reused'));
 });
 
 test('1960s market image is assigned to part three through its linked record and topic',()=>{
