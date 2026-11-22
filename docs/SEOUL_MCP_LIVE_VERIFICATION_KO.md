@@ -1,3 +1,20 @@
+## 후속 운영 확인 — PR #81·#80 반영 후 (2026-11-22)
+
+아래 Phase D.1 표는 당시 Preview 설정 상태를 기록한 역사적 스냅샷입니다. 이후 변경 사항은 다음과 같습니다.
+
+- PR #81(서울 전역 사진 미리보기)이 `91a09ef4e0677f68d4c553088fcb39609a2b03d3`로 `main`에 병합됐고 Vercel Production 상태 검사가 성공했습니다.
+- PR #80(건축물대장 진단)이 `fd754bb9a8be5f90192f20aecc53173de0b7d616`로 `main`에 병합됐습니다. Node 22의 `types`, `contract`, `public-mcp` 검사와 Vercel 배포 상태가 성공했습니다.
+- PR #80 병합 후 Production `GET /health`는 HTTP 200, `status=ready`, `auth=none`, `addressConfigured=true`, `auditConfigured=true`, `auditStorage=https-receiver`를 반환했습니다.
+- Production MCP 연결에서 세림아파트, 성북구청, 강남구청 주소의 `search_place → get_place_history → prepare_place_answer` 호출이 완료됐습니다. 세 응답 모두 `prepare.status=ready`, 7부 구성, 사진 8건, 사진 URL 및 원문 링크를 반환했습니다.
+- 현재 건축물·폐쇄말소대장 상태는 해석에 주의해야 합니다. 세림아파트는 현재 대장 11행이 반환됐지만 `identity_ambiguous`, 폐쇄말소대장은 `no_records`, 필지 경계는 `key_missing`입니다. 성북구청과 강남구청은 현재 대장 `no_records`, 폐쇄말소대장 `schema_mismatch`였습니다. 이 결과를 역사 기록이 없다는 뜻으로 확대하지 않습니다.
+- 세림아파트 응답에는 마장동과 직접 관계가 확인되지 않은 제목(예: 삼일빌딩·종로/청계고가도로·급행버스)도 사진 후보로 섞여 있었습니다. 사진 URL이 반환된 사실만으로 그 장소의 사진이라고 판단하면 안 됩니다. 성북마을아카이브 후보의 이용조건에도 `미획득 · 공공누리`가 포함되어 권리 확인이 끝났다고 볼 수 없습니다.
+- 세림아파트의 마장동 우시장 사진(`seoul-museum-1183`) 프록시 URL은 브라우저에서 실제 이미지(800×628)로 열렸습니다. 이것은 이미지 HTTP 표시 확인이며 ChatGPT MCP Apps 갤러리의 실제 렌더링 확인과는 구분합니다. `tourPlan.photoAssets`는 링크 전용/null 이미지 상태였고, 갤러리 화면 자체는 직접 확인하지 못했습니다.
+- 25개 구의 실제 사용자 화면 및 지역별 사진 관련성을 전수 실증한 것은 아닙니다. PR #81의 코드/CI 통과를 서울 전역의 실사용 표시 성공으로 해석하지 않습니다. PR #80 병합 후 Production에서 raw HTTP `initialize`/`tools/list`를 다시 호출하지는 않았습니다. 다만 해당 PR의 MCP 계약 검사는 통과했고 Production MCP의 실제 도구 호출은 성공했습니다.
+
+따라서 이 보고서의 Preview `BLOCKED` 판정은 당시 Preview D1·주소 설정 실증에 대한 판정으로 유지됩니다. 현재 Production 응답과 사진 지역·권리 검증 상태는 위 후속 운영 확인을 기준으로 별도 판단해야 합니다.
+
+---
+
 # 서울 도슨트 PR #78 Phase D.1 실증 결과
 
 기준 커밋: `99035bf049061ee71c11c47a6695dd8795354aa3`
