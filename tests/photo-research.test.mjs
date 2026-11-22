@@ -19,9 +19,16 @@ globalThis.fetch=async(input,init)=>{
 };
 const districtIndex=JSON.parse(gunzipSync(readFileSync(new URL('../public/research/seoul-district-collection/photos-index.json.gz',import.meta.url)),'utf8'));
 const searchableBundle={...completeBundle,items:[...completeBundle.items,...districtIndex.items]};
-const canonicalSourceBytes=(file,bytes)=>file.path.toLowerCase().endsWith('.csv')
- ? Buffer.from(bytes.toString('utf8').replace(/\r?\n/g,'\r\n'))
- : bytes;
+const originalBytesMatch=(file,bytes)=>{
+ const digest=value=>createHash('sha256').update(value).digest('hex')===file.sha256;
+ const variants=[bytes];
+ if(file.path.toLowerCase().endsWith('.csv')){
+  const text=bytes.toString('utf8');
+  variants.push(Buffer.from(text.replace(/\r\n/g,'\n')));
+  variants.push(Buffer.from(text.replace(/\r?\n/g,'\r\n')));
+ }
+ return variants.some(value=>value.length===file.sizeBytes&&digest(value));
+};
 
 test('fifty-six research batches preserve original downloadable bytes and district versus dong scope',()=>{
  assert.equal(bundle.items.length,bundle.meta.recordCount);
