@@ -3,6 +3,8 @@ name: Full test suite
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [fix/test-suite-17-failures]
   workflow_dispatch:
 
 jobs:
