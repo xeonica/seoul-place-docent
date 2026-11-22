@@ -214,7 +214,7 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         return textResult({
           address,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,placeEvidenceLinks,
           place: {records: registerContext.records},
-          registerDiagnostics:registerContext.diagnostics
+          registerDiagnostics:registerContext.diagnostics,
           neighborhood: {
             district: story.district,
             dong: story.dong,
