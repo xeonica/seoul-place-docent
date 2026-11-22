@@ -21,9 +21,16 @@ globalThis.fetch=async(input,init)=>{
  return originalFetch(input,init);
 };
 
-const canonicalSourceBytes=(file,bytes)=>file.path.toLowerCase().endsWith('.csv')
- ? Buffer.from(bytes.toString('utf8').replace(/\r?\n/g,'\r\n'))
- : bytes;
+const originalBytesMatch=(file,bytes)=>{
+ const digest=value=>createHash('sha256').update(value).digest('hex')===file.sha256;
+ const variants=[bytes];
+ if(file.path.toLowerCase().endsWith('.csv')){
+  const text=bytes.toString('utf8');
+  variants.push(Buffer.from(text.replace(/\r\n/g,'\n')));
+  variants.push(Buffer.from(text.replace(/\r?\n/g,'\r\n')));
+ }
+ return variants.some(value=>value.length===file.sizeBytes&&digest(value));
+};
 
 test('one final master supplies records while incremental files and exclusions remain audit evidence',()=>{
  assert.equal(additional.length,1562);
