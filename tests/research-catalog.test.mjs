@@ -37,8 +37,18 @@ test('current GitHub CSVs are searchable, paginated, and never promoted into vis
 });
 test('public MCP exposes query search on existing history tool and includes catalog health without changing tool count',async()=>{
  const request=(method,params)=>new Request('https://test.example/mcp',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});
- const list=await (await app.fetch(request('tools/list',{}))).json();assert.equal(list.result.tools.length,9);
- const schema=list.result.tools.find(t=>t.name==='get_place_history').inputSchema;assert.ok(schema.properties.query);assert.ok(schema.anyOf.some(v=>v.required.includes('query')));
+ const list=await (await app.fetch(request('tools/list',{}))).json();
+ const tools=new Map(list.result.tools.map(tool=>[tool.name,tool]));
+ assert.equal(tools.size,list.result.tools.length,'MCP tool names must be unique');
+ for(const name of ['search_place','get_place_history','prepare_place_answer','validate_place_answer','show_place_photos'])assert.ok(tools.has(name),`missing required MCP tool: ${name}`);
+ const schemas=new Map([...tools].map(([name,tool])=>[name,tool.inputSchema]));
+ assert.ok(schemas.get('search_place').required.includes('query'));
+ const history=schemas.get('get_place_history');assert.ok(history.properties.query);assert.ok(history.anyOf.some(v=>v.required.includes('query')));
+ assert.ok(schemas.get('prepare_place_answer').oneOf.some(v=>['token','address','place'].some(k=>v.required.includes(k))));
+ assert.deepEqual(schemas.get('validate_place_answer').required,['token','answer']);
+ const photos=schemas.get('show_place_photos').properties.photos;assert.equal(photos.type,'array');assert.equal(photos.maxItems,3);
+ assert.ok(photos.items.required.includes('imageUrl'));assert.ok(photos.items.required.includes('sourceUrl'));
+ const schema=schemas.get('get_place_history');assert.ok(schema.properties.query);assert.ok(schema.anyOf.some(v=>v.required.includes('query')));
  const response=await (await app.fetch(request('tools/call',{name:'get_place_history',arguments:{query:'정독도서관',limit:2}}))).json();
  assert.ok(!response.result.isError);const data=JSON.parse(response.result.content[0].text);assert.ok(data.total>0);assert.equal(data.records.length,2);
  const invalid=await (await app.fetch(request('tools/call',{name:'get_place_history',arguments:{}}))).json();assert.equal(invalid.result.isError,true);

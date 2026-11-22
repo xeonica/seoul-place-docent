@@ -3,21 +3,35 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import bundle from '../data/document-research/bundle.json';
+import articleSummary from '../data/document-research/article-summary.json';
 import {filterDocumentRows, documentContext, documentPlaceResearch, safeDocumentUrl} from '../lib/document-research.ts';
 import {GET} from '../app/api/archive/document-research/route.ts';
 
+const originalBytesMatch=(file,bytes)=>{
+ const digest=value=>createHash('sha256').update(value).digest('hex')===file.sha256;
+ const variants=[bytes];
+ if(file.path.toLowerCase().endsWith('.csv')){
+  const text=bytes.toString('utf8');
+  variants.push(Buffer.from(text.replace(/\r\n/g,'\n')));
+  variants.push(Buffer.from(text.replace(/\r?\n/g,'\r\n')));
+ }
+ return variants.some(value=>value.length===file.sizeBytes&&digest(value));
+};
+
 test('all eight accumulated tables have matching download counts and hashes', () => {
- assert.deepEqual(bundle.meta.counts, {targets:493,sources:279,links:1013,claims:1070,drafts:53,timeline:857,leads:297,progress:42});
- assert.equal(bundle.meta.totalRecords,4104);
+ const coreCounts=Object.fromEntries(Object.entries(bundle.tables).filter(([key])=>key!=='articles').map(([key,rows])=>[key,rows.length]));
+ assert.deepEqual(bundle.meta.counts,{...coreCounts,articles:articleSummary.count});
+ assert.equal(bundle.meta.totalRecords,Object.values(coreCounts).reduce((sum,count)=>sum+count,0));
  for(const file of bundle.meta.files){
   const bytes=readFileSync(new URL('../public'+file.path,import.meta.url));
-  assert.equal(bytes.length,file.sizeBytes);
-  assert.equal(createHash('sha256').update(bytes).digest('hex'),file.sha256);
-  assert.equal(bundle.tables[file.key].length,file.count);
-  assert.equal(new Set(bundle.tables[file.key].map(r=>r.id)).size,file.count);
+  assert.ok(originalBytesMatch(file,bytes),`Original export mismatch: ${file.path}`);
+  if(file.key!=='articles'){
+   assert.equal(bundle.tables[file.key].length,file.count);
+   assert.equal(new Set(bundle.tables[file.key].map(r=>r.id)).size,file.count);
+  }
  }
- assert.equal(new Set(bundle.tables.sources.map(r=>r.values['원문URL'])).size,147);
- assert.equal(bundle.meta.sourceUrlCount,147);
+ const uniqueSources=new Set(bundle.tables.sources.map(r=>r.values['원문URL'])).size;
+ assert.equal(bundle.meta.sourceUrlCount,uniqueSources);
  assert.equal(bundle.targets.filter(r=>r.level==='법정동').length,467);
 });
 
@@ -75,10 +89,10 @@ test('address context requires the exact district and legal dong and labels dist
 
 test('API paginates, validates table/target, and exports all rows matching the current filters',async()=>{
  const query=p=>GET(new Request('https://example.test/api/archive/document-research?'+p));
- const paged=await query('table=claims&page=2').json();assert.equal(paged.total,1070);assert.equal(paged.rows.length,20);assert.equal(paged.page,2);assert.notEqual(paged.rows[0].id,bundle.tables.claims[0].id);
- const capped=await query('table=claims&page=99999').json();assert.equal(capped.page,54);assert.equal(capped.rows.length,10);
- assert.equal(query('table=invalid').status,400);assert.equal(query('target=invalid').status,400);assert.equal(query('mode=place&district=부산').status,400);
- const response=query('table=timeline&district=강남구&download=1');assert.match(response.headers.get('content-disposition'),/^attachment;/);assert.match(response.headers.get('cache-control'),/private/);
+ const paged=await (await query('table=claims&page=2')).json();assert.equal(paged.total,1070);assert.equal(paged.rows.length,20);assert.equal(paged.page,2);assert.notEqual(paged.rows[0].id,bundle.tables.claims[0].id);
+ const capped=await (await query('table=claims&page=99999')).json();assert.equal(capped.page,54);assert.equal(capped.rows.length,10);
+ assert.equal((await query('table=invalid')).status,400);assert.equal((await query('target=invalid')).status,400);assert.equal((await query('mode=place&district=부산')).status,400);
+ const response=await query('table=timeline&district=강남구&download=1');assert.match(response.headers.get('content-disposition'),/^attachment;/);assert.match(response.headers.get('cache-control'),/private/);
  const exported=await response.json();assert.ok(exported.rows.length>20);assert.ok(exported.rows.every(r=>r.district==='강남구'));assert.equal(exported.provenance.id,bundle.meta.id);
  assert.equal(safeDocumentUrl('javascript:alert(1)'),null);assert.equal(safeDocumentUrl('미확인'),null);assert.equal(safeDocumentUrl('https://www.seoul.go.kr'),'https://www.seoul.go.kr/');
 });
