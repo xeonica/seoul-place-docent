@@ -61,7 +61,7 @@ async function fetchPreview(photo: InlinePhoto) {
   // The proxy already caps downloads at 5 MB; oversized JPEGs may still fit once metadata is gone.
   const response = await handleImageProxy(new Request(proxyRequest));
   if (!response.ok) return null;
-  let bytes = new Uint8Array(await response.arrayBuffer());
+  let bytes: Uint8Array<ArrayBufferLike> = new Uint8Array(await response.arrayBuffer());
   // Trust the bytes, not the upstream header: archives sometimes mislabel types.
   const mimeType = signatures.find(([, test]) => test(bytes))?.[0];
   if (!mimeType) return null;
