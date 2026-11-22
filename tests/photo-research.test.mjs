@@ -40,8 +40,7 @@ test('fifty-six research batches preserve original downloadable bytes and distri
  assert.equal(bundle.meta.files.reduce((sum,file)=>sum+file.count,0),bundle.items.length);
  for(const file of bundle.meta.files){
   const bytes=readFileSync(new URL('../public'+file.path,import.meta.url));
-  const sourceBytes=canonicalSourceBytes(file,bytes);
-  assert.equal(sourceBytes.length,file.sizeBytes);assert.equal(createHash('sha256').update(sourceBytes).digest('hex'),file.sha256);
+  assert.ok(originalBytesMatch(file,bytes),`Original export mismatch: ${file.path}`);
   const rows=bundle.items.filter(r=>r.batchId===file.id);assert.equal(rows.length,file.count);
   assert.ok(rows.every(r=>r.district===file.district&&r.dong===file.dong));
   const district=regions.districts.find(d=>d.name===file.district);assert.ok(district);assert.ok(file.collectionScope==='district' ? file.dong==='' : district.dongs.includes(file.dong));
