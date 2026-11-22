@@ -8,7 +8,7 @@ test('client docent guidance emphasizes grounded storytelling without fabricatin
 test('narrative guidance keeps client-side generation and mechanical evidence validation',()=>{
   assert.match(source,/serverAiCalls:0/);
   assert.match(source,/export function validateAnswer/);
-  assert.match(source,/client-docent-11/);
+  assert.match(source,/client-docent-12/);
 });
 
 test('archival images must retain their own evidence and source association',()=>{
