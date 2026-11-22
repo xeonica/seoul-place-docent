@@ -18,7 +18,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - name: MCP, evidence, GPS and KPI tests
-        run: node scripts/pack-video-records.mjs && node --experimental-transform-types --import ./tests/ts-resolver.mjs --test tests/core.test.mjs tests/place-context.test.mjs tests/building-register.test.mjs tests/docent-tour-v2.test.mjs tests/place-answer.test.mjs tests/mcp-client-contract.test.mjs tests/mcp-protocol.test.mjs tests/mcp-http-audit.test.mjs tests/map-address.test.mjs tests/sites-native-runtime.test.mjs tests/sites-scan-data.test.mjs tests/seoul-125-address-validation.test.mjs
+        run: node scripts/pack-video-records.mjs && node --experimental-transform-types --import ./tests/ts-resolver.mjs --test tests/core.test.mjs tests/building-register.test.mjs tests/docent-tour-v2.test.mjs tests/place-answer.test.mjs tests/mcp-client-contract.test.mjs tests/mcp-protocol.test.mjs tests/mcp-http-audit.test.mjs tests/map-address.test.mjs tests/sites-native-runtime.test.mjs tests/sites-scan-data.test.mjs tests/seoul-125-address-validation.test.mjs
   types:
     runs-on: ubuntu-latest
     timeout-minutes: 15

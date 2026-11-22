@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {getPlaceRegisterContext} from '../lib/building-register.ts';
 import {buildDocentTourV2} from '../lib/docent-tour-builder.ts';
-import {parcelNumber} from '../lib/place-context.ts';
+import {normalizeClosedBuildings,parcelNumber} from '../lib/place-context.ts';
 
 const address={roadAddr:'서울특별시 성동구 마장로42길 16',jibunAddr:'서울특별시 성동구 마장동 510-1',siNm:'서울특별시',sggNm:'성동구',emdNm:'마장동',admCd:'1120010500',bdMgtSn:'JUSO-BUILDING-MANAGEMENT-ID',bdNm:'세림아파트',lnbrMnnm:'510',lnbrSlno:'1',mtYn:'0',zipNo:'04754'};
+const seoulCityAddress={siNm:'서울특별시',sggNm:'중구',emdNm:'태평로1가',admCd:'1114010300',roadAddr:'서울특별시 중구 세종대로 110',jibunAddr:'서울특별시 중구 태평로1가 31',bdMgtSn:'',bdNm:'서울시청',lnbrMnnm:'31',lnbrSlno:'0',mtYn:'0',zipNo:''};
 const ring=[[127.04,37.57],[127.041,37.57],[127.041,37.571],[127.04,37.57]];
 const currentRow={sigunguCd:'11200',bjdongCd:'10500',platGbCd:'0',bun:'0510',ji:'0001',mgmBldrgstPk:'CURRENT-LEDGER-PK',bldNm:'세림아파트',dongNm:'101동',newPlatPlc:address.roadAddr,platPlc:address.jibunAddr,mainPurpsCdNm:'공동주택',strctCdNm:'철근콘크리트구조',totArea:'1234.5',platArea:'600',grndFlrCnt:'15',ugrndFlrCnt:'2',pmsDay:'20000101',stcnsDay:'20000301',useAprDay:'20021231'};
 const closedRow={...currentRow,mgmBldrgstPk:'CLOSED-LEDGER-PK',bldNm:'옛 마장주택',shtGbCd:'4',shtGbCdNm:'합병에 의한 폐쇄',shtDay:'19991231',useAprDay:'19600101'};
@@ -30,6 +31,13 @@ test('empty successful pages are no_records and missing provider keys remain key
 
 test('multiple current rows with the same visible identity are not selected arbitrarily',async()=>{
  const {context}=await scenario({current:[currentRow,{...currentRow,mgmBldrgstPk:'SECOND-LEDGER-PK',dongNm:'102동'}],currentTotal:2});assert.equal(context.diagnostics.current.status,'identity_ambiguous');assert.deepEqual(context.records,[]);
+});
+
+test('closed ledger preserves administrative closure type and date; missing schema is not no_records',()=>{
+ const row={sigunguCd:'11140',bjdongCd:'10300',platGbCd:'0',bun:'0031',ji:'0000',mgmBldrgstPk:'closed-1',bldNm:'과거 대장',shtGbCd:'4',shtGbCdNm:'합병에 의한 폐쇄',shtDay:'20010101'};
+ const result=normalizeClosedBuildings({response:{header:{resultCode:'00'},body:{items:{item:row},totalCount:1}}},seoulCityAddress);
+ assert.equal(result.items[0].closureTypeCode,'4');assert.equal(result.items[0].closureType,'합병에 의한 폐쇄');assert.equal(result.items[0].closedAt,'20010101');
+ assert.throws(()=>normalizeClosedBuildings({response:{header:{resultCode:'00'},body:{items:{}}}},seoulCityAddress),error=>error.code==='CLOSED_SCHEMA');
 });
 
 test('7-part plan uses current official facts in part one and does not promote closed same-parcel candidates in part four',async()=>{
