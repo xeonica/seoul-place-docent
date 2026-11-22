@@ -59,8 +59,8 @@ Preview URL은 [Vercel 배포 상세](https://vercel.com/smn0365465-1518/seoul-p
 
 - 제공된 실행 환경은 Node `v26.13.1`이었다. 저장소는 Node `22.x`를 지정하고 `--experimental-transform-types`를 사용한다. 이 Node 26 실행 파일은 해당 플래그를 인식하지 않아 원래 테스트 명령을 시작하지 못했다.
 - Node 26의 대체 `--experimental-strip-types` 실행에서는 37/43 assertion이 통과했고 6개 테스트 실패가 발생했다. 이들은 `strip-only`에서 지원하지 않는 TypeScript parameter property 로딩 오류와 localhost 테스트의 `EACCES` 제한이다. 이는 Node 22 CI 결과와 비교 가능한 코드 회귀 결과가 아니다.
-- 동일 기준 SHA `99035bf`에서 GitHub 상태 확인 시 Vercel Preview 체크와 Vercel Deployments 체크는 모두 `success`였다. 이는 배포 생성/체크 통과 상태이며 `/health` 503 및 런타임 환경변수 누락을 해소하지 않는다.
-- 현재 추가한 진단 문서/CSV 변경 이후에는 새 체크를 아직 실행하지 않았다. 기준 SHA의 체크 통과를 이번 변경 커밋의 CI 통과로 간주하지 않는다.
+- PR의 최신 코드 SHA `4317db7`에서 GitHub Actions `MCP client AI contract` run 222와 `Public MCP deployment contract` run 59가 모두 `success`였다. 두 워크플로는 Node 22를 사용한다. Vercel Preview 체크도 `success`였지만 실제 `/health`는 HTTP 503을 반환했다.
+- 주소·7부·MCP 계약 로컬 회귀 테스트는 Node 26 호환 subset 35/35 통과했다. 이번 산출물 변경 후에는 실행 워크플로 경로가 바뀌지 않아 별도 Node 22 전체 테스트를 다시 실행하지 않았다. 후속 문서 커밋의 Vercel 체크는 확인 시점에 `pending`이었다.
 - 이번 반영은 진단 문서와 결과 CSV만 추가한다. 코드/테스트 동작은 변경하지 않는다.
 
 ## 주소 조사 현황
