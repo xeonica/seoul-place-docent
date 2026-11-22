@@ -44,7 +44,7 @@ const tools: McpTool[] = [
   },
   {
     name:'prepare_place_answer',
-    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 해설 중 해당 문단 바로 뒤에서 show_place_photos로 1~2장씩 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token·address·place 중 하나가 필요합니다. 다리·광장·공원처럼 도로명주소가 없는 곳은 place에 장소명을 넣으세요. 주소를 찾지 못하면 같은 이름으로 조사자료를 검색해 7부 도슨트 근거를 만듭니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
+    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 해설 중 해당 문단 바로 뒤에서 show_place_photos로 1~2장씩 표시하고, 문단(부)마다 이를 반복합니다(해설 끝에 몰아서 보여 주지 않습니다). 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token·address·place 중 하나가 필요합니다. 다리·광장·공원처럼 도로명주소가 없는 곳은 place에 장소명을 넣으세요. 주소를 찾지 못하면 같은 이름으로 조사자료를 검색해 7부 도슨트 근거를 만듭니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
     inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},place:{type:'string',minLength:2,maxLength:100,description:'도로명주소가 없는 다리·광장·공원 등의 장소명(예: 성수대교)'},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]}},oneOf:[{required:['token']},{required:['address']},{required:['place']}],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
   },
