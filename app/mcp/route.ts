@@ -14,7 +14,7 @@ import {coordinates, searchAddresses, ServiceError, verifyAddress} from '@/lib/p
 import {parcelNumber} from '@/lib/place-context';
 import {guidePhotos,presentGuidePhoto, getPlaceRegisterContext, generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, sceneSource, logClientDocent, QUESTION_TYPES} from '@/lib/place-answer';
 import {handleMcpMessage, rpcError, textResult, type McpTool, type McpToolResult} from '@/lib/mcp-protocol';
-import {auditedCall,clientHint} from '@/lib/mcp-audit';
+import {auditedCall,clientHint,withMcpStage,type McpDiagnosticContext} from '@/lib/mcp-audit';
 import {originError,configuredMcpOrigins,acceptError,protocolError,allowMcpRequest,unsupportedMcpMethod} from '@/lib/mcp-http';
 import {docentTourInstructions} from '@/lib/docent-tour-builder';
 import {buildPlaceDocentTourV2} from '@/lib/docent-tour-integration';
@@ -148,8 +148,9 @@ const validationInput=z.object({
     held:z.array(z.string().max(200)).max(4)}).strict()
 }).strict();
 
-async function execute(request: Request, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+async function execute(request: Request, name: string, args: Record<string, unknown>,diagnostic?:McpDiagnosticContext): Promise<McpToolResult> {
   const startedAt=Date.now();
+  const stage=<T>(name:string,work:()=>Promise<T>|T)=>diagnostic?withMcpStage(diagnostic,name,work):Promise.resolve().then(work);
   try {
     switch (name) {
       case 'lookup_live_public_data':
@@ -242,11 +243,11 @@ async function execute(request: Request, name: string, args: Record<string, unkn
       }
       case 'prepare_place_answer':
       case 'generate_place_answer': {
-        const input = answerInput.parse(args);
+        const input = await stage('input_validation',()=>answerInput.parse(args));
         let token = input.token;
         let landmarkName = input.place ?? null;
         if (!token && !landmarkName) {
-          const found = await searchAddresses(input.address!, 1, env);
+          const found = await stage('address_search',()=>searchAddresses(input.address!, 1, env));
           // A landmark name (bridge, plaza, park) has no road address; continue with the place-name flow.
           if (!found.candidates.length) landmarkName = input.address!;
           else if (found.candidates.length !== 1 || found.total !== 1) {
@@ -287,28 +288,34 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           const imageBlocks = await archiveImageBlocks(photos);
           return {...result,content:[...result.content,...imageBlocks],structuredContent:{photos,photoPreviews:photos,tourPlan,roadview}};
         }
-        const address = await verifyAddress(token!, env);
-        const [placeEvidenceLinks,regionalHistoryFacts]=await Promise.all([archivePlaceEvidenceLinks(env.DB,{buildingManagementNumber:address.bdMgtSn,pnu:parcelNumber(address)}),archiveApprovedHistoricalFacts(env.DB,address.sggNm,address.emdNm)]);
-        const story = getFullDocentStory(address.sggNm, address.emdNm);
-        const registerContext=await getPlaceRegisterContext(address,env);
+        const address = await stage('address_token_validation',()=>verifyAddress(token!, env));
+        const identity={buildingManagementNumber:address.bdMgtSn,pnu:parcelNumber(address)};
+        const [placeEvidenceLinks,regionalHistoryFacts]=await Promise.all([
+          stage('d1_place_evidence_lookup',()=>archivePlaceEvidenceLinks(env.DB,identity)),
+          stage('d1_regional_facts_lookup',()=>archiveApprovedHistoricalFacts(env.DB,address.sggNm,address.emdNm)),
+        ]);
+        const story = await stage('neighborhood_history_build',()=>getFullDocentStory(address.sggNm, address.emdNm));
+        const registerContext=await stage('building_register_lookup',()=>getPlaceRegisterContext(address,env));
         const placeRecords=registerContext.records;
-        const packet=await generatePlaceAnswer({address,story,placeRecords,question:input.question,questionType:input.questionType});
+        const packet=await stage('generate_place_answer',()=>generatePlaceAnswer({address,story,placeRecords,question:input.question,questionType:input.questionType}));
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
-        const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
-        const regular=guidePhotos(packet).map(photo=>presentGuidePhoto(photo,{district:address.sggNm,dong:address.emdNm,buildingName:address.bdNm}));
-        const regionalPhotos=getRegionalHistoricalPhotoPreviews(address.sggNm,address.emdNm);
-        const seenPhotos=new Set<string>();
-        const photos=[...regular,...regionalPhotos].filter(photo=>{
-          const alternateUrls='alternateUrls' in photo&&Array.isArray(photo.alternateUrls)?photo.alternateUrls:[];
-          const key=('sourceRecordId' in photo?photo.sourceRecordId:undefined)||alternateUrls[0]||photo.imageUrl||photo.evidenceId;
-          if(seenPhotos.has(key))return false;seenPhotos.add(key);return true;
-        }).slice(0,8);
-        const research=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
+        const videos=await stage('video_candidate_lookup',()=>getDocentVideoCandidates(address.sggNm,address.emdNm));
+        const photos=await stage('photo_candidate_build',()=>{
+          const regular=guidePhotos(packet).map(photo=>presentGuidePhoto(photo,{district:address.sggNm,dong:address.emdNm,buildingName:address.bdNm}));
+          const regionalPhotos=getRegionalHistoricalPhotoPreviews(address.sggNm,address.emdNm);
+          const seenPhotos=new Set<string>();
+          return [...regular,...regionalPhotos].filter(photo=>{
+            const alternateUrls='alternateUrls' in photo&&Array.isArray(photo.alternateUrls)?photo.alternateUrls:[];
+            const key=('sourceRecordId' in photo?photo.sourceRecordId:undefined)||alternateUrls[0]||photo.imageUrl||photo.evidenceId;
+            if(seenPhotos.has(key))return false;seenPhotos.add(key);return true;
+          }).slice(0,8);
+        });
+        const research=await stage('github_research_candidates',()=>placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm));
         const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive,point] = await Promise.all([
-          bigQueryPlaceCandidates(request,address),
-          bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm}),
-          bigQueryHansungArchive(request,{roadAddr:address.roadAddr,district:address.sggNm}),
-          coordinates(address,env).catch(() => null),
+          stage('bigquery_place_lookup',()=>bigQueryPlaceCandidates(request,address)),
+          stage('bigquery_github_research_lookup',()=>bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm})),
+          stage('bigquery_hansung_archive_lookup',()=>bigQueryHansungArchive(request,{roadAddr:address.roadAddr,district:address.sggNm})),
+          stage('coordinates_lookup',()=>coordinates(address,env).catch(() => null)),
         ]);
         const roadview = {
           provider: '카카오맵',
@@ -318,11 +325,16 @@ async function execute(request: Request, name: string, args: Record<string, unkn
             : null,
         };
         const responsePacket={...packet,roadview,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,placeEvidenceLinks,regionalHistoryFacts,videos,registerDiagnostics:registerContext.diagnostics,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\nplaceEvidenceLinks의 usableAsDirectEvidence가 true인 항목만 승인된 직접 장소 근거로 사용하세요. false인 항목은 미승인 후보이며 relation 범위를 넘겨 설명하지 마세요.\nregisterDiagnostics의 current.status가 ready일 때만 현재 건물의 공식 대장정보로 설명하세요. 사용승인일을 최초 건립일로 말하지 마세요. closed.status가 ready여도 폐쇄말소대장은 같은 필지의 과거 대장 후보입니다. 폐쇄 유형·건물 PK·현재 건물의 PK와 명칭을 대조하기 전에는 철거, 동일 건물, 이전 부지라고 단정하지 마세요. same_parcel_historical_candidate와 identity_ambiguous는 후보 상태이며 건물 직접 이력으로 인용하지 마세요. key_missing, unauthorized, query_failed, schema_mismatch는 조회 실패 상태이지 자료 없음이 아닙니다.\nphotos의 imageUrl은 같은 evidenceId의 원문 자료에 연결된 참고 이미지입니다. 동네·주변 범위 사진은 입력한 건물 자체의 사진이나 직접 역사 근거가 아닙니다. formalEvidenceApproval 상태를 바꾸지 않으며 사진 자체만으로 역사 주장을 뒷받침하지 않습니다. 이미지 블록은 AI가 사진을 확인하는 용도이며 사용자 화면에는 보이지 않습니다. 사용자에게 사진을 보여 주려면 사진을 다루는 문단 바로 뒤에서 show_place_photos를 호출하세요. 본문에 이미지 마크다운을 쓰지 말고, 사진을 언급할 때 날짜·소장기관·장소 범위와 sourceUrl 원문 링크를 함께 적으세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색 결과를 MCP 기록 사진과 섞어 쓰지 마세요. 필요하면 해설 끝 「웹 검색 참고 사진」 별도 섹션에만 두고 「MCP 기록이 아닌 웹 검색 사진」임을 밝히세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'};
-        const tourPlan=buildPlaceDocentTourV2({packet:responsePacket,placeRecords,photos,videos,placeEvidenceLinks,regionalHistoryFacts});
+        const tourPlan=await stage('build_place_docent_tour_v2',()=>buildPlaceDocentTourV2({packet:responsePacket,placeRecords,photos,videos,placeEvidenceLinks,regionalHistoryFacts}));
         responsePacket.instructions+='\n'+docentTourInstructions(tourPlan)+'\n현재 모습에 roadview.url이 있으면 “카카오 로드뷰 열기” 링크를 제공하세요. 없으면 roadview.searchUrl을 “카카오맵에서 주소 확인” 링크로 제공하세요. 로드뷰 촬영일·촬영 가능 여부는 확인되지 않았으며 로드뷰를 과거 기록 사진으로 인용하지 마세요.';
-        const result=textResult({...responsePacket,tourPlan});
-        const imageBlocks=await archiveImageBlocks(photos);
-        return {...result,content:[...result.content,...imageBlocks],structuredContent:{photos,photoPreviews:photos,tourPlan,roadview,registerDiagnostics:registerContext.diagnostics}};
+        const result=await stage('response_packet_serialize',()=>textResult({...responsePacket,tourPlan}));
+        const imageBlocks=await stage('archive_image_blocks',()=>archiveImageBlocks(photos));
+        const response=await stage('final_response_serialize',()=>{
+          const value={...result,content:[...result.content,...imageBlocks],structuredContent:{photos,photoPreviews:photos,tourPlan,roadview,registerDiagnostics:registerContext.diagnostics}};
+          JSON.stringify(value);
+          return value;
+        });
+        return response;
       }
       case SHOW_PLACE_PHOTOS:
         return showPlacePhotos(args);
@@ -346,10 +358,10 @@ async function execute(request: Request, name: string, args: Record<string, unkn
   } catch (error) {
     if(name==='prepare_place_answer'||name==='generate_place_answer')await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:false,records:0});
     if (error instanceof z.ZodError) {
-      return {content: [{type: 'text', text: '도구 입력 형식을 확인해 주세요.'}], isError: true,errorType:'invalid_input'};
+      return {content: [{type: 'text', text: '도구 입력 형식을 확인해 주세요.'}], isError: true,errorType:'invalid_input',errorCode:'INVALID_INPUT'};
     }
     if (error instanceof ServiceError) {
-      return {content: [{type: 'text', text: error.message}], isError: true,errorType:'service_error'};
+      return {content: [{type: 'text', text: error.message}], isError: true,errorType:'service_error',errorCode:error.code};
     }
     throw error;
   }
@@ -399,7 +411,7 @@ export async function POST(request: Request) {
   const invalidProtocol=protocolError(request,message);
   if(invalidProtocol){earlyLog(request,'protocol',invalidProtocol.status,message);return invalidProtocol;}
   const gallery=galleryMode(request,(env as unknown as Record<string,string|undefined>).MCP_GALLERY);
-  const response = await handleMcpMessage(message, tools, (name, args) => auditedCall(env.DB,name,clientHint(request),()=>execute(request, name, args)), {gallery,variant:galleryVariant(request)});
+  const response = await handleMcpMessage(message, tools, (name, args) => auditedCall(env.DB,name,clientHint(request),(diagnostic)=>execute(request, name, args,diagnostic)), {gallery,variant:galleryVariant(request)});
   debugLog(request,message,response,gallery);
   if (response === undefined) return new Response(null, {status: 202, headers});
   // JSON-RPC errors travel in a 200 body. Streamable HTTP clients read HTTP 404 as

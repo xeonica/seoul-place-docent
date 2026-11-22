@@ -7,7 +7,7 @@ export type McpTool = {
   _meta?: Record<string, unknown>;
 };
 export type McpContent = {type: 'text'; text: string} | {type: 'image'; mimeType: string; data: string};
-export type McpToolResult = {content: McpContent[]; structuredContent?:Record<string,unknown>; isError?: boolean; errorType?:string; _meta?:Record<string,unknown>};
+export type McpToolResult = {content: McpContent[]; structuredContent?:Record<string,unknown>; isError?: boolean; errorType?:string; errorCode?:string; _meta?:Record<string,unknown>};
 type Execute = (name: string, args: Record<string, unknown>) => Promise<McpToolResult>;
 export type McpOptions = {gallery?: GalleryMode; variant?: GalleryVariant};
 
