@@ -20,6 +20,9 @@ test('a bridge without a road address builds a seven-part tour from research rec
   assert.equal(tour.sections.length, 7);
   assert.equal(validateDocentTourV2(tour).valid, true);
   assert.ok(tour.sections.some(section => section.evidenceIds.length > 0));
+  const sceneSources = tour.sources.filter(source => source.mediaType === 'scene');
+  assert.ok(sceneSources.length > 0);
+  assert.ok(sceneSources.every(source => source.sourceUrl && source.institution));
   const instructions = docentTourInstructions(tour);
   assert.match(instructions, /도입부.*1부.*7부/s);
   assert.match(instructions, /검토 전 자료로 해설에 사용할 수 있습니다/);

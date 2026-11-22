@@ -261,7 +261,10 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           const place = landmark.address.bdNm, district = landmark.story.district, dong = landmark.story.dong;
           const packet = await generatePlaceAnswer({address:landmark.address,story:landmark.story,question:input.question||`${place}의 역사를 도슨트로 안내해 주세요.`,questionType:input.questionType});
           await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
-          const videos = district ? await getDocentVideoCandidates(district,dong).catch(() => ({records:[]})) : {records:[]};
+          // Dong-level videos are about the neighborhood, not the landmark; keep only those that name it.
+          const placeKey = place.normalize('NFKC').replace(/\s+/g,'');
+          const dongVideos = district ? await getDocentVideoCandidates(district,dong).catch(() => ({records:[]})) : {records:[]};
+          const videos = {...dongVideos,records:dongVideos.records.filter(video=>String(video.title||'').normalize('NFKC').replace(/\s+/g,'').includes(placeKey))};
           const regular = guidePhotos(packet).map(photo=>presentGuidePhoto(photo,{district,dong,buildingName:place}));
           const regionalPhotos = district && dong ? getRegionalHistoricalPhotoPreviews(district,dong) : [];
           const seenPhotos = new Set<string>();
