@@ -137,6 +137,14 @@ test('photo tour metadata keeps capture/publication/place-direction claims separ
  assert.equal(asset?.captureDate,null);assert.equal(asset?.publicationDate,null);assert.equal(asset?.dateBasis,'unknown');assert.equal(asset?.cameraLocation,null);assert.equal(asset?.subjectLocation,null);assert.equal(asset?.viewDirection,null);assert.equal(asset?.comparisonGroupId,null);assert.equal(asset?.comparisonStatus,'unverified');
 });
 
+test('duplicate photo evidence IDs collapse only when they identify the same asset',()=>{
+ const original=verifiedPhoto({id:'photo:duplicate',title:'송정동 지역 사진'}),sameAsset={...original,imageUrl:'https://image.example/duplicate-copy.jpg'},conflictingAsset={...original,mediaId:'asset-unrelated',sourceRecordId:'record-unrelated',title:'다른 자료의 사진'};
+ const duplicatePlan=buildDocentTourV2(packet({direct:false,photos:[original,sameAsset],videos:[]}));
+ assert.equal(duplicatePlan.photoAssets.length,1);assert.deepEqual(duplicatePlan.provenance.returnedPhotoIds,['photo:duplicate']);assert.equal(validateDocentTourV2(duplicatePlan).valid,true);
+ const conflictPlan=buildDocentTourV2(packet({direct:false,photos:[original,conflictingAsset],videos:[]}));
+ assert.equal(conflictPlan.photoAssets.length,0,'conflicting identity must not be arbitrarily selected');assert.deepEqual(conflictPlan.provenance.returnedPhotoIds,[]);assert.equal(validateDocentTourV2(conflictPlan).valid,true);
+});
+
 test('unreviewed photos with an image and source page are shown as unverified reference images',()=>{
  const unreviewed={evidenceId:'photo:unreviewed',imageUrl:'https://seoul-place-docent-mcp.vercel.app/img?u=https%3A%2F%2Farchive-file.sb.go.kr%2Fa',sourceUrl:'https://archive.sb.go.kr/item/1',title:'마장동 축산시장 산업 사진',relatedEvidenceIds:['scene:industry-1']},
   refused={...unreviewed,evidenceId:'photo:refused',displayable:false},
