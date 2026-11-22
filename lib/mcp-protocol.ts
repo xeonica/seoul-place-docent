@@ -5,7 +5,7 @@ export type McpTool = {
   annotations?: Record<string, boolean>;
   _meta?: Record<string, unknown>;
 };
-export type McpContent = {type: 'text'; text: string};
+export type McpContent = {type: 'text'; text: string} | {type: 'image'; mimeType: string; data: string};
 export type McpToolResult = {content: McpContent[]; structuredContent?:Record<string,unknown>; isError?: boolean; errorType?:string; _meta?:Record<string,unknown>};
 type Execute = (name: string, args: Record<string, unknown>) => Promise<McpToolResult>;
 
