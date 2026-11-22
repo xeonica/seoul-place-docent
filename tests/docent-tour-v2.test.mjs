@@ -136,3 +136,15 @@ test('photo tour metadata keeps capture/publication/place-direction claims separ
  const photo=verifiedPhoto({id:'photo:unknown-location',title:'자료집 사진'}),tour=buildDocentTourV2(packet({photos:[photo],videos:[]})),asset=tour.photoAssets.find(item=>item.id==='photo:unknown-location');
  assert.equal(asset?.captureDate,null);assert.equal(asset?.publicationDate,null);assert.equal(asset?.dateBasis,'unknown');assert.equal(asset?.cameraLocation,null);assert.equal(asset?.subjectLocation,null);assert.equal(asset?.viewDirection,null);assert.equal(asset?.comparisonGroupId,null);assert.equal(asset?.comparisonStatus,'unverified');
 });
+
+test('unreviewed photos with an image and source page are shown as unverified reference images',()=>{
+ const unreviewed={evidenceId:'photo:unreviewed',imageUrl:'https://seoul-place-docent-mcp.vercel.app/img?u=https%3A%2F%2Farchive-file.sb.go.kr%2Fa',sourceUrl:'https://archive.sb.go.kr/item/1',title:'마장동 축산시장 산업 사진',relatedEvidenceIds:['scene:industry-1']},
+  refused={...unreviewed,evidenceId:'photo:refused',displayable:false},
+  tour=buildDocentTourV2(packet({direct:false,photos:[unreviewed,refused],videos:[]})),assigned=tour.sections.flatMap(s=>s.photoIds);
+ const asset=tour.photoAssets.find(s=>s.id==='photo:unreviewed');
+ assert.equal(asset.displayStatus,'unverified_display');assert.equal(asset.imageUrl,unreviewed.imageUrl);
+ assert.ok(assigned.includes('photo:unreviewed'));assert.ok(!assigned.includes('photo:refused'));
+ assert.equal(tour.photoAssets.find(s=>s.id==='photo:refused').imageUrl,null);
+ assert.equal(validateDocentTourV2(tour).valid,true);
+ assert.match(docentTourInstructions(tour),/unverified_display는 검토 전 참고 사진/);
+});
