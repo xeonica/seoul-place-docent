@@ -1,0 +1,3000 @@
+{
+  "sourceUrl": "https://www.seoul.go.kr/seoul/autonomy_sub.do",
+  "retrievedAt": "2026-11-22",
+  "administrativeDongCount": 427,
+  "legalDongCount": 467,
+  "districts": [
+    {
+      "name": "강남구",
+      "mappings": [
+        {
+          "administrativeDong": "신사동",
+          "legalDongs": [
+            "신사동",
+            "압구정동"
+          ]
+        },
+        {
+          "administrativeDong": "논현1동",
+          "legalDongs": [
+            "논현동"
+          ]
+        },
+        {
+          "administrativeDong": "논현2동",
+          "legalDongs": [
+            "논현동"
+          ]
+        },
+        {
+          "administrativeDong": "압구정동",
+          "legalDongs": [
+            "압구정동",
+            "신사동"
+          ]
+        },
+        {
+          "administrativeDong": "청담동",
+          "legalDongs": [
+            "청담동"
+          ]
+        },
+        {
+          "administrativeDong": "삼성1동",
+          "legalDongs": [
+            "삼성동"
+          ]
+        },
+        {
+          "administrativeDong": "삼성2동",
+          "legalDongs": [
+            "삼성동"
+          ]
+        },
+        {
+          "administrativeDong": "대치1동",
+          "legalDongs": [
+            "대치동"
+          ]
+        },
+        {
+          "administrativeDong": "대치2동",
+          "legalDongs": [
+            "대치동"
+          ]
+        },
+        {
+          "administrativeDong": "대치4동",
+          "legalDongs": [
+            "대치동"
+          ]
+        },
+        {
+          "administrativeDong": "역삼1동",
+          "legalDongs": [
+            "역삼동"
+          ]
+        },
+        {
+          "administrativeDong": "역삼2동",
+          "legalDongs": [
+            "역삼동"
+          ]
+        },
+        {
+          "administrativeDong": "도곡1동",
+          "legalDongs": [
+            "도곡동"
+          ]
+        },
+        {
+          "administrativeDong": "도곡2동",
+          "legalDongs": [
+            "도곡동"
+          ]
+        },
+        {
+          "administrativeDong": "개포1동",
+          "legalDongs": [
+            "개포동"
+          ]
+        },
+        {
+          "administrativeDong": "개포2동",
+          "legalDongs": [
+            "개포동"
+          ]
+        },
+        {
+          "administrativeDong": "개포3동",
+          "legalDongs": [
+            "일원동",
+            "대치동",
+            "개포동"
+          ]
+        },
+        {
+          "administrativeDong": "개포4동",
+          "legalDongs": [
+            "개포동"
+          ]
+        },
+        {
+          "administrativeDong": "일원본동",
+          "legalDongs": [
+            "일원동",
+            "수서동"
+          ]
+        },
+        {
+          "administrativeDong": "일원1동",
+          "legalDongs": [
+            "일원동",
+            "수서동"
+          ]
+        },
+        {
+          "administrativeDong": "수서동",
+          "legalDongs": [
+            "수서동"
+          ]
+        },
+        {
+          "administrativeDong": "세곡동",
+          "legalDongs": [
+            "세곡동",
+            "자곡동",
+            "율현동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "강동구",
+      "mappings": [
+        {
+          "administrativeDong": "강일동",
+          "legalDongs": [
+            "강일동"
+          ]
+        },
+        {
+          "administrativeDong": "상일1동",
+          "legalDongs": [
+            "상일동"
+          ]
+        },
+        {
+          "administrativeDong": "상일2동",
+          "legalDongs": [
+            "상일동"
+          ]
+        },
+        {
+          "administrativeDong": "명일1동",
+          "legalDongs": [
+            "명일동"
+          ]
+        },
+        {
+          "administrativeDong": "명일2동",
+          "legalDongs": [
+            "명일동"
+          ]
+        },
+        {
+          "administrativeDong": "고덕1동",
+          "legalDongs": [
+            "고덕동"
+          ]
+        },
+        {
+          "administrativeDong": "고덕2동",
+          "legalDongs": [
+            "고덕동"
+          ]
+        },
+        {
+          "administrativeDong": "암사1동",
+          "legalDongs": [
+            "암사동"
+          ]
+        },
+        {
+          "administrativeDong": "암사2동",
+          "legalDongs": [
+            "암사동"
+          ]
+        },
+        {
+          "administrativeDong": "암사3동",
+          "legalDongs": [
+            "암사동"
+          ]
+        },
+        {
+          "administrativeDong": "천호1동",
+          "legalDongs": [
+            "천호동"
+          ]
+        },
+        {
+          "administrativeDong": "천호2동",
+          "legalDongs": [
+            "천호동"
+          ]
+        },
+        {
+          "administrativeDong": "천호3동",
+          "legalDongs": [
+            "천호동"
+          ]
+        },
+        {
+          "administrativeDong": "성내1동",
+          "legalDongs": [
+            "성내동"
+          ]
+        },
+        {
+          "administrativeDong": "성내2동",
+          "legalDongs": [
+            "성내동"
+          ]
+        },
+        {
+          "administrativeDong": "성내3동",
+          "legalDongs": [
+            "성내동"
+          ]
+        },
+        {
+          "administrativeDong": "길동",
+          "legalDongs": [
+            "길동"
+          ]
+        },
+        {
+          "administrativeDong": "둔촌1동",
+          "legalDongs": [
+            "둔촌동"
+          ]
+        },
+        {
+          "administrativeDong": "둔촌2동",
+          "legalDongs": [
+            "둔촌동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "강북구",
+      "mappings": [
+        {
+          "administrativeDong": "삼양동",
+          "legalDongs": [
+            "미아동"
+          ]
+        },
+        {
+          "administrativeDong": "미아동",
+          "legalDongs": [
+            "미아동"
+          ]
+        },
+        {
+          "administrativeDong": "송중동",
+          "legalDongs": [
+            "미아동"
+          ]
+        },
+        {
+          "administrativeDong": "송천동",
+          "legalDongs": [
+            "미아동"
+          ]
+        },
+        {
+          "administrativeDong": "삼각산동",
+          "legalDongs": [
+            "미아동"
+          ]
+        },
+        {
+          "administrativeDong": "번1동",
+          "legalDongs": [
+            "번동"
+          ]
+        },
+        {
+          "administrativeDong": "번2동",
+          "legalDongs": [
+            "번동"
+          ]
+        },
+        {
+          "administrativeDong": "번3동",
+          "legalDongs": [
+            "번동"
+          ]
+        },
+        {
+          "administrativeDong": "수유1동",
+          "legalDongs": [
+            "수유동"
+          ]
+        },
+        {
+          "administrativeDong": "수유2동",
+          "legalDongs": [
+            "수유동"
+          ]
+        },
+        {
+          "administrativeDong": "수유3동",
+          "legalDongs": [
+            "수유동"
+          ]
+        },
+        {
+          "administrativeDong": "우이동",
+          "legalDongs": [
+            "우이동",
+            "수유동"
+          ]
+        },
+        {
+          "administrativeDong": "인수동",
+          "legalDongs": [
+            "수유동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "강서구",
+      "mappings": [
+        {
+          "administrativeDong": "염창동",
+          "legalDongs": [
+            "염창동"
+          ]
+        },
+        {
+          "administrativeDong": "등촌1동",
+          "legalDongs": [
+            "등촌동"
+          ]
+        },
+        {
+          "administrativeDong": "등촌2동",
+          "legalDongs": [
+            "등촌동"
+          ]
+        },
+        {
+          "administrativeDong": "등촌3동",
+          "legalDongs": [
+            "등촌동"
+          ]
+        },
+        {
+          "administrativeDong": "화곡본동",
+          "legalDongs": [
+            "화곡동"
+          ]
+        },
+        {
+          "administrativeDong": "화곡1동",
+          "legalDongs": [
+            "화곡동"
+          ]
+        },
+        {
+          "administrativeDong": "화곡2동",
+          "legalDongs": [
+            "화곡동"
+          ]
+        },
+        {
+          "administrativeDong": "화곡3동",
+          "legalDongs": [
+            "화곡동"
+          ]
+        },
+        {
+          "administrativeDong": "화곡4동",
+          "legalDongs": [
+            "화곡동"
+          ]
+        },
+        {
+          "administrativeDong": "화곡6동",
+          "legalDongs": [
+            "화곡동"
+          ]
+        },
+        {
+          "administrativeDong": "화곡8동",
+          "legalDongs": [
+            "화곡동"
+          ]
+        },
+        {
+          "administrativeDong": "우장산동",
+          "legalDongs": [
+            "화곡동",
+            "내발산동"
+          ]
+        },
+        {
+          "administrativeDong": "가양1동",
+          "legalDongs": [
+            "가양동",
+            "마곡동"
+          ]
+        },
+        {
+          "administrativeDong": "가양2동",
+          "legalDongs": [
+            "가양동"
+          ]
+        },
+        {
+          "administrativeDong": "가양3동",
+          "legalDongs": [
+            "가양동",
+            "염창동"
+          ]
+        },
+        {
+          "administrativeDong": "발산1동",
+          "legalDongs": [
+            "내발산동",
+            "외발산동"
+          ]
+        },
+        {
+          "administrativeDong": "공항동",
+          "legalDongs": [
+            "공항동",
+            "과해동",
+            "오곡동",
+            "오쇠동"
+          ]
+        },
+        {
+          "administrativeDong": "방화1동",
+          "legalDongs": [
+            "방화동",
+            "마곡동"
+          ]
+        },
+        {
+          "administrativeDong": "방화2동",
+          "legalDongs": [
+            "방화동",
+            "개화동"
+          ]
+        },
+        {
+          "administrativeDong": "방화3동",
+          "legalDongs": [
+            "방화동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "관악구",
+      "mappings": [
+        {
+          "administrativeDong": "은천동",
+          "legalDongs": [
+            "봉천동"
+          ]
+        },
+        {
+          "administrativeDong": "성현동",
+          "legalDongs": [
+            "봉천동"
+          ]
+        },
+        {
+          "administrativeDong": "청룡동",
+          "legalDongs": [
+            "봉천동"
+          ]
+        },
+        {
+          "administrativeDong": "보라매동",
+          "legalDongs": [
+            "봉천동"
+          ]
+        },
+        {
+          "administrativeDong": "청림동",
+          "legalDongs": [
+            "봉천동"
+          ]
+        },
+        {
+          "administrativeDong": "행운동",
+          "legalDongs": [
+            "봉천동"
+          ]
+        },
+        {
+          "administrativeDong": "낙성대동",
+          "legalDongs": [
+            "봉천동"
+          ]
+        },
+        {
+          "administrativeDong": "중앙동",
+          "legalDongs": [
+            "봉천동"
+          ]
+        },
+        {
+          "administrativeDong": "인헌동",
+          "legalDongs": [
+            "봉천동"
+          ]
+        },
+        {
+          "administrativeDong": "남현동",
+          "legalDongs": [
+            "남현동"
+          ]
+        },
+        {
+          "administrativeDong": "서원동",
+          "legalDongs": [
+            "신림동"
+          ]
+        },
+        {
+          "administrativeDong": "신원동",
+          "legalDongs": [
+            "신림동"
+          ]
+        },
+        {
+          "administrativeDong": "서림동",
+          "legalDongs": [
+            "신림동"
+          ]
+        },
+        {
+          "administrativeDong": "난곡동",
+          "legalDongs": [
+            "신림동"
+          ]
+        },
+        {
+          "administrativeDong": "신사동",
+          "legalDongs": [
+            "신림동"
+          ]
+        },
+        {
+          "administrativeDong": "신림동",
+          "legalDongs": [
+            "신림동"
+          ]
+        },
+        {
+          "administrativeDong": "삼성동",
+          "legalDongs": [
+            "신림동"
+          ]
+        },
+        {
+          "administrativeDong": "난향동",
+          "legalDongs": [
+            "신림동"
+          ]
+        },
+        {
+          "administrativeDong": "조원동",
+          "legalDongs": [
+            "신림동"
+          ]
+        },
+        {
+          "administrativeDong": "대학동",
+          "legalDongs": [
+            "신림동"
+          ]
+        },
+        {
+          "administrativeDong": "미성동",
+          "legalDongs": [
+            "신림동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "광진구",
+      "mappings": [
+        {
+          "administrativeDong": "중곡1동",
+          "legalDongs": [
+            "중곡동"
+          ]
+        },
+        {
+          "administrativeDong": "중곡2동",
+          "legalDongs": [
+            "중곡동"
+          ]
+        },
+        {
+          "administrativeDong": "중곡3동",
+          "legalDongs": [
+            "중곡동"
+          ]
+        },
+        {
+          "administrativeDong": "중곡4동",
+          "legalDongs": [
+            "중곡동"
+          ]
+        },
+        {
+          "administrativeDong": "능동",
+          "legalDongs": [
+            "능동"
+          ]
+        },
+        {
+          "administrativeDong": "구의1동",
+          "legalDongs": [
+            "구의동"
+          ]
+        },
+        {
+          "administrativeDong": "구의2동",
+          "legalDongs": [
+            "구의동"
+          ]
+        },
+        {
+          "administrativeDong": "구의3동",
+          "legalDongs": [
+            "구의동"
+          ]
+        },
+        {
+          "administrativeDong": "광장동",
+          "legalDongs": [
+            "광장동"
+          ]
+        },
+        {
+          "administrativeDong": "자양1동",
+          "legalDongs": [
+            "자양동"
+          ]
+        },
+        {
+          "administrativeDong": "자양2동",
+          "legalDongs": [
+            "자양동"
+          ]
+        },
+        {
+          "administrativeDong": "자양3동",
+          "legalDongs": [
+            "자양동"
+          ]
+        },
+        {
+          "administrativeDong": "자양4동",
+          "legalDongs": [
+            "자양동"
+          ]
+        },
+        {
+          "administrativeDong": "화양동",
+          "legalDongs": [
+            "화양동"
+          ]
+        },
+        {
+          "administrativeDong": "군자동",
+          "legalDongs": [
+            "군자동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "구로구",
+      "mappings": [
+        {
+          "administrativeDong": "신도림동",
+          "legalDongs": [
+            "신도림동"
+          ]
+        },
+        {
+          "administrativeDong": "구로1동",
+          "legalDongs": [
+            "구로동"
+          ]
+        },
+        {
+          "administrativeDong": "구로2동",
+          "legalDongs": [
+            "구로동"
+          ]
+        },
+        {
+          "administrativeDong": "구로3동",
+          "legalDongs": [
+            "구로동"
+          ]
+        },
+        {
+          "administrativeDong": "구로4동",
+          "legalDongs": [
+            "구로동"
+          ]
+        },
+        {
+          "administrativeDong": "구로5동",
+          "legalDongs": [
+            "구로동"
+          ]
+        },
+        {
+          "administrativeDong": "가리봉동",
+          "legalDongs": [
+            "가리봉동"
+          ]
+        },
+        {
+          "administrativeDong": "고척1동",
+          "legalDongs": [
+            "고척동"
+          ]
+        },
+        {
+          "administrativeDong": "고척2동",
+          "legalDongs": [
+            "고척동"
+          ]
+        },
+        {
+          "administrativeDong": "개봉1동",
+          "legalDongs": [
+            "개봉동"
+          ]
+        },
+        {
+          "administrativeDong": "개봉2동",
+          "legalDongs": [
+            "개봉동"
+          ]
+        },
+        {
+          "administrativeDong": "개봉3동",
+          "legalDongs": [
+            "개봉동"
+          ]
+        },
+        {
+          "administrativeDong": "오류1동",
+          "legalDongs": [
+            "오류동"
+          ]
+        },
+        {
+          "administrativeDong": "오류2동",
+          "legalDongs": [
+            "오류동",
+            "천왕동"
+          ]
+        },
+        {
+          "administrativeDong": "항동",
+          "legalDongs": [
+            "항동"
+          ]
+        },
+        {
+          "administrativeDong": "수궁동",
+          "legalDongs": [
+            "온수동",
+            "궁동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "금천구",
+      "mappings": [
+        {
+          "administrativeDong": "가산동",
+          "legalDongs": [
+            "가산동"
+          ]
+        },
+        {
+          "administrativeDong": "독산1동",
+          "legalDongs": [
+            "독산동"
+          ]
+        },
+        {
+          "administrativeDong": "독산2동",
+          "legalDongs": [
+            "독산동"
+          ]
+        },
+        {
+          "administrativeDong": "독산3동",
+          "legalDongs": [
+            "독산동"
+          ]
+        },
+        {
+          "administrativeDong": "독산4동",
+          "legalDongs": [
+            "독산동"
+          ]
+        },
+        {
+          "administrativeDong": "시흥1동",
+          "legalDongs": [
+            "시흥동"
+          ]
+        },
+        {
+          "administrativeDong": "시흥2동",
+          "legalDongs": [
+            "시흥동"
+          ]
+        },
+        {
+          "administrativeDong": "시흥3동",
+          "legalDongs": [
+            "시흥동"
+          ]
+        },
+        {
+          "administrativeDong": "시흥4동",
+          "legalDongs": [
+            "시흥동"
+          ]
+        },
+        {
+          "administrativeDong": "시흥5동",
+          "legalDongs": [
+            "시흥동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "노원구",
+      "mappings": [
+        {
+          "administrativeDong": "월계1동",
+          "legalDongs": [
+            "월계동"
+          ]
+        },
+        {
+          "administrativeDong": "월계2동",
+          "legalDongs": [
+            "월계동"
+          ]
+        },
+        {
+          "administrativeDong": "월계3동",
+          "legalDongs": [
+            "월계동"
+          ]
+        },
+        {
+          "administrativeDong": "공릉1동",
+          "legalDongs": [
+            "공릉동"
+          ]
+        },
+        {
+          "administrativeDong": "공릉2동",
+          "legalDongs": [
+            "공릉동"
+          ]
+        },
+        {
+          "administrativeDong": "하계1동",
+          "legalDongs": [
+            "하계동"
+          ]
+        },
+        {
+          "administrativeDong": "하계2동",
+          "legalDongs": [
+            "하계동"
+          ]
+        },
+        {
+          "administrativeDong": "중계본동",
+          "legalDongs": [
+            "중계동"
+          ]
+        },
+        {
+          "administrativeDong": "중계1동",
+          "legalDongs": [
+            "중계동"
+          ]
+        },
+        {
+          "administrativeDong": "중계2,3동",
+          "legalDongs": [
+            "중계동"
+          ]
+        },
+        {
+          "administrativeDong": "중계4동",
+          "legalDongs": [
+            "중계동"
+          ]
+        },
+        {
+          "administrativeDong": "상계1동",
+          "legalDongs": [
+            "상계동"
+          ]
+        },
+        {
+          "administrativeDong": "상계2동",
+          "legalDongs": [
+            "상계동"
+          ]
+        },
+        {
+          "administrativeDong": "상계3,4동",
+          "legalDongs": [
+            "상계동"
+          ]
+        },
+        {
+          "administrativeDong": "상계5동",
+          "legalDongs": [
+            "상계동"
+          ]
+        },
+        {
+          "administrativeDong": "상계6,7동",
+          "legalDongs": [
+            "상계동"
+          ]
+        },
+        {
+          "administrativeDong": "상계8동",
+          "legalDongs": [
+            "상계동"
+          ]
+        },
+        {
+          "administrativeDong": "상계9동",
+          "legalDongs": [
+            "상계동"
+          ]
+        },
+        {
+          "administrativeDong": "상계10동",
+          "legalDongs": [
+            "상계동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "도봉구",
+      "mappings": [
+        {
+          "administrativeDong": "쌍문1동",
+          "legalDongs": [
+            "쌍문동"
+          ]
+        },
+        {
+          "administrativeDong": "쌍문2동",
+          "legalDongs": [
+            "쌍문동"
+          ]
+        },
+        {
+          "administrativeDong": "쌍문3동",
+          "legalDongs": [
+            "쌍문동"
+          ]
+        },
+        {
+          "administrativeDong": "쌍문4동",
+          "legalDongs": [
+            "쌍문동"
+          ]
+        },
+        {
+          "administrativeDong": "방학1동",
+          "legalDongs": [
+            "방학동"
+          ]
+        },
+        {
+          "administrativeDong": "방학2동",
+          "legalDongs": [
+            "방학동"
+          ]
+        },
+        {
+          "administrativeDong": "방학3동",
+          "legalDongs": [
+            "방학동"
+          ]
+        },
+        {
+          "administrativeDong": "창1동",
+          "legalDongs": [
+            "창동"
+          ]
+        },
+        {
+          "administrativeDong": "창2동",
+          "legalDongs": [
+            "창동"
+          ]
+        },
+        {
+          "administrativeDong": "창3동",
+          "legalDongs": [
+            "창동"
+          ]
+        },
+        {
+          "administrativeDong": "창4동",
+          "legalDongs": [
+            "창동"
+          ]
+        },
+        {
+          "administrativeDong": "창5동",
+          "legalDongs": [
+            "창동"
+          ]
+        },
+        {
+          "administrativeDong": "도봉1동",
+          "legalDongs": [
+            "도봉동"
+          ]
+        },
+        {
+          "administrativeDong": "도봉2동",
+          "legalDongs": [
+            "도봉동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "동대문구",
+      "mappings": [
+        {
+          "administrativeDong": "신설동",
+          "legalDongs": [
+            "신설동"
+          ]
+        },
+        {
+          "administrativeDong": "용두동",
+          "legalDongs": [
+            "용두동"
+          ]
+        },
+        {
+          "administrativeDong": "제기동",
+          "legalDongs": [
+            "제기동"
+          ]
+        },
+        {
+          "administrativeDong": "전농1동",
+          "legalDongs": [
+            "전농동"
+          ]
+        },
+        {
+          "administrativeDong": "전농2동",
+          "legalDongs": [
+            "전농동"
+          ]
+        },
+        {
+          "administrativeDong": "답십리1동",
+          "legalDongs": [
+            "답십리동"
+          ]
+        },
+        {
+          "administrativeDong": "답십리2동",
+          "legalDongs": [
+            "답십리동"
+          ]
+        },
+        {
+          "administrativeDong": "장안1동",
+          "legalDongs": [
+            "장안동"
+          ]
+        },
+        {
+          "administrativeDong": "장안2동",
+          "legalDongs": [
+            "장안동"
+          ]
+        },
+        {
+          "administrativeDong": "청량리동",
+          "legalDongs": [
+            "청량리동"
+          ]
+        },
+        {
+          "administrativeDong": "회기동",
+          "legalDongs": [
+            "회기동"
+          ]
+        },
+        {
+          "administrativeDong": "휘경1동",
+          "legalDongs": [
+            "휘경동"
+          ]
+        },
+        {
+          "administrativeDong": "휘경2동",
+          "legalDongs": [
+            "휘경동"
+          ]
+        },
+        {
+          "administrativeDong": "이문1동",
+          "legalDongs": [
+            "이문동"
+          ]
+        },
+        {
+          "administrativeDong": "이문2동",
+          "legalDongs": [
+            "이문동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "동작구",
+      "mappings": [
+        {
+          "administrativeDong": "노량진1동",
+          "legalDongs": [
+            "노량진동",
+            "본동"
+          ]
+        },
+        {
+          "administrativeDong": "노량진2동",
+          "legalDongs": [
+            "노량진동"
+          ]
+        },
+        {
+          "administrativeDong": "상도1동",
+          "legalDongs": [
+            "상도동",
+            "상도1동"
+          ]
+        },
+        {
+          "administrativeDong": "상도2동",
+          "legalDongs": [
+            "상도동"
+          ]
+        },
+        {
+          "administrativeDong": "상도3동",
+          "legalDongs": [
+            "상도동"
+          ]
+        },
+        {
+          "administrativeDong": "상도4동",
+          "legalDongs": [
+            "상도동"
+          ]
+        },
+        {
+          "administrativeDong": "흑석동",
+          "legalDongs": [
+            "흑석동"
+          ]
+        },
+        {
+          "administrativeDong": "사당1동",
+          "legalDongs": [
+            "사당동"
+          ]
+        },
+        {
+          "administrativeDong": "사당2동",
+          "legalDongs": [
+            "사당동",
+            "동작동"
+          ]
+        },
+        {
+          "administrativeDong": "사당3동",
+          "legalDongs": [
+            "사당동"
+          ]
+        },
+        {
+          "administrativeDong": "사당4동",
+          "legalDongs": [
+            "사당동"
+          ]
+        },
+        {
+          "administrativeDong": "사당5동",
+          "legalDongs": [
+            "사당동"
+          ]
+        },
+        {
+          "administrativeDong": "대방동",
+          "legalDongs": [
+            "대방동"
+          ]
+        },
+        {
+          "administrativeDong": "신대방1동",
+          "legalDongs": [
+            "신대방동"
+          ]
+        },
+        {
+          "administrativeDong": "신대방2동",
+          "legalDongs": [
+            "신대방동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "마포구",
+      "mappings": [
+        {
+          "administrativeDong": "아현동",
+          "legalDongs": [
+            "아현동",
+            "공덕동",
+            "염리동"
+          ]
+        },
+        {
+          "administrativeDong": "공덕동",
+          "legalDongs": [
+            "공덕동",
+            "아현동",
+            "신공덕동",
+            "도화동"
+          ]
+        },
+        {
+          "administrativeDong": "도화동",
+          "legalDongs": [
+            "도화동",
+            "마포동"
+          ]
+        },
+        {
+          "administrativeDong": "용강동",
+          "legalDongs": [
+            "용강동",
+            "도화동",
+            "토정동",
+            "염리동",
+            "마포동",
+            "대흥동"
+          ]
+        },
+        {
+          "administrativeDong": "대흥동",
+          "legalDongs": [
+            "대흥동",
+            "신수동",
+            "노고산동"
+          ]
+        },
+        {
+          "administrativeDong": "염리동",
+          "legalDongs": [
+            "염리동"
+          ]
+        },
+        {
+          "administrativeDong": "신수동",
+          "legalDongs": [
+            "신수동",
+            "구수동",
+            "현석동",
+            "신정동",
+            "대흥동"
+          ]
+        },
+        {
+          "administrativeDong": "서강동",
+          "legalDongs": [
+            "창전동",
+            "상수동",
+            "하중동",
+            "신정동",
+            "당인동"
+          ]
+        },
+        {
+          "administrativeDong": "서교동",
+          "legalDongs": [
+            "서교동",
+            "노고산동",
+            "동교동"
+          ]
+        },
+        {
+          "administrativeDong": "합정동",
+          "legalDongs": [
+            "합정동"
+          ]
+        },
+        {
+          "administrativeDong": "망원1동",
+          "legalDongs": [
+            "망원동"
+          ]
+        },
+        {
+          "administrativeDong": "망원2동",
+          "legalDongs": [
+            "망원동"
+          ]
+        },
+        {
+          "administrativeDong": "연남동",
+          "legalDongs": [
+            "연남동"
+          ]
+        },
+        {
+          "administrativeDong": "성산1동",
+          "legalDongs": [
+            "성산동"
+          ]
+        },
+        {
+          "administrativeDong": "성산2동",
+          "legalDongs": [
+            "성산동",
+            "중동"
+          ]
+        },
+        {
+          "administrativeDong": "상암동",
+          "legalDongs": [
+            "상암동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "서대문구",
+      "mappings": [
+        {
+          "administrativeDong": "충현동",
+          "legalDongs": [
+            "충정로2가",
+            "충정로3가",
+            "합동",
+            "미근동",
+            "북아현동"
+          ]
+        },
+        {
+          "administrativeDong": "천연동",
+          "legalDongs": [
+            "천연동",
+            "냉천동",
+            "옥천동",
+            "영천동",
+            "현저동"
+          ]
+        },
+        {
+          "administrativeDong": "북아현동",
+          "legalDongs": [
+            "북아현동"
+          ]
+        },
+        {
+          "administrativeDong": "신촌동",
+          "legalDongs": [
+            "대신동",
+            "대현동",
+            "신촌동",
+            "봉원동",
+            "창천동"
+          ]
+        },
+        {
+          "administrativeDong": "연희동",
+          "legalDongs": [
+            "연희동"
+          ]
+        },
+        {
+          "administrativeDong": "홍제1동",
+          "legalDongs": [
+            "홍제동"
+          ]
+        },
+        {
+          "administrativeDong": "홍제2동",
+          "legalDongs": [
+            "홍제동"
+          ]
+        },
+        {
+          "administrativeDong": "홍제3동",
+          "legalDongs": [
+            "홍제동"
+          ]
+        },
+        {
+          "administrativeDong": "홍은1동",
+          "legalDongs": [
+            "홍은동"
+          ]
+        },
+        {
+          "administrativeDong": "홍은2동",
+          "legalDongs": [
+            "홍은동"
+          ]
+        },
+        {
+          "administrativeDong": "남가좌1동",
+          "legalDongs": [
+            "남가좌동"
+          ]
+        },
+        {
+          "administrativeDong": "남가좌2동",
+          "legalDongs": [
+            "남가좌동"
+          ]
+        },
+        {
+          "administrativeDong": "북가좌1동",
+          "legalDongs": [
+            "북가좌동"
+          ]
+        },
+        {
+          "administrativeDong": "북가좌2동",
+          "legalDongs": [
+            "북가좌동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "서초구",
+      "mappings": [
+        {
+          "administrativeDong": "서초1동",
+          "legalDongs": [
+            "서초동"
+          ]
+        },
+        {
+          "administrativeDong": "서초2동",
+          "legalDongs": [
+            "서초동"
+          ]
+        },
+        {
+          "administrativeDong": "서초3동",
+          "legalDongs": [
+            "서초동",
+            "방배동"
+          ]
+        },
+        {
+          "administrativeDong": "서초4동",
+          "legalDongs": [
+            "서초동"
+          ]
+        },
+        {
+          "administrativeDong": "잠원동",
+          "legalDongs": [
+            "잠원동"
+          ]
+        },
+        {
+          "administrativeDong": "반포본동",
+          "legalDongs": [
+            "반포동"
+          ]
+        },
+        {
+          "administrativeDong": "반포1동",
+          "legalDongs": [
+            "반포동"
+          ]
+        },
+        {
+          "administrativeDong": "반포2동",
+          "legalDongs": [
+            "반포동"
+          ]
+        },
+        {
+          "administrativeDong": "반포3동",
+          "legalDongs": [
+            "잠원동"
+          ]
+        },
+        {
+          "administrativeDong": "반포4동",
+          "legalDongs": [
+            "반포동"
+          ]
+        },
+        {
+          "administrativeDong": "방배본동",
+          "legalDongs": [
+            "방배동"
+          ]
+        },
+        {
+          "administrativeDong": "방배1동",
+          "legalDongs": [
+            "방배동"
+          ]
+        },
+        {
+          "administrativeDong": "방배2동",
+          "legalDongs": [
+            "방배동"
+          ]
+        },
+        {
+          "administrativeDong": "방배3동",
+          "legalDongs": [
+            "방배동"
+          ]
+        },
+        {
+          "administrativeDong": "방배4동",
+          "legalDongs": [
+            "방배동"
+          ]
+        },
+        {
+          "administrativeDong": "양재1동",
+          "legalDongs": [
+            "양재동",
+            "우면동"
+          ]
+        },
+        {
+          "administrativeDong": "양재2동",
+          "legalDongs": [
+            "양재동",
+            "원지동"
+          ]
+        },
+        {
+          "administrativeDong": "내곡동",
+          "legalDongs": [
+            "내곡동",
+            "염곡동",
+            "신원동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "성동구",
+      "mappings": [
+        {
+          "administrativeDong": "왕십리2동",
+          "legalDongs": [
+            "하왕십리동"
+          ]
+        },
+        {
+          "administrativeDong": "왕십리도선동",
+          "legalDongs": [
+            "상왕십리동",
+            "하왕십리동",
+            "도선동",
+            "홍익동"
+          ]
+        },
+        {
+          "administrativeDong": "마장동",
+          "legalDongs": [
+            "마장동"
+          ]
+        },
+        {
+          "administrativeDong": "사근동",
+          "legalDongs": [
+            "사근동",
+            "행당동"
+          ]
+        },
+        {
+          "administrativeDong": "행당1동",
+          "legalDongs": [
+            "행당동"
+          ]
+        },
+        {
+          "administrativeDong": "행당2동",
+          "legalDongs": [
+            "행당동"
+          ]
+        },
+        {
+          "administrativeDong": "응봉동",
+          "legalDongs": [
+            "응봉동"
+          ]
+        },
+        {
+          "administrativeDong": "금호1가동",
+          "legalDongs": [
+            "금호동1가"
+          ]
+        },
+        {
+          "administrativeDong": "금호2,3가동",
+          "legalDongs": [
+            "금호동2가",
+            "금호동3가"
+          ]
+        },
+        {
+          "administrativeDong": "금호4가동",
+          "legalDongs": [
+            "금호동4가"
+          ]
+        },
+        {
+          "administrativeDong": "옥수동",
+          "legalDongs": [
+            "옥수동"
+          ]
+        },
+        {
+          "administrativeDong": "성수1가1동",
+          "legalDongs": [
+            "성수동1가"
+          ]
+        },
+        {
+          "administrativeDong": "성수1가2동",
+          "legalDongs": [
+            "성수동1가"
+          ]
+        },
+        {
+          "administrativeDong": "성수2가1동",
+          "legalDongs": [
+            "성수동2가"
+          ]
+        },
+        {
+          "administrativeDong": "성수2가3동",
+          "legalDongs": [
+            "성수동2가"
+          ]
+        },
+        {
+          "administrativeDong": "송정동",
+          "legalDongs": [
+            "송정동"
+          ]
+        },
+        {
+          "administrativeDong": "용답동",
+          "legalDongs": [
+            "용답동",
+            "송정동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "성북구",
+      "mappings": [
+        {
+          "administrativeDong": "성북동",
+          "legalDongs": [
+            "성북동",
+            "성북동1가",
+            "동소문동1가",
+            "동소문동4가"
+          ]
+        },
+        {
+          "administrativeDong": "삼선동",
+          "legalDongs": [
+            "삼선동1가",
+            "삼선동2가",
+            "삼선동3가",
+            "삼선동4가",
+            "삼선동5가",
+            "돈암동",
+            "동소문동2가",
+            "동소문동3가",
+            "동소문동5가"
+          ]
+        },
+        {
+          "administrativeDong": "동선동",
+          "legalDongs": [
+            "동선동1가",
+            "동선동2가",
+            "동선동3가",
+            "동선동4가",
+            "동선동5가",
+            "돈암동",
+            "동소문동6가",
+            "동소문동7가"
+          ]
+        },
+        {
+          "administrativeDong": "돈암1동",
+          "legalDongs": [
+            "돈암동"
+          ]
+        },
+        {
+          "administrativeDong": "돈암2동",
+          "legalDongs": [
+            "돈암동"
+          ]
+        },
+        {
+          "administrativeDong": "안암동",
+          "legalDongs": [
+            "안암동1가",
+            "안암동2가",
+            "안암동3가",
+            "안암동4가",
+            "안암동5가"
+          ]
+        },
+        {
+          "administrativeDong": "보문동",
+          "legalDongs": [
+            "보문동1가",
+            "보문동2가",
+            "보문동3가",
+            "보문동4가",
+            "보문동5가",
+            "보문동6가",
+            "보문동7가"
+          ]
+        },
+        {
+          "administrativeDong": "정릉1동",
+          "legalDongs": [
+            "정릉동"
+          ]
+        },
+        {
+          "administrativeDong": "정릉2동",
+          "legalDongs": [
+            "정릉동",
+            "돈암동"
+          ]
+        },
+        {
+          "administrativeDong": "정릉3동",
+          "legalDongs": [
+            "정릉동"
+          ]
+        },
+        {
+          "administrativeDong": "정릉4동",
+          "legalDongs": [
+            "정릉동"
+          ]
+        },
+        {
+          "administrativeDong": "길음1동",
+          "legalDongs": [
+            "길음동"
+          ]
+        },
+        {
+          "administrativeDong": "길음2동",
+          "legalDongs": [
+            "길음동",
+            "하월곡동"
+          ]
+        },
+        {
+          "administrativeDong": "종암동",
+          "legalDongs": [
+            "종암동"
+          ]
+        },
+        {
+          "administrativeDong": "월곡1동",
+          "legalDongs": [
+            "하월곡동"
+          ]
+        },
+        {
+          "administrativeDong": "월곡2동",
+          "legalDongs": [
+            "하월곡동",
+            "상월곡동"
+          ]
+        },
+        {
+          "administrativeDong": "장위1동",
+          "legalDongs": [
+            "장위동"
+          ]
+        },
+        {
+          "administrativeDong": "장위2동",
+          "legalDongs": [
+            "장위동"
+          ]
+        },
+        {
+          "administrativeDong": "장위3동",
+          "legalDongs": [
+            "장위동"
+          ]
+        },
+        {
+          "administrativeDong": "석관동",
+          "legalDongs": [
+            "석관동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "송파구",
+      "mappings": [
+        {
+          "administrativeDong": "풍납1동",
+          "legalDongs": [
+            "풍납동"
+          ]
+        },
+        {
+          "administrativeDong": "풍납2동",
+          "legalDongs": [
+            "풍납동"
+          ]
+        },
+        {
+          "administrativeDong": "거여1동",
+          "legalDongs": [
+            "거여동"
+          ]
+        },
+        {
+          "administrativeDong": "거여2동",
+          "legalDongs": [
+            "거여동"
+          ]
+        },
+        {
+          "administrativeDong": "마천1동",
+          "legalDongs": [
+            "마천동"
+          ]
+        },
+        {
+          "administrativeDong": "마천2동",
+          "legalDongs": [
+            "마천동"
+          ]
+        },
+        {
+          "administrativeDong": "방이1동",
+          "legalDongs": [
+            "방이동"
+          ]
+        },
+        {
+          "administrativeDong": "방이2동",
+          "legalDongs": [
+            "방이동"
+          ]
+        },
+        {
+          "administrativeDong": "오륜동",
+          "legalDongs": [
+            "방이동"
+          ]
+        },
+        {
+          "administrativeDong": "오금동",
+          "legalDongs": [
+            "오금동"
+          ]
+        },
+        {
+          "administrativeDong": "송파1동",
+          "legalDongs": [
+            "송파동"
+          ]
+        },
+        {
+          "administrativeDong": "송파2동",
+          "legalDongs": [
+            "송파동"
+          ]
+        },
+        {
+          "administrativeDong": "석촌동",
+          "legalDongs": [
+            "석촌동"
+          ]
+        },
+        {
+          "administrativeDong": "삼전동",
+          "legalDongs": [
+            "삼전동"
+          ]
+        },
+        {
+          "administrativeDong": "가락본동",
+          "legalDongs": [
+            "가락동"
+          ]
+        },
+        {
+          "administrativeDong": "가락1동",
+          "legalDongs": [
+            "가락동"
+          ]
+        },
+        {
+          "administrativeDong": "가락2동",
+          "legalDongs": [
+            "가락동"
+          ]
+        },
+        {
+          "administrativeDong": "문정1동",
+          "legalDongs": [
+            "문정동"
+          ]
+        },
+        {
+          "administrativeDong": "문정2동",
+          "legalDongs": [
+            "문정동",
+            "장지동"
+          ]
+        },
+        {
+          "administrativeDong": "장지동",
+          "legalDongs": [
+            "장지동",
+            "문정동"
+          ]
+        },
+        {
+          "administrativeDong": "위례동",
+          "legalDongs": [
+            "장지동",
+            "거여동"
+          ]
+        },
+        {
+          "administrativeDong": "잠실본동",
+          "legalDongs": [
+            "잠실동"
+          ]
+        },
+        {
+          "administrativeDong": "잠실2동",
+          "legalDongs": [
+            "잠실동"
+          ]
+        },
+        {
+          "administrativeDong": "잠실3동",
+          "legalDongs": [
+            "잠실동"
+          ]
+        },
+        {
+          "administrativeDong": "잠실4동",
+          "legalDongs": [
+            "신천동"
+          ]
+        },
+        {
+          "administrativeDong": "잠실6동",
+          "legalDongs": [
+            "신천동"
+          ]
+        },
+        {
+          "administrativeDong": "잠실7동",
+          "legalDongs": [
+            "잠실동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "양천구",
+      "mappings": [
+        {
+          "administrativeDong": "목1동",
+          "legalDongs": [
+            "목동"
+          ]
+        },
+        {
+          "administrativeDong": "목2동",
+          "legalDongs": [
+            "목동"
+          ]
+        },
+        {
+          "administrativeDong": "목3동",
+          "legalDongs": [
+            "목동"
+          ]
+        },
+        {
+          "administrativeDong": "목4동",
+          "legalDongs": [
+            "목동"
+          ]
+        },
+        {
+          "administrativeDong": "목5동",
+          "legalDongs": [
+            "목동"
+          ]
+        },
+        {
+          "administrativeDong": "신월1동",
+          "legalDongs": [
+            "신월동"
+          ]
+        },
+        {
+          "administrativeDong": "신월2동",
+          "legalDongs": [
+            "신월동"
+          ]
+        },
+        {
+          "administrativeDong": "신월3동",
+          "legalDongs": [
+            "신월동"
+          ]
+        },
+        {
+          "administrativeDong": "신월4동",
+          "legalDongs": [
+            "신월동"
+          ]
+        },
+        {
+          "administrativeDong": "신월5동",
+          "legalDongs": [
+            "신월동"
+          ]
+        },
+        {
+          "administrativeDong": "신월6동",
+          "legalDongs": [
+            "신월동"
+          ]
+        },
+        {
+          "administrativeDong": "신월7동",
+          "legalDongs": [
+            "신월동"
+          ]
+        },
+        {
+          "administrativeDong": "신정1동",
+          "legalDongs": [
+            "신정동"
+          ]
+        },
+        {
+          "administrativeDong": "신정2동",
+          "legalDongs": [
+            "신정동"
+          ]
+        },
+        {
+          "administrativeDong": "신정3동",
+          "legalDongs": [
+            "신정동"
+          ]
+        },
+        {
+          "administrativeDong": "신정4동",
+          "legalDongs": [
+            "신정동"
+          ]
+        },
+        {
+          "administrativeDong": "신정6동",
+          "legalDongs": [
+            "신정동"
+          ]
+        },
+        {
+          "administrativeDong": "신정7동",
+          "legalDongs": [
+            "신정동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "영등포구",
+      "mappings": [
+        {
+          "administrativeDong": "영등포본동",
+          "legalDongs": [
+            "영등포동",
+            "신길동"
+          ]
+        },
+        {
+          "administrativeDong": "영등포동",
+          "legalDongs": [
+            "영등포동1가",
+            "영등포동2가",
+            "영등포동3가",
+            "영등포동4가",
+            "영등포동5가",
+            "영등포동6가",
+            "영등포동7가",
+            "영등포동8가"
+          ]
+        },
+        {
+          "administrativeDong": "여의동",
+          "legalDongs": [
+            "여의도동"
+          ]
+        },
+        {
+          "administrativeDong": "당산1동",
+          "legalDongs": [
+            "당산동1가",
+            "당산동2가",
+            "당산동3가"
+          ]
+        },
+        {
+          "administrativeDong": "당산2동",
+          "legalDongs": [
+            "당산동4가",
+            "당산동5가",
+            "당산동6가",
+            "당산동"
+          ]
+        },
+        {
+          "administrativeDong": "도림동",
+          "legalDongs": [
+            "도림동"
+          ]
+        },
+        {
+          "administrativeDong": "문래동",
+          "legalDongs": [
+            "문래동1가",
+            "문래동2가",
+            "문래동3가",
+            "문래동4가",
+            "문래동5가",
+            "문래동6가"
+          ]
+        },
+        {
+          "administrativeDong": "양평1동",
+          "legalDongs": [
+            "양평동1가",
+            "양평동2가",
+            "양평동3가",
+            "양평동"
+          ]
+        },
+        {
+          "administrativeDong": "양평2동",
+          "legalDongs": [
+            "양평동3가",
+            "양평동4가",
+            "양평동5가",
+            "양평동6가",
+            "양화동",
+            "양평동"
+          ]
+        },
+        {
+          "administrativeDong": "신길1동",
+          "legalDongs": [
+            "신길동"
+          ]
+        },
+        {
+          "administrativeDong": "신길3동",
+          "legalDongs": [
+            "신길동"
+          ]
+        },
+        {
+          "administrativeDong": "신길4동",
+          "legalDongs": [
+            "신길동"
+          ]
+        },
+        {
+          "administrativeDong": "신길5동",
+          "legalDongs": [
+            "신길동"
+          ]
+        },
+        {
+          "administrativeDong": "신길6동",
+          "legalDongs": [
+            "신길동"
+          ]
+        },
+        {
+          "administrativeDong": "신길7동",
+          "legalDongs": [
+            "신길동"
+          ]
+        },
+        {
+          "administrativeDong": "대림1동",
+          "legalDongs": [
+            "대림동"
+          ]
+        },
+        {
+          "administrativeDong": "대림2동",
+          "legalDongs": [
+            "대림동"
+          ]
+        },
+        {
+          "administrativeDong": "대림3동",
+          "legalDongs": [
+            "대림동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "용산구",
+      "mappings": [
+        {
+          "administrativeDong": "후암동",
+          "legalDongs": [
+            "후암동"
+          ]
+        },
+        {
+          "administrativeDong": "용산2가동",
+          "legalDongs": [
+            "용산동2가",
+            "용산동4가"
+          ]
+        },
+        {
+          "administrativeDong": "남영동",
+          "legalDongs": [
+            "갈월동",
+            "남영동",
+            "동자동",
+            "용산동1가"
+          ]
+        },
+        {
+          "administrativeDong": "청파동",
+          "legalDongs": [
+            "청파동1가",
+            "청파동2가",
+            "청파동3가",
+            "서계동"
+          ]
+        },
+        {
+          "administrativeDong": "원효로1동",
+          "legalDongs": [
+            "원효로1가",
+            "원효로2가",
+            "문배동",
+            "신계동"
+          ]
+        },
+        {
+          "administrativeDong": "원효로2동",
+          "legalDongs": [
+            "원효로3가",
+            "원효로4가",
+            "신창동",
+            "산천동",
+            "청암동"
+          ]
+        },
+        {
+          "administrativeDong": "효창동",
+          "legalDongs": [
+            "효창동"
+          ]
+        },
+        {
+          "administrativeDong": "용문동",
+          "legalDongs": [
+            "용문동",
+            "도원동"
+          ]
+        },
+        {
+          "administrativeDong": "한강로동",
+          "legalDongs": [
+            "한강로1가",
+            "한강로2가",
+            "한강로3가",
+            "용산동3가",
+            "용산동5가"
+          ]
+        },
+        {
+          "administrativeDong": "이촌1동",
+          "legalDongs": [
+            "이촌동"
+          ]
+        },
+        {
+          "administrativeDong": "이촌2동",
+          "legalDongs": [
+            "이촌동"
+          ]
+        },
+        {
+          "administrativeDong": "이태원1동",
+          "legalDongs": [
+            "이태원동"
+          ]
+        },
+        {
+          "administrativeDong": "이태원2동",
+          "legalDongs": [
+            "이태원동"
+          ]
+        },
+        {
+          "administrativeDong": "한남동",
+          "legalDongs": [
+            "한남동"
+          ]
+        },
+        {
+          "administrativeDong": "서빙고동",
+          "legalDongs": [
+            "서빙고동",
+            "동빙고동",
+            "주성동",
+            "용산동6가"
+          ]
+        },
+        {
+          "administrativeDong": "보광동",
+          "legalDongs": [
+            "보광동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "은평구",
+      "mappings": [
+        {
+          "administrativeDong": "녹번동",
+          "legalDongs": [
+            "녹번동"
+          ]
+        },
+        {
+          "administrativeDong": "불광1동",
+          "legalDongs": [
+            "불광동"
+          ]
+        },
+        {
+          "administrativeDong": "불광2동",
+          "legalDongs": [
+            "불광동"
+          ]
+        },
+        {
+          "administrativeDong": "갈현1동",
+          "legalDongs": [
+            "갈현동"
+          ]
+        },
+        {
+          "administrativeDong": "갈현2동",
+          "legalDongs": [
+            "갈현동"
+          ]
+        },
+        {
+          "administrativeDong": "구산동",
+          "legalDongs": [
+            "구산동"
+          ]
+        },
+        {
+          "administrativeDong": "대조동",
+          "legalDongs": [
+            "대조동"
+          ]
+        },
+        {
+          "administrativeDong": "응암1동",
+          "legalDongs": [
+            "응암동"
+          ]
+        },
+        {
+          "administrativeDong": "응암2동",
+          "legalDongs": [
+            "응암동"
+          ]
+        },
+        {
+          "administrativeDong": "응암3동",
+          "legalDongs": [
+            "응암동"
+          ]
+        },
+        {
+          "administrativeDong": "역촌동",
+          "legalDongs": [
+            "역촌동"
+          ]
+        },
+        {
+          "administrativeDong": "신사1동",
+          "legalDongs": [
+            "신사동"
+          ]
+        },
+        {
+          "administrativeDong": "신사2동",
+          "legalDongs": [
+            "신사동"
+          ]
+        },
+        {
+          "administrativeDong": "증산동",
+          "legalDongs": [
+            "증산동"
+          ]
+        },
+        {
+          "administrativeDong": "수색동",
+          "legalDongs": [
+            "수색동"
+          ]
+        },
+        {
+          "administrativeDong": "진관동",
+          "legalDongs": [
+            "진관동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "종로구",
+      "mappings": [
+        {
+          "administrativeDong": "청운효자동",
+          "legalDongs": [
+            "청운동",
+            "신교동",
+            "궁정동",
+            "세종로",
+            "효자동",
+            "창성동",
+            "통인동",
+            "누상동",
+            "누하동",
+            "옥인동"
+          ]
+        },
+        {
+          "administrativeDong": "사직동",
+          "legalDongs": [
+            "사직동",
+            "체부동",
+            "필운동",
+            "내자동",
+            "통의동",
+            "적선동",
+            "세종로",
+            "도렴동",
+            "당주동",
+            "내수동",
+            "신문로1가",
+            "신문로2가"
+          ]
+        },
+        {
+          "administrativeDong": "삼청동",
+          "legalDongs": [
+            "삼청동",
+            "팔판동",
+            "안국동",
+            "소격동",
+            "화동",
+            "사간동",
+            "송현동"
+          ]
+        },
+        {
+          "administrativeDong": "부암동",
+          "legalDongs": [
+            "부암동",
+            "홍지동",
+            "신영동"
+          ]
+        },
+        {
+          "administrativeDong": "평창동",
+          "legalDongs": [
+            "평창동",
+            "구기동"
+          ]
+        },
+        {
+          "administrativeDong": "무악동",
+          "legalDongs": [
+            "무악동"
+          ]
+        },
+        {
+          "administrativeDong": "교남동",
+          "legalDongs": [
+            "교남동",
+            "평동",
+            "송월동",
+            "홍파동",
+            "교북동",
+            "행촌동"
+          ]
+        },
+        {
+          "administrativeDong": "가회동",
+          "legalDongs": [
+            "가회동",
+            "재동",
+            "계동",
+            "원서동"
+          ]
+        },
+        {
+          "administrativeDong": "종로1.2.3.4가동",
+          "legalDongs": [
+            "종로1가",
+            "종로2가",
+            "종로3가",
+            "종로4가",
+            "청진동",
+            "서린동",
+            "수송동",
+            "중학동",
+            "공평동",
+            "관훈동",
+            "견지동",
+            "권농동",
+            "운니동",
+            "익선동",
+            "경운동",
+            "관철동",
+            "인사동",
+            "낙원동",
+            "와룡동",
+            "훈정동",
+            "묘동",
+            "봉익동",
+            "돈의동",
+            "장사동",
+            "관수동",
+            "인의동",
+            "예지동",
+            "원남동"
+          ]
+        },
+        {
+          "administrativeDong": "종로5.6가동",
+          "legalDongs": [
+            "종로5가",
+            "종로6가",
+            "효제동",
+            "연지동",
+            "충신동"
+          ]
+        },
+        {
+          "administrativeDong": "이화동",
+          "legalDongs": [
+            "이화동",
+            "연건동",
+            "동숭동"
+          ]
+        },
+        {
+          "administrativeDong": "혜화동",
+          "legalDongs": [
+            "혜화동",
+            "명륜1가",
+            "명륜2가",
+            "명륜3가",
+            "명륜4가"
+          ]
+        },
+        {
+          "administrativeDong": "창신1동",
+          "legalDongs": [
+            "창신동"
+          ]
+        },
+        {
+          "administrativeDong": "창신2동",
+          "legalDongs": [
+            "창신동"
+          ]
+        },
+        {
+          "administrativeDong": "창신3동",
+          "legalDongs": [
+            "창신동"
+          ]
+        },
+        {
+          "administrativeDong": "숭인1동",
+          "legalDongs": [
+            "숭인동"
+          ]
+        },
+        {
+          "administrativeDong": "숭인2동",
+          "legalDongs": [
+            "숭인동"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "중구",
+      "mappings": [
+        {
+          "administrativeDong": "소공동",
+          "legalDongs": [
+            "소공동",
+            "북창동",
+            "태평로2가",
+            "남대문로2가",
+            "남대문로3가",
+            "남대문로4가",
+            "서소문동",
+            "정동",
+            "순화동",
+            "의주로1가",
+            "충정로1가",
+            "봉래동1가"
+          ]
+        },
+        {
+          "administrativeDong": "회현동",
+          "legalDongs": [
+            "회현동1가",
+            "회현동2가",
+            "남창동",
+            "남대문로3가",
+            "남대문로4가",
+            "남대문로5가",
+            "봉래동1가",
+            "봉래동2가",
+            "충무로1가",
+            "순화동"
+          ]
+        },
+        {
+          "administrativeDong": "명동",
+          "legalDongs": [
+            "명동1가",
+            "명동2가",
+            "충무로1가",
+            "충무로2가",
+            "저동1가",
+            "남산동1가",
+            "남산동2가",
+            "남산동3가",
+            "태평로1가",
+            "무교동",
+            "다동",
+            "을지로1가",
+            "을지로2가",
+            "삼각동",
+            "남대문로1가",
+            "남대문로2가",
+            "수하동",
+            "장교동",
+            "수표동",
+            "예장동",
+            "회현동1가",
+            "회현동2가",
+            "회현동3가"
+          ]
+        },
+        {
+          "administrativeDong": "필동",
+          "legalDongs": [
+            "필동1가",
+            "필동2가",
+            "필동3가",
+            "남학동",
+            "주자동",
+            "예장동",
+            "충무로3가",
+            "충무로4가",
+            "충무로5가",
+            "장충동2가",
+            "묵정동"
+          ]
+        },
+        {
+          "administrativeDong": "장충동",
+          "legalDongs": [
+            "장충동1가",
+            "장충동2가",
+            "묵정동"
+          ]
+        },
+        {
+          "administrativeDong": "광희동",
+          "legalDongs": [
+            "광희동1가",
+            "광희동2가",
+            "쌍림동",
+            "을지로6가",
+            "을지로7가",
+            "충무로4가",
+            "충무로5가",
+            "인현동1가",
+            "인현동2가",
+            "예관동",
+            "오장동"
+          ]
+        },
+        {
+          "administrativeDong": "을지로동",
+          "legalDongs": [
+            "을지로3가",
+            "을지로4가",
+            "을지로5가",
+            "주교동",
+            "방산동",
+            "입정동",
+            "산림동",
+            "초동",
+            "인현동1가",
+            "인현동2가",
+            "저동2가"
+          ]
+        },
+        {
+          "administrativeDong": "신당동",
+          "legalDongs": [
+            "무학동",
+            "흥인동",
+            "신당동"
+          ]
+        },
+        {
+          "administrativeDong": "다산동",
+          "legalDongs": [
+            "신당동"
+          ]
+        },
+        {
+          "administrativeDong": "약수동",
+          "legalDongs": [
+            "신당동"
+          ]
+        },
+        {
+          "administrativeDong": "청구동",
+          "legalDongs": [
+            "신당동"
+          ]
+        },
+        {
+          "administrativeDong": "신당5동",
+          "legalDongs": [
+            "신당동"
+          ]
+        },
+        {
+          "administrativeDong": "동화동",
+          "legalDongs": [
+            "신당동"
+          ]
+        },
+        {
+          "administrativeDong": "황학동",
+          "legalDongs": [
+            "황학동"
+          ]
+        },
+        {
+          "administrativeDong": "중림동",
+          "legalDongs": [
+            "중림동",
+            "의주로2가",
+            "만리동1가",
+            "만리동2가"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "중랑구",
+      "mappings": [
+        {
+          "administrativeDong": "면목본동",
+          "legalDongs": [
+            "면목동"
+          ]
+        },
+        {
+          "administrativeDong": "면목2동",
+          "legalDongs": [
+            "면목동"
+          ]
+        },
+        {
+          "administrativeDong": "면목3.8동",
+          "legalDongs": [
+            "면목동"
+          ]
+        },
+        {
+          "administrativeDong": "면목4동",
+          "legalDongs": [
+            "면목동"
+          ]
+        },
+        {
+          "administrativeDong": "면목5동",
+          "legalDongs": [
+            "면목동"
+          ]
+        },
+        {
+          "administrativeDong": "면목7동",
+          "legalDongs": [
+            "면목동"
+          ]
+        },
+        {
+          "administrativeDong": "상봉1동",
+          "legalDongs": [
+            "상봉동"
+          ]
+        },
+        {
+          "administrativeDong": "상봉2동",
+          "legalDongs": [
+            "상봉동"
+          ]
+        },
+        {
+          "administrativeDong": "중화1동",
+          "legalDongs": [
+            "중화동"
+          ]
+        },
+        {
+          "administrativeDong": "중화2동",
+          "legalDongs": [
+            "중화동"
+          ]
+        },
+        {
+          "administrativeDong": "묵1동",
+          "legalDongs": [
+            "묵동"
+          ]
+        },
+        {
+          "administrativeDong": "묵2동",
+          "legalDongs": [
+            "묵동"
+          ]
+        },
+        {
+          "administrativeDong": "망우본동",
+          "legalDongs": [
+            "망우동"
+          ]
+        },
+        {
+          "administrativeDong": "망우3동",
+          "legalDongs": [
+            "망우동"
+          ]
+        },
+        {
+          "administrativeDong": "신내1동(新內1동",
+          "legalDongs": [
+            "신내동"
+          ]
+        },
+        {
+          "administrativeDong": "신내2동",
+          "legalDongs": [
+            "신내동"
+          ]
+        }
+      ]
+    }
+  ]
+}

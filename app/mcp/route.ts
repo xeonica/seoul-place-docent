@@ -3,7 +3,7 @@ import {env} from '@/lib/runtime-env';
 import {searchResearchRecords,placeResearchCandidates} from '@/lib/research-catalog';
 import {z} from 'zod';
 import {archiveStats, archivePlaceEvidenceLinks,archiveApprovedHistoricalFacts} from '@/lib/archive-db';
-import {getDocentStory, getFullDocentStory,getMaJangHistoricalPhotoHighlights} from '@/lib/docent-data';
+import {getDocentStory, getFullDocentStory,getRegionalHistoricalPhotoPreviews} from '@/lib/docent-data';
 import {getDocentVideoCandidates} from '@/lib/docent-videos';
 import {resolveMcpMapAddress as mapAddress} from '@/lib/mcp-map-address';
 import {readAttachedPhoto} from '@/lib/mcp-photo';
@@ -246,9 +246,14 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         const packet=await generatePlaceAnswer({address,story,placeRecords,question:input.question,questionType:input.questionType});
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
         const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
-        const highlights=getMaJangHistoricalPhotoHighlights(address.sggNm,address.emdNm);
         const regular=guidePhotos(packet).map(photo=>presentGuidePhoto(photo,{district:address.sggNm,dong:address.emdNm,buildingName:address.bdNm}));
-        const photos=[...highlights,...regular.filter(photo=>!highlights.some(item=>item.evidenceId===photo.evidenceId))].slice(0,8);
+        const regionalPhotos=getRegionalHistoricalPhotoPreviews(address.sggNm,address.emdNm);
+        const seenPhotos=new Set<string>();
+        const photos=[...regular,...regionalPhotos].filter(photo=>{
+          const alternateUrls='alternateUrls' in photo&&Array.isArray(photo.alternateUrls)?photo.alternateUrls:[];
+          const key=('sourceRecordId' in photo?photo.sourceRecordId:undefined)||alternateUrls[0]||photo.imageUrl||photo.evidenceId;
+          if(seenPhotos.has(key))return false;seenPhotos.add(key);return true;
+        }).slice(0,8);
         const research=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
         const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive] = await Promise.all([
           bigQueryPlaceCandidates(request,address),

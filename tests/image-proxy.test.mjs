@@ -71,6 +71,16 @@ test('GET returns the image and caching headers, HEAD returns the same headers',
   assert.equal(head.body, null);
 });
 
+test('proxy detects supported image bytes when an official archive omits Content-Type',async t=>{
+ const jpeg=new Uint8Array([0xff,0xd8,0xff,0xe0,0x00,0x10]);
+ const fetchMock=t.mock.method(globalThis,'fetch',async()=>new Response(jpeg));
+ const response=await handleImageProxy(new Request(proxy));
+ assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'image/jpeg');
+ assert.deepEqual(new Uint8Array(await response.arrayBuffer()),jpeg);
+ fetchMock.mock.mockImplementationOnce(async()=>new Response('<html>not a picture</html>'));
+ assert.equal((await handleImageProxy(new Request(proxy))).status,502);
+});
+
 test('answer records and guide photos proxy allowlisted images and retain provenance', () => {
   const archiveUrl = 'https://archives-files.seoul.go.kr/photo.jpg';
   const seongbukUrl = 'https://archive-file.sb.go.kr/files/serviceFile/archive/item/2020/05/06/photo';
