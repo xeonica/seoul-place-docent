@@ -7,7 +7,7 @@
 - 기준 실행 환경: GitHub Actions Ubuntu, Node.js `22.23.5`, pnpm `11.25.0`
 - 기준 전체 테스트: **402건 중 385 통과, 17 실패**
 - 기준 실행 로그: [GitHub Actions run 45056182329](https://github.com/xeonica/seoul-place-docent/actions/runs/45056182329), artifact `14767069554`
-- 최종 검증 실행: [GitHub Actions run 45059297537](https://github.com/xeonica/seoul-place-docent/actions/runs/45059297537), artifact `14768364327`
+- 최종 검증 실행: [GitHub Actions run 45059570397](https://github.com/xeonica/seoul-place-docent/actions/runs/45059570397), artifact `14769330617`
 
 ## 기준 실행에서 실패한 테스트 17건
 
@@ -54,7 +54,7 @@
 
 | 검사 | 결과 |
 |---|---|
-| 전체 테스트 | **402 / 402 통과, 0 실패, 0 skip** |
+| 전체 테스트 | **404 / 404 통과, 0 실패, 0 skip** |
 | Node / pnpm | Node `22.23.5`, pnpm `11.25.0` |
 | `pnpm install --frozen-lockfile` 및 공급망 정책 | 통과 |
 | `pnpm run typecheck` | 통과 |
@@ -62,7 +62,7 @@
 | `pnpm run build:mcp-public:vercel` | 통과 |
 | MCP client AI contract의 타입·계약 검사 | 통과 |
 
-원래 실패 17건 중 **17건 해결**됐습니다. 기준 전체 테스트 로그와 최종 로그는 위 Actions 실행의 `full-test-suite-log` artifact에 있습니다.
+기준 402건 중 실패한 17건은 모두 해결됐으며, 최종 수정 브랜치에서는 404건이 수집되어 **404건 전부 통과**했습니다. 기준 전체 테스트 로그와 최종 로그는 위 Actions 실행의 `full-test-suite-log` artifact에 있습니다.
 
 ## 데이터·배포·잔여 작업
 
