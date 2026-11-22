@@ -89,3 +89,19 @@ test('diagnostic variants change only CSP metadata and HTML', async () => {
   assert.equal(galleryVariant(new Request('https://x.test/mcp?gallery=skybridge&variant=NOPORT')), 'noport');
   assert.equal(galleryVariant(new Request('https://x.test/mcp?variant=bogus')), 'full');
 });
+
+test('2026-07-28 requests get CacheableResult fields on discovery, list and read', async () => {
+  const meta = {_meta: {'io.modelcontextprotocol/protocolVersion': '2026-07-28', 'io.modelcontextprotocol/clientCapabilities': {}}};
+  for (const [method, params] of [['server/discover', {}], ['tools/list', {}], ['resources/list', {}], ['resources/templates/list', {}], ['resources/read', {uri: GALLERY_SKYBRIDGE_URI}]]) {
+    const r = (await handleMcpMessage(call(method, {...params, ...meta}), tools, execute, {gallery: 'on'})).result;
+    assert.equal(r.resultType, 'complete', method);
+    assert.equal(typeof r.ttlMs, 'number', method);
+    assert.equal(r.cacheScope, 'public', method);
+  }
+  const call2 = (await handleMcpMessage(call('tools/call', {name: 'search_place', ...meta}), tools, execute, {gallery: 'on'})).result;
+  assert.equal(call2.ttlMs, undefined);
+  const legacy = (await handleMcpMessage(call('tools/list'), tools, execute, {gallery: 'on'})).result;
+  assert.equal(legacy.ttlMs, undefined);
+  assert.equal((await handleMcpMessage(call('resources/read', {uri: 'ui://missing', ...meta}), tools, execute, {gallery: 'on'})).error.code, -32602);
+  assert.equal((await handleMcpMessage(call('resources/read', {uri: 'ui://missing'}), tools, execute, {gallery: 'on'})).error.code, -32002);
+});

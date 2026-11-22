@@ -14,6 +14,9 @@ export type McpOptions = {gallery?: GalleryMode; variant?: GalleryVariant};
 export const MCP_VERSION = '2026-07-28';
 export const MCP_LEGACY_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26'] as const;
 export const MCP_SUPPORTED_VERSIONS = [MCP_VERSION, ...MCP_LEGACY_VERSIONS];
+/** Results the 2026-07-28 spec marks cacheable; no per-user data is in any of them. */
+const CACHEABLE_METHODS = new Set(['server/discover','tools/list','prompts/list','resources/list','resources/read','resources/templates/list']);
+const CACHE_TTL_MS = 300_000;
 export function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -76,7 +79,8 @@ export async function handleMcpMessage(value: unknown, baseTools: readonly McpTo
       break;
     case 'resources/read': {
       const found = readGalleryResource(params.uri, gallery, variant);
-      if (!found) return rpcError(id, -32002, 'Unknown resource');
+      // 2026-07-28 moved resource-not-found to Invalid Params; older versions keep -32002.
+      if (!found) return rpcError(id, isObject(params._meta)&&params._meta['io.modelcontextprotocol/protocolVersion']===MCP_VERSION ? -32602 : -32002, 'Unknown resource');
       result = found;
       break;
     }
@@ -102,6 +106,11 @@ export async function handleMcpMessage(value: unknown, baseTools: readonly McpTo
     default:
       return rpcError(id, -32601, 'Method not found');
   }
-  if(isObject(result)&&(value.method==='server/discover'||isObject(params._meta)&&params._meta['io.modelcontextprotocol/protocolVersion']===MCP_VERSION))result={...result,resultType:'complete',_meta:{...(isObject(result._meta)?result._meta:{}),'io.modelcontextprotocol/serverInfo':{name:'seoul-place-docent',version:'2.0.0'}}};
+  const modern = value.method==='server/discover'||isObject(params._meta)&&params._meta['io.modelcontextprotocol/protocolVersion']===MCP_VERSION;
+  if(isObject(result)&&modern){
+    result={...result,resultType:'complete',_meta:{...(isObject(result._meta)?result._meta:{}),'io.modelcontextprotocol/serverInfo':{name:'seoul-place-docent',version:'2.0.0'}}};
+    // 2026-07-28 CacheableResult: ttlMs and cacheScope are required on discovery, list and read results.
+    if(CACHEABLE_METHODS.has(value.method))result={...(result as Record<string,unknown>),ttlMs:CACHE_TTL_MS,cacheScope:'public'};
+  }
   return {jsonrpc: '2.0', id, result};
 }
