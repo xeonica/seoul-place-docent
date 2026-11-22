@@ -55,7 +55,7 @@ export function getRegionalHistoricalPhotoPreviews(district:string,dong:string,l
    ? `${district} ${dong}${adminMapping&&!exact.length?` 행정동 관할 법정동(${item.dong})`:''} 색인에서 찾은 참고 사진입니다. 입력한 건물·필지의 직접 사진이나 승인된 직접 역사 근거는 아닙니다. 원문에서 촬영 장소를 확인해 주세요.`
    : `${district} 배경 참고 사진입니다${indexedDong?`(자료 색인 위치: ${indexedDong})`:''}. ${dong}이나 입력한 건물·필지의 직접 사진 또는 직접 역사 근거가 아닙니다.`;
   const caption=[date,title,credit].filter(Boolean).join(' · ');
-  return [{evidenceId:item.id,mediaId:id,sourceRecordId:id,title,date,scope,relationType:scope==='dong'?'dong_context':'district_context',relationNote,imageUrl,alternateUrls:[original],sourceUrl,credit,terms:license,license,verificationStatus:'source_metadata_only',previewPurpose:'illustration_only',formalEvidenceApproval:'unchanged',caption,imageMarkdown:`![${title}](<${imageUrl}>)`,relatedEvidenceIds:[]}];
+  return [{evidenceId:item.id,mediaId:id,sourceRecordId:id,title,date,scope,relationType:scope==='dong'?'dong_context':'district_context',relationNote,imageUrl,alternateUrls:[original],sourceUrl,credit,terms:license,license,verificationStatus:'source_metadata_only',previewPurpose:'illustration_only',formalEvidenceApproval:'unchanged',caption,relatedEvidenceIds:[]}];
  }).slice(0,safeLimit);
 }
 /** Backwards-compatible name for callers from the PR #81 implementation. */
