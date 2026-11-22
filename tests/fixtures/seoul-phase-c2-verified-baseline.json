@@ -1,0 +1,498 @@
+[
+  {
+    "target_id": "종로구-market",
+    "place_name": "동대문종합시장",
+    "road_address": "서울특별시 종로구 종로 266 (종로6가)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-23058/S/1/datasetView.do"
+  },
+  {
+    "target_id": "종로구-historic_place",
+    "place_name": "경희궁지",
+    "road_address": "서울특별시 종로구 새문안로 45 (신문로2가)",
+    "jibun_address": "",
+    "official_record_id": "1331102710000",
+    "official_record_url": "https://www.heritage.go.kr/heri/cul/culSelectDetail.do?ccbaCpno=1331102710000&pageNo=1_1_1_1"
+  },
+  {
+    "target_id": "종로구-public_building",
+    "place_name": "종로구청",
+    "road_address": "서울특별시 종로구 종로1길 50 케이트윈타워B동 (중학동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "중구-school",
+    "place_name": "청구초등학교",
+    "road_address": "서울특별시 중구 다산로 170",
+    "jibun_address": "",
+    "official_record_id": "7061081",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-20504/S/1/datasetView.do"
+  },
+  {
+    "target_id": "중구-historic_place",
+    "place_name": "서울 숭례문",
+    "road_address": "서울특별시 중구 세종대로 40 (남대문로4가)",
+    "jibun_address": "",
+    "official_record_id": "1111100010000",
+    "official_record_url": "https://www.heritage.go.kr/heri/cul/culSelectDetail.do?ccbaCpno=1111100010000&pageNo=1_3_1_1"
+  },
+  {
+    "target_id": "중구-public_building",
+    "place_name": "중구청",
+    "road_address": "서울특별시 중구 창경궁로 17 (예관동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "용산구-apartment",
+    "place_name": "용산파크자이",
+    "road_address": "서울특별시 용산구 한강대로 205",
+    "jibun_address": "서울특별시 용산구 한강로1가 50-1",
+    "official_record_id": "A14075201",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "용산구-school",
+    "place_name": "보광초등학교",
+    "road_address": "서울특별시 용산구 우사단로 20",
+    "jibun_address": "",
+    "official_record_id": "7061066",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-20505/S/1/datasetView.do"
+  },
+  {
+    "target_id": "용산구-historic_place",
+    "place_name": "서울 구 용산철도병원 본관",
+    "road_address": "서울특별시 용산구 한강대로14길 35-29 (한강로3가)",
+    "jibun_address": "",
+    "official_record_id": "4411104280000",
+    "official_record_url": "https://heritage.go.kr/heri/cul/culGuidePostDetail.do?ccbaCpno=4411104280000&ccgbGbtype=IND&ccgbGbtypeNo=1&pageNo=1_5_0_0"
+  },
+  {
+    "target_id": "용산구-public_building",
+    "place_name": "용산구청",
+    "road_address": "서울특별시 용산구 녹사평대로150 (이태원동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "성동구-apartment",
+    "place_name": "왕십리삼성",
+    "road_address": "서울특별시 성동구 마장로 271",
+    "jibun_address": "서울특별시 성동구 마장동 817",
+    "official_record_id": "A13305006",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "성동구-market",
+    "place_name": "마장축산물시장",
+    "road_address": "서울특별시 성동구 마장로31길 40 (마장동)",
+    "jibun_address": "서울특별시 성동구 마장동 510-3 일대",
+    "official_record_id": "2006303010307500001",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-18705/S/1/datasetView.do"
+  },
+  {
+    "target_id": "성동구-historic_place",
+    "place_name": "서울 살곶이 다리",
+    "road_address": "",
+    "jibun_address": "서울특별시 성동구 행당1동 58",
+    "official_record_id": "1121117380000",
+    "official_record_url": "https://www.heritage.go.kr/heri/cul/culSelectDetail.do?ccbaCpno=1121117380000&pageNo=1_1_2_0"
+  },
+  {
+    "target_id": "성동구-public_building",
+    "place_name": "성동구청",
+    "road_address": "서울특별시 성동구 고산자로270",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "광진구-market",
+    "place_name": "노룬산시장",
+    "road_address": "서울특별시 광진구 뚝섬로 491 (자양동)",
+    "jibun_address": "서울특별시 광진구 자양동 44-2",
+    "official_record_id": "2001304007307500001",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-18706/S/1/datasetView.do"
+  },
+  {
+    "target_id": "광진구-school",
+    "place_name": "세종초등학교",
+    "road_address": "서울특별시 광진구 군자로 114",
+    "jibun_address": "",
+    "official_record_id": "7134117",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-20507/S/1/datasetView.do"
+  },
+  {
+    "target_id": "광진구-historic_place",
+    "place_name": "아차산성",
+    "road_address": "",
+    "jibun_address": "서울특별시 광진구 광장동 산16-46",
+    "official_record_id": "1331102340000",
+    "official_record_url": "https://heritage.go.kr/heri/cul/culSelectDetail.do?ccbaCpno=1331102340000&pageNo=1_1_1_0"
+  },
+  {
+    "target_id": "광진구-public_building",
+    "place_name": "광진구청",
+    "road_address": "서울특별시 광진구 아차산로 400(자양동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "동대문구-apartment",
+    "place_name": "전농동아임대",
+    "road_address": "서울특별시 동대문구 서울시립대로 31",
+    "jibun_address": "서울특별시 동대문구 전농동 645-2",
+    "official_record_id": "A13071301",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "동대문구-historic_place",
+    "place_name": "선농단",
+    "road_address": "",
+    "jibun_address": "서울특별시 동대문구 제기동 274-1",
+    "official_record_id": "21,0000150000000,11",
+    "official_record_url": "https://heritage.go.kr/heri/cul/culSelectDetail.do?VdkVgwKey=21%2C0000150000000%2C11&pageNo=1_1_1_0"
+  },
+  {
+    "target_id": "동대문구-public_building",
+    "place_name": "동대문구청",
+    "road_address": "서울특별시 동대문구 천호대로 145 (용두동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "중랑구-apartment",
+    "place_name": "면목신성은하수",
+    "road_address": "서울특별시 중랑구 중랑천로 43",
+    "jibun_address": "서울특별시 중랑구 면목동 1519",
+    "official_record_id": "A13184301",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "중랑구-public_building",
+    "place_name": "중랑구청",
+    "road_address": "서울특별시 중랑구 봉화산로 179 (신내동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "성북구-apartment",
+    "place_name": "브라운스톤돈암",
+    "road_address": "서울특별시 성북구 북악산로 844",
+    "jibun_address": "서울특별시 성북구 돈암동 636",
+    "official_record_id": "A13606201",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "성북구-school",
+    "place_name": "성신초등학교",
+    "road_address": "서울특별시 성북구 북악산로 918",
+    "jibun_address": "",
+    "official_record_id": "7121338",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-20510/S/1/datasetView.do"
+  },
+  {
+    "target_id": "성북구-historic_place",
+    "place_name": "서울 돈암장",
+    "road_address": "서울특별시 성북구 동소문로3길 84 (동소문동4가)",
+    "jibun_address": "",
+    "official_record_id": "4411100910000",
+    "official_record_url": "https://www.heritage.go.kr/heri/cul/culSelectDetail.do?ccbaCpno=4411100910000&pageNo=1_1_1_1"
+  },
+  {
+    "target_id": "성북구-public_building",
+    "place_name": "성북구청",
+    "road_address": "서울특별시 성북구 보문로 168 (삼선동 5가)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "강북구-school",
+    "place_name": "미양초등학교",
+    "road_address": "서울특별시 강북구 솔샘로 195",
+    "jibun_address": "",
+    "official_record_id": "7121304",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-20511/S/1/datasetView.do"
+  },
+  {
+    "target_id": "강북구-historic_place",
+    "place_name": "봉황각",
+    "road_address": "서울특별시 강북구 삼양로173길 107-12 (우이동)",
+    "jibun_address": "",
+    "official_record_id": "2111100020000",
+    "official_record_url": "https://www.heritage.go.kr/heri/cul/culSelectDetail.do?ccbaCpno=2111100020000&pageNo=1_1_1_1"
+  },
+  {
+    "target_id": "강북구-public_building",
+    "place_name": "강북구청",
+    "road_address": "서울특별시 강북구 덕릉로 138 (번동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "도봉구-apartment",
+    "place_name": "방학신동아1단지",
+    "road_address": "서울특별시 도봉구 시루봉로 107",
+    "jibun_address": "서울특별시 도봉구 방학동 신동아1단지아파트",
+    "official_record_id": "A13202312",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "도봉구-public_building",
+    "place_name": "도봉구청",
+    "road_address": "서울특별시 도봉구 마들로 656 (방학동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "노원구-apartment",
+    "place_name": "상계보람",
+    "road_address": "서울특별시 노원구 한글비석로 480",
+    "jibun_address": "서울특별시 노원구 상계동 685",
+    "official_record_id": "A13982604",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "노원구-historic_place",
+    "place_name": "서울 태릉과 강릉",
+    "road_address": "서울특별시 노원구 화랑로 681 (공릉동)",
+    "jibun_address": "",
+    "official_record_id": "1331102010000",
+    "official_record_url": "https://www.heritage.go.kr/heri/cul/culSelectDetail.do?ccbaCpno=1331102010000&pageNo=1_1_1_1"
+  },
+  {
+    "target_id": "노원구-public_building",
+    "place_name": "노원구청",
+    "road_address": "서울특별시 노원구 노해로 437 (상계동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "은평구-apartment",
+    "place_name": "백련산힐스테이트3차",
+    "road_address": "서울특별시 은평구 백련산로 36",
+    "jibun_address": "서울특별시 은평구 응암동 백련산 힐스테이트 3차",
+    "official_record_id": "A12290901",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "은평구-market",
+    "place_name": "연서시장",
+    "road_address": "서울특별시 은평구 통일로 850 (불광동)",
+    "jibun_address": "서울특별시 은평구 불광동 310-131",
+    "official_record_id": "2001311008807500012",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-18713/S/1/datasetView.do"
+  },
+  {
+    "target_id": "은평구-public_building",
+    "place_name": "은평구청",
+    "road_address": "서울특별시 은평구 은평로195 (녹번동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "서대문구-apartment",
+    "place_name": "서대문천연뜨란채아파트",
+    "road_address": "서울특별시 서대문구 독립문로8길 54",
+    "jibun_address": "서울특별시 서대문구 천연동 145",
+    "official_record_id": "A12004001",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "서대문구-school",
+    "place_name": "서울고은초등학교",
+    "road_address": "서울특별시 서대문구 모래내로 441",
+    "jibun_address": "",
+    "official_record_id": "3120000-105-2000-00053",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-18014/S/1/datasetView.do"
+  },
+  {
+    "target_id": "서대문구-public_building",
+    "place_name": "서대문구청",
+    "road_address": "서울특별시 서대문구 연희로 248 (연희동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "마포구-apartment",
+    "place_name": "상암월드컵파크6단지",
+    "road_address": "서울특별시 마포구 상암산로1길 57",
+    "jibun_address": "",
+    "official_record_id": "A12127002",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "마포구-public_building",
+    "place_name": "마포구청",
+    "road_address": "서울특별시 마포구 월드컵로 212 (성산동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "양천구-public_building",
+    "place_name": "양천구청",
+    "road_address": "서울특별시 양천구 목동동로 105 (신정동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "강서구-school",
+    "place_name": "백석초등학교",
+    "road_address": "서울특별시 강서구 공항대로 491 (등촌동)",
+    "jibun_address": "",
+    "official_record_id": "1693",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-20448/S/1/datasetView.do"
+  },
+  {
+    "target_id": "강서구-public_building",
+    "place_name": "강서구청",
+    "road_address": "서울특별시 강서구 화곡로302 (화곡동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "구로구-public_building",
+    "place_name": "구로구청",
+    "road_address": "서울특별시 구로구 가마산로 245 (구로동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "금천구-public_building",
+    "place_name": "금천구청",
+    "road_address": "서울특별시 금천구 시흥대로73길 70",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "영등포구-apartment",
+    "place_name": "한강아파트",
+    "road_address": "서울특별시 영등포구 영신로57길 5",
+    "jibun_address": "서울특별시 영등포구 당산동4가 29",
+    "official_record_id": "A15080501",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "영등포구-public_building",
+    "place_name": "영등포구청",
+    "road_address": "서울특별시 영등포구 당산로 123 (당산동3가)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "동작구-apartment",
+    "place_name": "사당휴먼시아",
+    "road_address": "서울특별시 동작구 사당로16길 96",
+    "jibun_address": "",
+    "official_record_id": "A15609003",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "동작구-public_building",
+    "place_name": "동작구청",
+    "road_address": "서울특별시 동작구 장승배기로 70",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "관악구-school",
+    "place_name": "서울원신초등학교",
+    "road_address": "서울특별시 관악구 광신길 177 (신림동)",
+    "jibun_address": "",
+    "official_record_id": "7132114",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-20523/S/1/datasetView.do"
+  },
+  {
+    "target_id": "관악구-public_building",
+    "place_name": "관악구청",
+    "road_address": "서울특별시 관악구 관악로145 (봉천동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "서초구-public_building",
+    "place_name": "서초구청",
+    "road_address": "서울특별시 서초구 남부순환로2584 (서초동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "강남구-apartment",
+    "place_name": "압구정현대아파트",
+    "road_address": "서울특별시 강남구 압구정로29길 71",
+    "jibun_address": "서울특별시 강남구 압구정동 369-1",
+    "official_record_id": "A13589802",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "강남구-public_building",
+    "place_name": "강남구청",
+    "road_address": "서울특별시 강남구 학동로 426 (삼성동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "송파구-apartment",
+    "place_name": "신천장미1차2차",
+    "road_address": "서울특별시 송파구 올림픽로35길 104",
+    "jibun_address": "서울특별시 송파구 신천동 7",
+    "official_record_id": "A13824005",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "송파구-public_building",
+    "place_name": "송파구청",
+    "road_address": "서울특별시 송파구 올림픽로 326 (신천동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  },
+  {
+    "target_id": "강동구-apartment",
+    "place_name": "강동롯데캐슬퍼스트아파트",
+    "road_address": "서울특별시 강동구 고덕로 131",
+    "jibun_address": "서울특별시 강동구 암사동 414-2",
+    "official_record_id": "A13485302",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-15818/S/1/datasetView.do"
+  },
+  {
+    "target_id": "강동구-school",
+    "place_name": "천동초등학교",
+    "road_address": "서울특별시 강동구 성안로 200 (길동)",
+    "jibun_address": "",
+    "official_record_id": "324000021202400012",
+    "official_record_url": "https://data.seoul.go.kr/dataList/OA-19376/S/1/datasetView.do"
+  },
+  {
+    "target_id": "강동구-public_building",
+    "place_name": "강동구청",
+    "road_address": "서울특별시 강동구 성내로 25 (성내동)",
+    "jibun_address": "",
+    "official_record_id": "",
+    "official_record_url": "https://www.seoul.go.kr/seoul/autonomy.do"
+  }
+]

@@ -30,8 +30,9 @@ test('HTTP initialize/list, notifications, parse errors and stateless methods',a
 test('transport rejects origins, media types, oversized streams and invalid modern headers',async()=>{
  assert.equal((await POST(request(envelope('ping'),{origin:'https://evil.test'}))).status,403);
  assert.equal(GET(new Request('https://docent.test/mcp',{headers:{origin:'null'}})).status,403);
- assert.equal((await POST(request(envelope('ping'),{accept:'application/json'}))).status,406);
+ const jsonOnly=await POST(request(envelope('initialize',{protocolVersion:'2025-11-25'}),{accept:'application/json'}));assert.equal(jsonOnly.status,200);assert.match(jsonOnly.headers.get('content-type'),/application\/json/);assert.equal((await jsonOnly.json()).result.protocolVersion,'2025-11-25');
  assert.equal((await POST(request(envelope('ping'),{accept:'application/json;q=0, text/event-stream'}))).status,406);
+ assert.equal((await POST(request(envelope('ping'),{accept:'text/event-stream'}))).status,406);
  assert.equal((await POST(request(envelope('ping'),{'content-type':'text/plain'}))).status,415);
  assert.equal((await POST(request({x:'가'.repeat(12000)}))).status,413);
  assert.equal((await POST(request(envelope('ping'),{'content-length':'40000'}))).status,413);
@@ -67,7 +68,7 @@ test('all eight actual MCP tools run without operator model calls; address and G
   assert.equal((await invoke('resolve_photo_location',{latitude:35,longitude:129})).isError,true);
   assert.equal((await invoke('search_place',{query:'x'})).isError,true);
   assert.equal((await invoke('prepare_place_answer',{token:'forged'})).isError,true);
-  assert.equal((await invoke('get_archive_stats')).isError,true);
+  const archiveStats=await invoke('get_archive_stats');assert.equal(archiveStats.isError,undefined);assert.equal(data(archiveStats).available,false);assert.equal(data(archiveStats).errorCode,'ARCHIVE_NOT_CONFIGURED');
   assert.equal(data(await invoke('get_answer_stats')).available,false);
   candidates=[address,address];assert.equal(data(await invoke('prepare_place_answer',{address:address.roadAddr})).needsChoice,true);
   candidates=[];assert.equal(data(await invoke('search_place',{query:'없는주소'})).candidates.length,0);
