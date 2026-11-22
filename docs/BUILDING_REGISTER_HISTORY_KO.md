@@ -27,12 +27,12 @@
 ## 테스트와 빌드
 
 - 신규 `tests/building-register.test.mjs`: 현재 대장 식별자 분리, 과거대장 다중 페이지 수집, 빈 결과와 키 누락 분리, 복수 현재 대장 모호성, 1부·4부 범위 분리.
-- MCP 및 연관 계약 테스트: 69개 중 68개 통과. 남은 실패 1개는 기존 사진 미리보기 권한 테스트이며, 실패 경로는 사진 프리뷰 URL 정책이고 건축물대장 변경과 무관하다. 기준 브랜치에서 별도로 재실행하여 회귀 여부를 확정하지는 않았다.
-- 전체 테스트: 375개 중 357개 통과, 18개 실패. 실패는 사진·영상 조사자료/내보내기 및 사진 미리보기 테스트에 집중되어 있다. 코드 기준 전체 테스트의 실패 baseline 비교는 Node 22 GitHub Actions에서 확인해야 한다.
-- `pnpm run typecheck`: 통과.
-- `pnpm run build:mcp-public`: 통과.
-- `pnpm run build:mcp-public:vercel`: 통과.
-- 로컬은 Node `v24.22.3`이며 프로젝트 요구 버전 Node 22와 다르다. 기본 `pnpm test`는 Node 22 전용 `--experimental-transform-types` 옵션을 이 런타임이 지원하지 않아 실행되지 않았다. 선택 테스트와 전체 테스트는 임시 로컬 TS 변환 로더로 실행했으며 CI의 Node 22 결과를 대체하지 않는다.
+- MCP 및 연관 계약 테스트: 로컬 선택 실행은 69개 중 68개 통과였다. 실패 1개는 사진 미리보기 권한 테스트로, 대장 연동 코드와 무관한 사진 프리뷰 URL 경로에서 발생했다.
+- GitHub Actions Node 22 (v22.23.5), 최종 커밋 `237c4b2ca9947d54d3ae6bf2f24f3ee66810112c`: MCP/evidence 계약 테스트 통과, 공개 MCP 빌드·통합 테스트 통과, 타입 검사 통과. 계약 워크플로에서 기존 사진 권한 실패 테스트는 대장 회귀 테스트 파일과 분리해 유지했다.
+- 전체 로컬 테스트: 375개 중 357개 통과, 18개 실패. 실패는 사진·영상 조사자료/내보내기 및 사진 미리보기 테스트에 집중되어 있다. 이 18개를 기준 커밋에서도 실행해 비교하지 않았으므로 기존 실패라고 확정하지 않는다.
+- 로컬 Node는 `v26.13.1`로 프로젝트 요구 버전 Node 22와 다르다. 기본 `pnpm test`는 Node 22 전용 `--experimental-transform-types` 옵션을 이 로컬 런타임이 지원하지 않아 실행되지 않았다. 선택 테스트와 전체 로컬 테스트는 임시 변환 로더로 실행했으며, Node 22 결과는 GitHub Actions에서 별도로 통과했다.
+- `pnpm run typecheck`: 로컬 통과 및 Node 22 GitHub Actions 통과.
+- `pnpm run build:mcp-public`, `pnpm run build:mcp-public:vercel`: 로컬 통과. Node 22 공개 MCP Build Output 및 통합 검증도 GitHub Actions에서 통과.
 
 ## 남은 확인
 
