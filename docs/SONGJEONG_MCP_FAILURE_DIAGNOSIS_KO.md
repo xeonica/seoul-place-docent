@@ -36,7 +36,7 @@
 - `git diff --check`: 통과
 - `pnpm test`: 로컬 실행 불가. 셸에서 `node`가 v26.13.1로 선택되어 프로젝트가 요구하는 Node 22 옵션 `--experimental-transform-types`를 인식하지 못해 테스트 초기화 전에 종료됐습니다. `pnpm`도 Node 24.22.3 엔진 불일치 경고를 출력합니다.
 - 이전 PR 커밋의 GitHub Actions `test` (Node 22): 405개 중 404개 통과, 1개 실패. 실패는 이번에 추가한 송정동 fixture 테스트이며, 위의 tour-builder 검증 오류를 재현했습니다. CI의 `types`는 통과했습니다. CI의 `contract` 및 `public-mcp`는 이 동일 실패 테스트로 실패했습니다.
-- 수정 후 Node 22 CI 재실행: 아직 진행 전입니다.
+- 수정 후 PR #100 Node 22 CI: 전체 406개 테스트 통과, 실패 0건. 송정동·마장동 흐름 회귀 테스트와 중복 사진 ID 검증 테스트도 통과했습니다. `types`, `contract`, `public-mcp` 검사도 모두 통과했습니다.
 - Vercel Preview: 아직 생성·호출 검증하지 않았습니다.
 - Production 배포: 수행하지 않았습니다.
 
