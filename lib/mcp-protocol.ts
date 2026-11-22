@@ -1,4 +1,4 @@
-import {galleryResources,readGalleryResource,withGalleryMeta,type GalleryMode} from './docent-gallery';
+import {galleryResources,readGalleryResource,withGalleryMeta,type GalleryMode,type GalleryVariant} from './docent-gallery';
 export type McpTool = {
   name: string;
   description: string;
@@ -9,7 +9,7 @@ export type McpTool = {
 export type McpContent = {type: 'text'; text: string} | {type: 'image'; mimeType: string; data: string};
 export type McpToolResult = {content: McpContent[]; structuredContent?:Record<string,unknown>; isError?: boolean; errorType?:string; _meta?:Record<string,unknown>};
 type Execute = (name: string, args: Record<string, unknown>) => Promise<McpToolResult>;
-export type McpOptions = {gallery?: GalleryMode};
+export type McpOptions = {gallery?: GalleryMode; variant?: GalleryVariant};
 
 export const MCP_VERSION = '2026-07-28';
 export const MCP_LEGACY_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26'] as const;
@@ -27,6 +27,7 @@ export function textResult(value: unknown): McpToolResult {
 /** Public, stateless evidence tools; admin data uses a separate authenticated API. */
 export async function handleMcpMessage(value: unknown, baseTools: readonly McpTool[], execute: Execute, options: McpOptions = {}) {
   const gallery: GalleryMode = options.gallery ?? 'off';
+  const variant: GalleryVariant = options.variant ?? 'full';
   const tools = withGalleryMeta(baseTools, gallery);
   const capabilities = gallery === 'off' ? {tools: {}} : {tools: {}, resources: {}};
   if (!isObject(value)) return rpcError(null, -32600, 'Invalid Request');
@@ -67,14 +68,14 @@ export async function handleMcpMessage(value: unknown, baseTools: readonly McpTo
       result = {};
       break;
     case 'resources/list':
-      result = {resources: galleryResources(gallery)};
+      result = {resources: galleryResources(gallery, variant)};
       break;
     case 'resources/templates/list':
       // Answered even with the gallery off: some hosts probe it during registration.
       result = {resourceTemplates: []};
       break;
     case 'resources/read': {
-      const found = readGalleryResource(params.uri, gallery);
+      const found = readGalleryResource(params.uri, gallery, variant);
       if (!found) return rpcError(id, -32002, 'Unknown resource');
       result = found;
       break;

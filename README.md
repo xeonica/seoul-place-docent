@@ -145,4 +145,6 @@ The portable build runs Vinext directly without a host `timeout` command. The ma
 - 전체: Vercel 환경변수 `MCP_GALLERY=off` (`app`·`skybridge`로 한쪽만 켤 수도 있음, 기본값 `on`)
 - 연결별: 커넥터 URL에 `?gallery=off` — 예: `https://seoul-place-docent-mcp.vercel.app/mcp?gallery=off`. URL 값이 환경변수보다 우선합니다.
 
+진단용 변형(`?variant=`, `gallery`와 함께 사용): `full`(기본) · `noport`(포트 붙은 도메인 제외) · `proxy`(이미지 프록시 도메인만) · `nocsp`(CSP 메타 없음) · `minimal`(한 줄짜리 HTML, CSP 없음). 호스트가 어느 부분을 거부하는지 좁힐 때 씁니다.
+
 갤러리를 꺼도 사진은 도구 결과의 이미지 블록과 원문 링크로 계속 전달됩니다. JSON-RPC 오류는 HTTP 200 본문으로 반환합니다(HTTP 404는 Streamable HTTP 클라이언트가 세션·엔드포인트 없음으로 해석합니다). `resources/templates/list`는 갤러리 설정과 무관하게 빈 목록으로 응답합니다.

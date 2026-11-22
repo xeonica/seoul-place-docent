@@ -35,16 +35,34 @@ export function galleryMode(request: Request | null, envValue: string | undefine
   return fromQuery ?? parseMode(envValue) ?? 'on';
 }
 
+/**
+ * Diagnostic variants for bisecting host rejections, selected with `?variant=`:
+ * - full (default): complete widget, CSP for every image origin
+ * - noport: CSP lists only origins without an explicit port (the proxy covers the rest)
+ * - proxy: CSP lists only the image-proxy origin
+ * - nocsp: complete widget, no CSP metadata at all
+ * - minimal: a one-line HTML page with no CSP metadata
+ */
+export type GalleryVariant = 'full' | 'noport' | 'proxy' | 'nocsp' | 'minimal';
+const VARIANTS: readonly GalleryVariant[] = ['full', 'noport', 'proxy', 'nocsp', 'minimal'];
+export function galleryVariant(request: Request | null): GalleryVariant {
+  const value = (request ? URL.parse(request.url)?.searchParams.get('variant') : null)?.trim().toLowerCase() ?? '';
+  return (VARIANTS as readonly string[]).includes(value) ? value as GalleryVariant : 'full';
+}
+
 const usesApp = (mode: GalleryMode) => mode === 'on' || mode === 'app';
 const usesSkybridge = (mode: GalleryMode) => mode === 'on' || mode === 'skybridge';
 
-function resourceDomains(): string[] {
-  return [...new Set<string>([...IMAGE_RESOURCE_DOMAINS, imageProxyOrigin()])];
+function resourceDomains(variant: GalleryVariant): string[] {
+  if (variant === 'proxy') return [imageProxyOrigin()];
+  const all = [...new Set<string>([...IMAGE_RESOURCE_DOMAINS, imageProxyOrigin()])];
+  return variant === 'noport' ? all.filter(origin => !URL.parse(origin)?.port) : all;
 }
 
 /** CSP metadata in both vocabularies; each host ignores the keys it does not know. */
-function resourceMeta() {
-  const domains = resourceDomains();
+function resourceMeta(variant: GalleryVariant): Record<string, unknown> {
+  if (variant === 'nocsp' || variant === 'minimal') return {'openai/widgetDescription': '서울 장소 기록 사진을 보여 줍니다.'};
+  const domains = resourceDomains(variant);
   return {
     ui: {csp: {resourceDomains: domains, connectDomains: []}, prefersBorder: true},
     'openai/widgetCSP': {resource_domains: domains, connect_domains: []},
@@ -53,18 +71,19 @@ function resourceMeta() {
   };
 }
 
-export function galleryResources(mode: GalleryMode) {
-  const meta = resourceMeta();
+export function galleryResources(mode: GalleryMode, variant: GalleryVariant = 'full') {
+  const meta = resourceMeta(variant);
   const list = [];
   if (usesApp(mode)) list.push({uri: GALLERY_APP_URI, name: 'seoul-docent-photos', title: '서울 기록 사진', mimeType: GALLERY_APP_MIME, _meta: meta});
   if (usesSkybridge(mode)) list.push({uri: GALLERY_SKYBRIDGE_URI, name: 'seoul-docent-photos-chatgpt', title: '서울 기록 사진 (ChatGPT)', mimeType: GALLERY_SKYBRIDGE_MIME, _meta: meta});
   return list;
 }
 
-export function readGalleryResource(uri: unknown, mode: GalleryMode) {
-  const resource = galleryResources(mode).find(item => item.uri === uri);
+export function readGalleryResource(uri: unknown, mode: GalleryMode, variant: GalleryVariant = 'full') {
+  const resource = galleryResources(mode, variant).find(item => item.uri === uri);
   if (!resource) return null;
-  return {contents: [{uri: resource.uri, mimeType: resource.mimeType, text: GALLERY_HTML, _meta: resource._meta}]};
+  const text = variant === 'minimal' ? MINIMAL_HTML : GALLERY_HTML;
+  return {contents: [{uri: resource.uri, mimeType: resource.mimeType, text, _meta: resource._meta}]};
 }
 
 export function galleryToolMeta(mode: GalleryMode): Record<string, unknown> | undefined {
@@ -87,6 +106,8 @@ export function withGalleryMeta<T extends {name: string; _meta?: Record<string, 
   if (!meta) return [...tools];
   return tools.map(tool => GALLERY_TOOLS.has(tool.name) ? {...tool, _meta: {...(tool._meta ?? {}), ...meta}} : tool);
 }
+
+const MINIMAL_HTML = '<!doctype html><html lang="ko"><meta charset="utf-8"><title>서울 기록 사진</title><p>서울 기록 사진 갤러리 (진단용 최소 버전)</p></html>';
 
 /**
  * Static, self-contained widget. It reads photos from either host bridge:

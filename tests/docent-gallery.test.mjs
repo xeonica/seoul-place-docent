@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {handleMcpMessage, textResult} from '../lib/mcp-protocol.ts';
-import {galleryMode, GALLERY_APP_URI, GALLERY_SKYBRIDGE_URI, GALLERY_APP_MIME, GALLERY_SKYBRIDGE_MIME, GALLERY_HTML} from '../lib/docent-gallery.ts';
+import {galleryVariant, galleryMode, GALLERY_APP_URI, GALLERY_SKYBRIDGE_URI, GALLERY_APP_MIME, GALLERY_SKYBRIDGE_MIME, GALLERY_HTML} from '../lib/docent-gallery.ts';
 
 const tools = [
   {name: 'prepare_place_answer', description: 'photos', inputSchema: {type: 'object'}},
@@ -68,4 +68,24 @@ test('gallery HTML is static and never injects markup from data', () => {
   assert.doesNotMatch(GALLERY_HTML, /<script[^>]+src=/);
   assert.match(GALLERY_HTML, /ui\/initialize/);
   assert.match(GALLERY_HTML, /openai:set_globals/);
+});
+
+test('diagnostic variants change only CSP metadata and HTML', async () => {
+  const read = async variant => (await handleMcpMessage(call('resources/read', {uri: GALLERY_SKYBRIDGE_URI}), tools, execute, {gallery: 'skybridge', variant})).result.contents[0];
+  const full = await read('full');
+  assert.ok(full._meta['openai/widgetCSP'].resource_domains.includes('https://museum.seoul.go.kr:8088'));
+  const noport = await read('noport');
+  assert.ok(noport._meta['openai/widgetCSP'].resource_domains.every(d => !new URL(d).port));
+  assert.ok(noport._meta['openai/widgetCSP'].resource_domains.includes('https://archive-file.sb.go.kr'));
+  const proxy = await read('proxy');
+  assert.equal(proxy._meta['openai/widgetCSP'].resource_domains.length, 1);
+  const nocsp = await read('nocsp');
+  assert.equal(nocsp._meta['openai/widgetCSP'], undefined);
+  assert.equal(nocsp._meta.ui, undefined);
+  assert.equal(nocsp.text, GALLERY_HTML);
+  const minimal = await read('minimal');
+  assert.equal(minimal._meta['openai/widgetCSP'], undefined);
+  assert.ok(minimal.text.length < 300);
+  assert.equal(galleryVariant(new Request('https://x.test/mcp?gallery=skybridge&variant=NOPORT')), 'noport');
+  assert.equal(galleryVariant(new Request('https://x.test/mcp?variant=bogus')), 'full');
 });

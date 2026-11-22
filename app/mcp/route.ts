@@ -20,7 +20,7 @@ import {docentTourInstructions} from '@/lib/docent-tour-builder';
 import {buildPlaceDocentTourV2} from '@/lib/docent-tour-integration';
 import {LANDMARK_INSTRUCTIONS,landmarkStory} from '@/lib/landmark-docent';
 import {searchKakaoPlace} from '@/lib/kakao-place';
-import {galleryMode} from '@/lib/docent-gallery';
+import {galleryMode,galleryVariant} from '@/lib/docent-gallery';
 
 export const dynamic = 'force-dynamic';
 const MAX_BODY_BYTES = 32768;
@@ -395,7 +395,7 @@ export async function POST(request: Request) {
   const invalidProtocol=protocolError(request,message);
   if(invalidProtocol)return invalidProtocol;
   const gallery=galleryMode(request,(env as unknown as Record<string,string|undefined>).MCP_GALLERY);
-  const response = await handleMcpMessage(message, tools, (name, args) => auditedCall(env.DB,name,clientHint(request),()=>execute(request, name, args)), {gallery});
+  const response = await handleMcpMessage(message, tools, (name, args) => auditedCall(env.DB,name,clientHint(request),()=>execute(request, name, args)), {gallery,variant:galleryVariant(request)});
   if (response === undefined) return new Response(null, {status: 202, headers});
   // JSON-RPC errors travel in a 200 body. Streamable HTTP clients read HTTP 404 as
   // "session/endpoint gone", which made registration fail on an unknown probe method.
