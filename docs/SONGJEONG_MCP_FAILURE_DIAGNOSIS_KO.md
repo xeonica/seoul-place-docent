@@ -56,4 +56,4 @@
 
 Preview MCP initialize는 프로토콜 버전 `2025-11-25`로 성공했고 `tools/list`는 11개 도구를 반환했습니다. Preview에서 D1 및 건물 식별 상태가 선택적 실패로 반환되어도 두 주소의 근거 packet 생성이 성공했으며, 동네 자료는 4부의 직접 건물 이력으로 승격되지 않았습니다. 진단 저장소는 `auditConfigured=false`이므로 Preview 서버 내부 `mcp_stage` 로그의 개별 이벤트는 조회하지 못했습니다.
 
-PR #100의 최신 커밋 `16522ac3c2ea469e27dc9e7201d9cc4b3c7a6de1`에서 Node 22 GitHub Actions 406개 테스트가 모두 통과했고 `types`, `contract`, `public-mcp`, Vercel Preview 빌드도 통과했습니다. Production은 미배포이며, 운영 MCP의 요청 ID에 대한 최초 예외는 운영 서버 로그 접근 권한이 없어 독립 확인하지 못했습니다. 이 PR 병합 후 Production 배포와 동일한 MCP 호출 재검증은 별도 진행이 필요합니다.
+PR #100 최신 커밋 `191c26a7c0a642a5912cc21f346a5b7db6e2f1e3`에서 Node 22 GitHub Actions 406개 테스트가 모두 통과했고 `types`, `contract`, `public-mcp`, Vercel Preview 빌드도 통과했습니다. Production은 미배포이며, 운영 MCP의 요청 ID에 대한 최초 예외는 운영 서버 로그 접근 권한이 없어 독립 확인하지 못했습니다. 이 PR 병합 후 Production 배포와 동일한 MCP 호출 재검증은 별도 진행이 필요합니다.
