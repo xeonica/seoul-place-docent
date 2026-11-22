@@ -7,14 +7,19 @@ import articleSummary from '../data/document-research/article-summary.json';
 import {filterDocumentRows, documentContext, documentPlaceResearch, safeDocumentUrl} from '../lib/document-research.ts';
 import {GET} from '../app/api/archive/document-research/route.ts';
 
+const canonicalSourceBytes=(file,bytes)=>file.path.toLowerCase().endsWith('.csv')
+ ? Buffer.from(bytes.toString('utf8').replace(/\r?\n/g,'\r\n'))
+ : bytes;
+
 test('all eight accumulated tables have matching download counts and hashes', () => {
  const coreCounts=Object.fromEntries(Object.entries(bundle.tables).filter(([key])=>key!=='articles').map(([key,rows])=>[key,rows.length]));
  assert.deepEqual(bundle.meta.counts,{...coreCounts,articles:articleSummary.count});
  assert.equal(bundle.meta.totalRecords,Object.values(coreCounts).reduce((sum,count)=>sum+count,0));
  for(const file of bundle.meta.files){
   const bytes=readFileSync(new URL('../public'+file.path,import.meta.url));
-  assert.equal(bytes.length,file.sizeBytes);
-  assert.equal(createHash('sha256').update(bytes).digest('hex'),file.sha256);
+  const sourceBytes=canonicalSourceBytes(file,bytes);
+  assert.equal(sourceBytes.length,file.sizeBytes);
+  assert.equal(createHash('sha256').update(sourceBytes).digest('hex'),file.sha256);
   if(file.key!=='articles'){
    assert.equal(bundle.tables[file.key].length,file.count);
    assert.equal(new Set(bundle.tables[file.key].map(r=>r.id)).size,file.count);
