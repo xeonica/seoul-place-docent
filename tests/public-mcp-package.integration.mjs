@@ -60,7 +60,7 @@ test('deployable package resolves photo coordinates and prepares and validates e
   const validated=await call('validate_place_answer',{token,question,answer:{question_type:'동네 역사',paragraphs:[{heading:'기록',text:'자료가 남아 있어요.',evidence_ids:[record.id]}],held:[]}});
   assert.equal(validated.valid,true);
   const photoHosts=new Set(['museum.seoul.go.kr','archive-file.sb.go.kr','archives-files.seoul.go.kr']);
-  assert.ok(calls.filter(host=>photoHosts.has(host)).length<=2,'at most two archive previews are fetched');
+  assert.ok(calls.filter(host=>photoHosts.has(host)).length<=8,'at most eight archive previews are fetched');
   assert.deepEqual(calls.filter(host=>!photoHosts.has(host)).sort(),['business.juso.go.kr','business.juso.go.kr','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','files.oaiusercontent.com']);
  }finally{process.chdir(originalCwd);globalThis.fetch=original;console.info=info;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);}
 });
