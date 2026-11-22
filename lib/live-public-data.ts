@@ -47,7 +47,9 @@ export async function lookupLivePublicData(args:unknown, getKey:(name:string)=>s
   try {
     const response = await fetch(url,{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(8000)});
     if (!response.ok) return {source,status:'upstream_http_error',httpStatus:response.status};
-    const payload = await response.json();
+    // Two providers (Juso and KTV) share this path with different shapes; fields are checked below.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload = await response.json() as any;
     const root = payload.response ?? payload;
     const code = english ? root.results?.common?.errorCode : root.header?.resultCode;
     if (code === undefined) return {source,status:'unexpected_response'};

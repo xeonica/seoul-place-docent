@@ -17,10 +17,12 @@ export function clientHint(request:Request):string {
  const ua=request.headers.get('user-agent')||'';
  return /claude|anthropic/i.test(ua)?'claude_unverified':/chatgpt|openai/i.test(ua)?'chatgpt_unverified':/gemini/i.test(ua)?'gemini_unverified':'unknown';
 }
+// Results can now include image blocks; only a leading text block carries the JSON payload.
+const firstText=(result:McpToolResult)=>{const block=result.content[0];return block?.type==='text'?block.text:'{}';};
 export function returnedRecords(result:McpToolResult):number {
  if(result.isError)return 0;
  try {
-  const value=JSON.parse(result.content[0]?.text||'{}');
+  const value=JSON.parse(firstText(result)||'{}');
   if(!isObject(value))return 0;
   const neighborhood=isObject(value.neighborhood)?value.neighborhood:{};
   for(const records of [value.candidates,value.records,neighborhood.records,neighborhood.scenes,value.sources])if(Array.isArray(records))return records.length;
@@ -29,7 +31,7 @@ export function returnedRecords(result:McpToolResult):number {
 }
 function resultFailure(result:McpToolResult):string|null {
  if(result.isError)return result.errorType||'tool_error';
- try{const value=JSON.parse(result.content[0]?.text||'{}');if(isObject(value)&&value.available===false)return typeof value.errorCode==='string'?value.errorCode:'unavailable';}catch{/* Ordinary successful text result. */}
+ try{const value=JSON.parse(firstText(result)||'{}');if(isObject(value)&&value.available===false)return typeof value.errorCode==='string'?value.errorCode:'unavailable';}catch{/* Ordinary successful text result. */}
  return null;
 }
 export async function recordMcpCall(db:D1Database|undefined,row:AuditRow) {
