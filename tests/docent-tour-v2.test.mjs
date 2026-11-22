@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {buildDocentTourV2,docentTourInstructions} from '../lib/docent-tour-builder.ts';
 import {buildPlaceDocentTourV2} from '../lib/docent-tour-integration.ts';
 import {validateDocentTourV2,TOUR_SECTION_IDS} from '../lib/docent-tour-schema.ts';
+import {historicalPlaceNamesForRegion} from '../lib/historical-records.ts';
 
 const verifiedPhoto=({id,title,relation='dong_context',scope='dong',related=[],locationVerification='regional_context_only'}={})=>({evidenceId:id,mediaId:'asset-'+id,sourceRecordId:'record-'+id,title,caption:title,sourceUrl:`https://archive.example/${id}`,imageUrl:`https://image.example/${id}.jpg`,date:'1960년대',license:'공개 표시 허용',displayable:true,verificationStatus:'VERIFIED',scope,relation_type:relation,locationVerification,relatedEvidenceIds:related});
 const video=(id,title,relation='legal_dong_candidate',segments=[])=>({id,title,url:`https://video.example/${id}`,provider:'공식 기록관',relation,verificationStatus:'metadata_only',contentVerified:false,verifiedSegments:segments});
@@ -90,4 +91,30 @@ test('place-link integration keeps pending D1 links as candidates and only passe
  ]};
  const plan=buildPlaceDocentTourV2({packet:base,placeRecords:[],photos:[],videos:{records:[]},placeEvidenceLinks}),approved=plan.sources.find(source=>source.id==='evidence-approved'),pending=plan.sources.find(source=>source.id==='evidence-pending');
  assert.equal(approved?.usableAsVerifiedEvidence,true);assert.equal(approved?.relationScope,'exact_parcel');assert.equal(pending?.usableAsVerifiedEvidence,false);assert.equal(pending?.verificationStatus,'candidate_only');assert.equal(plan.provenance.semanticVerification,'not_checked');
+});
+
+test('empty direct-place lookup keeps neighborhood records while approved name/event facts attach to parts two and three',()=>{
+ const base=packet({direct:false,candidate:false,photos:[],videos:[]}),facts={status:'ready',records:[
+  {id:'fact:name',title:'옥수동 옛 지명',description:'옥수동의 명칭 변천을 기록한 원문 내용입니다.',scope:'toponymy',timeLabel:'조선 후기',startYear:1700,endYear:1899,sourceId:'source:name',sourceTitle:'공식 지명 자료',sourceUrl:'https://history.example/name',institution:'공공 기록기관',publicationDate:'2020-05-01',passageId:'passage:name',passageText:'검토한 지역 지명 근거',passageTextKind:'paraphrase',regionId:'dong-성동구-옥수동',regionLevel:'legal_dong',relationScope:'dong_context',reviewStatus:'approved'},
+  {id:'fact:event',title:'옥수동 지역 사건',description:'지역 사건을 확인한 원문 문장입니다.',scope:'event',timeLabel:'1960년대',startYear:1960,endYear:1969,sourceId:'source:event',sourceTitle:'당시 기사',sourceUrl:'https://history.example/event',institution:'신문사',publicationDate:'1964-03-02',passageId:'passage:event',passageText:'검토된 당시 사건 관련 본문',passageTextKind:'transcription',regionId:'dong-성동구-옥수동',regionLevel:'legal_dong',relationScope:'dong_context',reviewStatus:'approved'},
+ ]};
+ const tour=buildPlaceDocentTourV2({packet:base,placeRecords:[],photos:[],videos:{records:[]},placeEvidenceLinks:{items:[]},regionalHistoryFacts:facts});
+ assert.ok(tour.sections[1].evidenceIds.includes('fact:name'));assert.ok(tour.sections[2].evidenceIds.includes('fact:event'));
+ assert.ok(tour.sections[1].sourceIds.includes('scene:name-1'));assert.ok(tour.sections[2].sourceIds.includes('scene:industry-1'));
+ assert.equal(tour.sections[3].verificationStatus,'missing');assert.ok(tour.sections[3].missingEvidenceReason.includes('직접 연결된 승인 역사 근거가 없습니다'));
+ const name=tour.sources.find(source=>source.id==='fact:name'),event=tour.sources.find(source=>source.id==='fact:event');
+ assert.equal(name?.relationScope,'dong_context');assert.equal(name?.dateType,'publication');assert.equal(name?.subjectPeriod,'조선 후기');assert.equal(name?.eventDate,null);assert.equal(name?.publicationDate,'2020-05-01');assert.equal(event?.eventDate,'1960년대');assert.equal(tour.provenance.semanticVerification,'not_checked');
+ assert.deepEqual(tour.historicalEvents.map(item=>[item.eventDate,item.publicationDate,item.relationScope]),[['1960년대','1964-03-02','dong_context']]);
+});
+
+test('official historical-name catalog entries are returned as boundary-unresolved candidates, never direct claims',()=>{
+ const names=historicalPlaceNamesForRegion('성동구','성수동1가'),tour=buildPlaceDocentTourV2({packet:{...packet({direct:false,candidate:false,photos:[],videos:[]}),dong:'성수동1가'},placeRecords:[],photos:[],videos:{records:[]},placeEvidenceLinks:{items:[]}});
+ assert.ok(names.length>0);assert.ok(names.every(item=>item.currentDongType==='unresolved'&&item.spatialRelation==='historical_area_candidate'&&item.evidenceUrl.startsWith('https://')));
+ assert.ok(tour.historicalNames.every(item=>item.spatialRelation==='historical_area_candidate'));
+ assert.equal(tour.sources.some(source=>names.some(name=>source.id===name.id)),false);
+});
+
+test('photo tour metadata keeps capture/publication/place-direction claims separate and unverified by default',()=>{
+ const photo=verifiedPhoto({id:'photo:unknown-location',title:'자료집 사진'}),tour=buildDocentTourV2(packet({photos:[photo],videos:[]})),asset=tour.photoAssets.find(item=>item.id==='photo:unknown-location');
+ assert.equal(asset?.captureDate,null);assert.equal(asset?.publicationDate,null);assert.equal(asset?.dateBasis,'unknown');assert.equal(asset?.cameraLocation,null);assert.equal(asset?.subjectLocation,null);assert.equal(asset?.viewDirection,null);assert.equal(asset?.comparisonGroupId,null);assert.equal(asset?.comparisonStatus,'unverified');
 });
