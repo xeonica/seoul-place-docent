@@ -141,6 +141,12 @@ CSV의 `source_file_name`은 이번에 내려받아 확인한 파일이 없어 �
 
 `tests/seoul-125-address-validation.test.mjs`는 125개 행과 25×5 슬롯, 공식 확인 73건(유형별 자동 집계), 기준 커밋의 기존 62개 주소 핵심 필드 보존, 원문 출처·식별자·확인일·자치구 일치, 지번 주소만 제공된 공식 원문 처리, 미확인 후보의 상태 미승격을 검사한다.
 
+- 로컬 주소 표본 테스트: Node `v26.13.1`에서 6/6 통과. 이 작업 환경에는 프로젝트 요구 버전인 Node 22가 설치되어 있지 않다.
+- GitHub Actions Node 22 `MCP client AI contract` (run 220): 성공. 포함된 주소 표본 테스트를 비롯한 MCP 계약 테스트가 통과했다.
+- GitHub Actions `Public MCP deployment contract` (run 57): 성공. 공개 MCP Vercel 패키지 빌드, 계약 테스트, 타입 검사가 통과했다.
+- 해당 커밋의 Vercel Preview 체크: 성공. Preview 빌드 체크이며 Preview D1·JUSO 연결이나 MCP 실호출을 검증한 것은 아니다.
+- Preview MCP 실제 호출 및 Preview 전용 D1 연결 검증은 이번 작업에서 수행하지 않았다. 과거 Preview 점검에서 D1 바인딩 및 `JUSO_API_KEY` 부재가 확인된 상태라 추가 주소 API 호출을 반복하지 않았다.
+
 ## 다음 단계
 
 1. OA-15593 XLSX를 직접 열어 나머지 역사 장소 7건의 실제 명칭과 소재지를 대조한다.
