@@ -18,6 +18,8 @@ import {auditedCall,clientHint} from '@/lib/mcp-audit';
 import {originError,configuredMcpOrigins,acceptError,protocolError,allowMcpRequest,unsupportedMcpMethod} from '@/lib/mcp-http';
 import {docentTourInstructions} from '@/lib/docent-tour-builder';
 import {buildPlaceDocentTourV2} from '@/lib/docent-tour-integration';
+import {LANDMARK_INSTRUCTIONS,landmarkStory} from '@/lib/landmark-docent';
+import {searchKakaoPlace} from '@/lib/kakao-place';
 
 export const dynamic = 'force-dynamic';
 const MAX_BODY_BYTES = 32768;
@@ -40,8 +42,8 @@ const tools: McpTool[] = [
   },
   {
     name:'prepare_place_answer',
-    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 도구의 기록 사진 갤러리에서 자동 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token 또는 address 중 하나가 필요합니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
-    inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]}},oneOf:[{required:['token']},{required:['address']}],additionalProperties:false},
+    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 도구의 기록 사진 갤러리에서 자동 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token·address·place 중 하나가 필요합니다. 다리·광장·공원처럼 도로명주소가 없는 곳은 place에 장소명을 넣으세요. 주소를 찾지 못하면 같은 이름으로 조사자료를 검색해 7부 도슨트 근거를 만듭니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
+    inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},place:{type:'string',minLength:2,maxLength:100,description:'도로명주소가 없는 다리·광장·공원 등의 장소명(예: 성수대교)'},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]}},oneOf:[{required:['token']},{required:['address']},{required:['place']}],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
   },
   {
@@ -92,6 +94,7 @@ const tools: McpTool[] = [
       properties: {
         token: {type: 'string', minLength: 1, maxLength: 6000, description: 'search_place 후보의 token'},
         address: {type: 'string', minLength: 2, maxLength: 100, description: 'token이 없을 때 주소. 후보가 하나일 때만 바로 진행합니다.'},
+        place: {type: 'string', minLength: 2, maxLength: 100, description: '도로명주소가 없는 장소명(예: 성수대교)'},
         question: {type: 'string', maxLength: 300, description: '예: 1960년대에는 어떤 모습이었나요? 비우면 동네 소개'},
       },
       additionalProperties: false,
@@ -127,9 +130,10 @@ const historyInput = z.object({
 const answerInput = z.object({
   token: z.string().min(1).max(6000).optional(),
   address: z.string().trim().min(2).max(100).optional(),
+  place: z.string().trim().min(2).max(100).optional(),
   question: z.string().trim().max(300).optional(),
   questionType: z.enum(QUESTION_TYPES).optional(),
-}).strict().refine(v => Boolean(v.token) !== Boolean(v.address), {message: 'token 또는 address 중 하나만 필요합니다'});
+}).strict().refine(v => [v.token, v.address, v.place].filter(Boolean).length === 1, {message: 'token·address·place 중 하나만 필요합니다'});
 
 const locationInput=z.object({latitude:z.number().finite().min(-90).max(90).optional(),longitude:z.number().finite().min(-180).max(180).optional()}).strict()
   .refine(v=>(v.latitude===undefined)===(v.longitude===undefined),{message:'위도와 경도를 함께 전달하세요'});
@@ -237,14 +241,47 @@ async function execute(request: Request, name: string, args: Record<string, unkn
       case 'generate_place_answer': {
         const input = answerInput.parse(args);
         let token = input.token;
-        if (!token) {
+        let landmarkName = input.place ?? null;
+        if (!token && !landmarkName) {
           const found = await searchAddresses(input.address!, 1, env);
-          if (found.candidates.length !== 1 || found.total !== 1) {
+          // A landmark name (bridge, plaza, park) has no road address; continue with the place-name flow.
+          if (!found.candidates.length) landmarkName = input.address!;
+          else if (found.candidates.length !== 1 || found.total !== 1) {
             return textResult({needsChoice: true, note: found.candidates.length ? '일치하는 서울 주소 후보' : '서울 주소를 찾지 못했어요. 도로명과 건물번호를 확인해 주세요.', candidates: found.candidates.slice(0, 10).map(c => ({roadAddr: c.roadAddr, jibunAddr: c.jibunAddr, token: c.token}))});
           }
-          token = found.candidates[0].token;
+          else token = found.candidates[0].token;
         }
-        const address = await verifyAddress(token, env);
+        if (landmarkName) {
+          const kakao = await searchKakaoPlace(landmarkName, env);
+          const location = kakao ? await mapAddress(kakao.x, kakao.y, env).then(result => result.location).catch(() => null) : null;
+          const landmark = landmarkStory(landmarkName, location);
+          if (!landmark.story.scenes.length && !kakao) {
+            return textResult({needsChoice: true, note: '서울 주소나 장소를 찾지 못했어요. 도로명주소 또는 장소 이름을 확인해 주세요.', candidates: []});
+          }
+          const place = landmark.address.bdNm, district = landmark.story.district, dong = landmark.story.dong;
+          const packet = await generatePlaceAnswer({address:landmark.address,story:landmark.story,question:input.question||`${place}의 역사를 도슨트로 안내해 주세요.`,questionType:input.questionType});
+          await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
+          const videos = district ? await getDocentVideoCandidates(district,dong).catch(() => ({records:[]})) : {records:[]};
+          const regular = guidePhotos(packet).map(photo=>presentGuidePhoto(photo,{district,dong,buildingName:place}));
+          const regionalPhotos = district && dong ? getRegionalHistoricalPhotoPreviews(district,dong) : [];
+          const seenPhotos = new Set<string>();
+          const photos = [...regular,...regionalPhotos].filter(photo=>{
+            const alternateUrls='alternateUrls' in photo&&Array.isArray(photo.alternateUrls)?photo.alternateUrls:[];
+            const key=('sourceRecordId' in photo?photo.sourceRecordId:undefined)||alternateUrls[0]||photo.imageUrl||photo.evidenceId;
+            if(seenPhotos.has(key))return false;seenPhotos.add(key);return true;
+          }).slice(0,8);
+          const roadview = {provider:'카카오맵',searchUrl:kakao?.placeUrl||'https://map.kakao.com/link/search/'+encodeURIComponent(place),url:kakao?`https://map.kakao.com/link/roadview/${kakao.y},${kakao.x}`:null};
+          const responsePacket = {...packet,place:{name:place,records:[],status:'landmark_by_name'},
+            landmark:{name:place,district:district||null,dong:dong||null,matchedBy:kakao?'kakao_keyword+research_catalog':'research_catalog',researchTotal:landmark.research.total,landmarkRecords:landmark.landmarkSceneCount,neighborhoodRecords:landmark.neighborhoodSceneCount,roadAddress:null,
+              kakaoPlace:kakao?{name:kakao.name,category:kakao.category,addressName:kakao.addressName,placeUrl:kakao.placeUrl}:null,coordinates:kakao?{latitude:kakao.y,longitude:kakao.x}:null},
+            roadview,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+'\n'+LANDMARK_INSTRUCTIONS};
+          const tourPlan = buildPlaceDocentTourV2({packet:responsePacket,placeRecords:[],photos,videos,placeEvidenceLinks:{items:[]},regionalHistoryFacts:{records:[]}});
+          responsePacket.instructions += '\n'+docentTourInstructions(tourPlan)+'\n현재 모습에 roadview.url이 있으면 “카카오 로드뷰 열기” 링크를, 없으면 roadview.searchUrl을 “카카오맵에서 장소 확인” 링크로 제공하세요. 로드뷰 촬영일은 확인되지 않았으며 과거 기록 사진으로 인용하지 마세요.';
+          const result = textResult({...responsePacket,tourPlan});
+          const imageBlocks = await archiveImageBlocks(photos);
+          return {...result,content:[...result.content,...imageBlocks],structuredContent:{photos,photoPreviews:photos,tourPlan,roadview}};
+        }
+        const address = await verifyAddress(token!, env);
         const [placeEvidenceLinks,regionalHistoryFacts]=await Promise.all([archivePlaceEvidenceLinks(env.DB,{buildingManagementNumber:address.bdMgtSn,pnu:parcelNumber(address)}),archiveApprovedHistoricalFacts(env.DB,address.sggNm,address.emdNm)]);
         const story = getFullDocentStory(address.sggNm, address.emdNm);
         const registerContext=await getPlaceRegisterContext(address,env);
