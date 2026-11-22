@@ -57,3 +57,11 @@
 Preview MCP initialize는 프로토콜 버전 `2025-11-25`로 성공했고 `tools/list`는 11개 도구를 반환했습니다. Preview에서 D1 및 건물 식별 상태가 선택적 실패로 반환되어도 두 주소의 근거 packet 생성이 성공했으며, 동네 자료는 4부의 직접 건물 이력으로 승격되지 않았습니다. 진단 저장소는 `auditConfigured=false`이므로 Preview 서버 내부 `mcp_stage` 로그의 개별 이벤트는 조회하지 못했습니다.
 
 PR #100 최신 커밋 `191c26a7c0a642a5912cc21f346a5b7db6e2f1e3`에서 Node 22 GitHub Actions 406개 테스트가 모두 통과했고 `types`, `contract`, `public-mcp`, Vercel Preview 빌드도 통과했습니다. Production은 미배포이며, 운영 MCP의 요청 ID에 대한 최초 예외는 운영 서버 로그 접근 권한이 없어 독립 확인하지 못했습니다. 이 PR 병합 후 Production 배포와 동일한 MCP 호출 재검증은 별도 진행이 필요합니다.
+
+## 사진 출력 경로 정합성 후속 점검
+
+PR #100의 사진 ID 충돌 제거는 `buildDocentTourV2` 내부에만 적용되어 있었습니다. MCP route는 그 전에 만든 원래 `photos` 배열을 `visuals.photos`, `structuredContent.photos`, `structuredContent.photoPreviews`, `archiveImageBlocks`에 전달하므로 충돌 후보가 도슨트 계획에서는 빠져도 나머지 사용자·모델 출력 경로에는 남을 수 있었습니다.
+
+후속 수정에서는 `normalizeDocentPhotoRows`를 사진 후보 생성 경계에서 한 번 적용한 뒤, 정규화된 같은 배열을 `visuals.photos`, 7부 도슨트 계획, 구조화 사진 필드, 이미지 블록 생성에 전달합니다. 동일 자산의 중복 행은 한 장으로 정리하고 서로 다른 자산을 가리키는 충돌 ID 묶음은 제외합니다. 고유 ID를 가진 정상 사진은 7부 어느 문단에도 배정되지 않아도 목록에 유지됩니다. `show_place_photos`에는 이 정규화된 `visuals.photos` 목록의 항목을 넘기도록 도구 지침이 유지됩니다.
+
+회귀 테스트는 송정동·마장동 두 주소에서 `visuals.photos`, 구조화 사진·미리보기, tour asset/provenance ID와 이미지 블록 캡션의 ID 일치를 검사합니다. 별도 builder 테스트는 중복 제거·충돌 묶음 제외와, 문단에 배정되지 않은 정상 사진의 제목·출처·기관·이용조건 보존을 검사합니다. 이번 보완의 최종 Node 22 CI 결과는 PR 검사에서 확인 후 기록합니다.

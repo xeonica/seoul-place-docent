@@ -120,6 +120,13 @@ test('Songjeong 4-gil and Majang-ro answer retrieval tolerate optional service s
    assert.equal(packet.registerDiagnostics.parcel.status,'key_missing');
    assert.equal(packet.tourPlan.sections.length,7);
    assert.equal(packet.tourPlan.sections[3].verificationStatus,'missing','dong history must not become direct building history');
+   const outputPhotos=packet.visuals.photos,photoIds=outputPhotos.map(photo=>photo.evidenceId||photo.mediaId);
+   assert.deepEqual(prepared.structuredContent.photos,outputPhotos,'structured photos must match the normalized visuals list');
+   assert.deepEqual(prepared.structuredContent.photoPreviews,outputPhotos,'photo previews must match the normalized visuals list');
+   assert.deepEqual(packet.tourPlan.provenance.returnedPhotoIds,packet.tourPlan.photoAssets.map(photo=>photo.id));
+   assert.deepEqual(packet.tourPlan.photoAssets.map(photo=>photo.id),photoIds,'tour assets and MCP photos must share the same candidate IDs');
+   const imageCaptions=prepared.content.filter(item=>item.type==='text'&&item.text.startsWith('사진 ')).map(item=>item.text.match(/\(evidenceId: ([^)]+)\)/)?.[1]).filter(Boolean);
+   assert.ok(imageCaptions.every(id=>photoIds.includes(id)),'inline images must come only from the normalized photo candidates');
    assert.ok(prepared._meta.requestId);
   }
   const stageEvents=diagnostics.filter(line=>line.includes('"event":"mcp_stage"'));

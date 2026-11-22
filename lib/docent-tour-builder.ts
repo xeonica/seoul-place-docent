@@ -33,7 +33,7 @@ const videoTopics=[['건물','장소','아파트'],['지명','동명','유래','
 const DIRECT_SCOPES=['exact_building','exact_parcel'];
 /** Keep one photo row per evidence ID. Conflicting IDs are omitted rather
  * than choosing an arbitrary image and attaching it to another record. */
-function uniquePhotoRows(rows:Obj[]):Obj[]{
+export function normalizeDocentPhotoRows(rows:Obj[]):Obj[]{
  const groups=new Map<string,Obj[]>();
  for(const row of rows){const id=str(row.evidenceId||row.mediaId);if(!id)continue;const group=groups.get(id)||[];group.push(row);groups.set(id,group);}
  const result:Obj[]=[];
@@ -69,7 +69,7 @@ function requestScope(question:string,questionType:string):'comprehensive_tour'|
 
 /** Build a deterministic, source-linked outline. It never writes historical prose. */
 export function buildDocentTourV2(packetValue:unknown):DocentTourV2{
- const packet=asObj(packetValue),evidence=asObj(packet.evidence),approved=arr(evidence.records),candidates=arr(evidence.candidates),scenes=arr(asObj(packet.neighborhood).records),allPhotos=uniquePhotoRows(arr(asObj(packet.visuals).photos)),allVideos=arr(asObj(packet.videos).records),place=asObj(packet.place),placeRecords=arr(place.records),registers=arr(asObj(packet.registerDiagnostics).records);
+ const packet=asObj(packetValue),evidence=asObj(packet.evidence),approved=arr(evidence.records),candidates=arr(evidence.candidates),scenes=arr(asObj(packet.neighborhood).records),allPhotos=normalizeDocentPhotoRows(arr(asObj(packet.visuals).photos)),allVideos=arr(asObj(packet.videos).records),place=asObj(packet.place),placeRecords=arr(place.records),registers=arr(asObj(packet.registerDiagnostics).records);
  const detailLevel=['brief','full'].includes(String(packet.detailLevel))?String(packet.detailLevel) as 'brief'|'full':'standard';
  const videos=detailLevel==='brief'?allVideos.slice(0,2):allVideos;
  const sourceRows:SourceRow[]=[];

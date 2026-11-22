@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildDocentTourV2,docentTourInstructions} from '../lib/docent-tour-builder.ts';
+import {buildDocentTourV2,docentTourInstructions,normalizeDocentPhotoRows} from '../lib/docent-tour-builder.ts';
 import {buildPlaceDocentTourV2} from '../lib/docent-tour-integration.ts';
 import {validateDocentTourV2,TOUR_SECTION_IDS} from '../lib/docent-tour-schema.ts';
 import {historicalPlaceNamesForRegion} from '../lib/historical-records.ts';
@@ -143,6 +143,17 @@ test('duplicate photo evidence IDs collapse only when they identify the same ass
  assert.equal(duplicatePlan.photoAssets.length,1);assert.deepEqual(duplicatePlan.provenance.returnedPhotoIds,['photo:duplicate']);assert.equal(validateDocentTourV2(duplicatePlan).valid,true);
  const conflictPlan=buildDocentTourV2(packet({direct:false,photos:[original,conflictingAsset],videos:[]}));
  assert.equal(conflictPlan.photoAssets.length,0,'conflicting identity must not be arbitrarily selected');assert.deepEqual(conflictPlan.provenance.returnedPhotoIds,[]);assert.equal(validateDocentTourV2(conflictPlan).valid,true);
+});
+
+test('photo output normalization keeps unrelated valid photos even when no tour section selects them',()=>{
+ const duplicate=verifiedPhoto({id:'photo:same',title:'송정동 골목 사진'}),sameAsset={...duplicate,imageUrl:'https://image.example/alternate-preview.jpg'},conflict={...duplicate,mediaId:'media:wrong',sourceRecordId:'record:wrong',title:'다른 사진'};
+ const unassigned={...verifiedPhoto({id:'photo:unassigned',title:'수집 기록 사진'}),sourceInstitution:'서울기록원',credit:'서울기록원',license:'CC BY',scope:'dong',relation_type:'dong_context'};
+ const normalized=normalizeDocentPhotoRows([duplicate,sameAsset,conflict,unassigned]);
+ assert.deepEqual(normalized.map(photo=>photo.evidenceId),['photo:unassigned']);
+ assert.equal(normalized[0].title,'수집 기록 사진');assert.equal(normalized[0].sourceUrl,unassigned.sourceUrl);assert.equal(normalized[0].sourceInstitution,'서울기록원');assert.equal(normalized[0].credit,'서울기록원');assert.equal(normalized[0].license,'CC BY');assert.equal(normalized[0].scope,'dong');assert.equal(normalized[0].relation_type,'dong_context');
+ const tour=buildDocentTourV2(packet({direct:false,photos:normalized,videos:[]}));
+ assert.equal(tour.photoAssets.length,1);assert.deepEqual(tour.provenance.returnedPhotoIds,['photo:unassigned']);
+ assert.ok(tour.sections.every(section=>!section.photoIds.includes('photo:unassigned')),'unassigned photo remains available without being forced into an unrelated section');
 });
 
 test('unreviewed photos with an image and source page are shown as unverified reference images',()=>{

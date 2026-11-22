@@ -16,7 +16,7 @@ import {guidePhotos,presentGuidePhoto, getPlaceRegisterContext, generatePlaceAns
 import {handleMcpMessage, rpcError, textResult, type McpTool, type McpToolResult} from '@/lib/mcp-protocol';
 import {auditedCall,clientHint,withMcpStage,type McpDiagnosticContext} from '@/lib/mcp-audit';
 import {originError,configuredMcpOrigins,acceptError,protocolError,allowMcpRequest,unsupportedMcpMethod} from '@/lib/mcp-http';
-import {docentTourInstructions} from '@/lib/docent-tour-builder';
+import {docentTourInstructions,normalizeDocentPhotoRows} from '@/lib/docent-tour-builder';
 import {buildPlaceDocentTourV2} from '@/lib/docent-tour-integration';
 import {LANDMARK_INSTRUCTIONS,landmarkStory} from '@/lib/landmark-docent';
 import {searchKakaoPlace} from '@/lib/kakao-place';
@@ -271,12 +271,7 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           const videos = {...dongVideos,records:dongVideos.records.filter(video=>String(video.title||'').normalize('NFKC').replace(/\s+/g,'').includes(placeKey))};
           const regular = guidePhotos(packet).map(photo=>presentGuidePhoto(photo,{district,dong,buildingName:place}));
           const regionalPhotos = district && dong ? getRegionalHistoricalPhotoPreviews(district,dong) : [];
-          const seenPhotos = new Set<string>();
-          const photos = [...regular,...regionalPhotos].filter(photo=>{
-            const alternateUrls='alternateUrls' in photo&&Array.isArray(photo.alternateUrls)?photo.alternateUrls:[];
-            const key=('sourceRecordId' in photo?photo.sourceRecordId:undefined)||alternateUrls[0]||photo.imageUrl||photo.evidenceId;
-            if(seenPhotos.has(key))return false;seenPhotos.add(key);return true;
-          }).slice(0,8);
+          const photos = normalizeDocentPhotoRows([...regular,...regionalPhotos]).slice(0,8);
           const roadview = {provider:'카카오맵',searchUrl:kakao?.placeUrl||'https://map.kakao.com/link/search/'+encodeURIComponent(place),url:kakao?`https://map.kakao.com/link/roadview/${kakao.y},${kakao.x}`:null};
           const responsePacket = {...packet,place:{name:place,records:[],status:'landmark_by_name'},
             landmark:{name:place,district:district||null,dong:dong||null,matchedBy:kakao?'kakao_keyword+research_catalog':'research_catalog',researchTotal:landmark.research.total,landmarkRecords:landmark.landmarkSceneCount,neighborhoodRecords:landmark.neighborhoodSceneCount,roadAddress:null,
@@ -303,12 +298,7 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         const photos=await stage('photo_candidate_build',()=>{
           const regular=guidePhotos(packet).map(photo=>presentGuidePhoto(photo,{district:address.sggNm,dong:address.emdNm,buildingName:address.bdNm}));
           const regionalPhotos=getRegionalHistoricalPhotoPreviews(address.sggNm,address.emdNm);
-          const seenPhotos=new Set<string>();
-          return [...regular,...regionalPhotos].filter(photo=>{
-            const alternateUrls='alternateUrls' in photo&&Array.isArray(photo.alternateUrls)?photo.alternateUrls:[];
-            const key=('sourceRecordId' in photo?photo.sourceRecordId:undefined)||alternateUrls[0]||photo.imageUrl||photo.evidenceId;
-            if(seenPhotos.has(key))return false;seenPhotos.add(key);return true;
-          }).slice(0,8);
+          return normalizeDocentPhotoRows([...regular,...regionalPhotos]).slice(0,8);
         });
         const research=await stage('github_research_candidates',()=>placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm));
         const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive,point] = await Promise.all([
