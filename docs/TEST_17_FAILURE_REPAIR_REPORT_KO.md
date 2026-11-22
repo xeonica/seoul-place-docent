@@ -62,7 +62,7 @@
 | `pnpm run build:mcp-public:vercel` | 통과 |
 | MCP client AI contract의 타입·계약 검사 | 통과 |
 
-기준 402건 중 실패한 17건은 모두 해결됐으며, 최종 수정 브랜치에서는 404건이 수집되어 **404건 전부 통과**했습니다. 기준 전체 테스트 로그와 최종 로그는 위 Actions 실행의 `full-test-suite-log` artifact에 있습니다.
+기준 `main`에서는 402건이 수집됐고, 수정 브랜치에서는 사진 안내 배치 회귀 테스트 2건이 추가되어 404건이 수집됐습니다: `comprehensive instructions say which photos follow which part so cards land between paragraphs`, `photo guidance interleaves cards after each part instead of capping or batching them`. 두 테스트 모두 최종 실행에 포함되어 **404건 전부 통과**했습니다. 기준 실행의 17건 실패는 그대로 모두 해결됐습니다. 기준 전체 테스트 로그와 최종 로그는 위 Actions 실행의 `full-test-suite-log` artifact에 있습니다.
 
 ## 데이터·배포·잔여 작업
 
