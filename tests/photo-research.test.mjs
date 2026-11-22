@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {gunzipSync} from 'node:zlib';
 import bundle from '../data/photo-research/bundle.json';
+import photoSummary from '../data/photo-research/summary.json';
 import regions from '../data/seoul-regions.json';
 import {filterPhotoResearch, placePhotoResearch, photoResearchUrl} from '../lib/photo-research.ts';
 import {GET} from '../app/api/archive/photo-research/route.ts';
@@ -30,15 +31,15 @@ const originalBytesMatch=(file,bytes)=>{
  return variants.some(value=>value.length===file.sizeBytes&&digest(value));
 };
 
-test('fifty-six research batches preserve original downloadable bytes and district versus dong scope',()=>{
- assert.equal(bundle.items.length,bundle.meta.recordCount);
+test('research batches preserve original downloadable bytes and district versus dong scope',()=>{
+ assert.equal(bundle.items.length,photoSummary.meta.recordCount);
  assert.equal(new Set(bundle.items.map(r=>r.id)).size,bundle.items.length);
- assert.equal(bundle.meta.batchCount,bundle.meta.files.length);
- assert.equal(bundle.meta.dongCount,new Set(bundle.meta.files.filter(f=>f.collectionScope==='dong').map(f=>f.district+'|'+f.dong)).size);
- assert.equal(bundle.meta.districtCount,new Set(bundle.meta.files.map(f=>f.district)).size);
- assert.equal(bundle.meta.districtBatchCount,bundle.meta.files.filter(f=>f.collectionScope==='district').length);
- assert.equal(bundle.meta.files.reduce((sum,file)=>sum+file.count,0),bundle.items.length);
- for(const file of bundle.meta.files){
+ assert.equal(photoSummary.meta.batchCount,photoSummary.meta.files.length);
+ assert.equal(photoSummary.meta.dongCount,new Set(photoSummary.meta.files.filter(f=>f.collectionScope==='dong').map(f=>f.district+'|'+f.dong)).size);
+ assert.equal(photoSummary.meta.districtCount,new Set(photoSummary.meta.files.map(f=>f.district)).size);
+ assert.equal(photoSummary.meta.districtBatchCount,photoSummary.meta.files.filter(f=>f.collectionScope==='district').length);
+ assert.equal(photoSummary.meta.files.reduce((sum,file)=>sum+file.count,0),bundle.items.length);
+ for(const file of photoSummary.meta.files){
   const bytes=readFileSync(new URL('../public'+file.path,import.meta.url));
   assert.ok(originalBytesMatch(file,bytes),`Original export mismatch: ${file.path}`);
   const rows=bundle.items.filter(r=>r.batchId===file.id);assert.equal(rows.length,file.count);
@@ -48,9 +49,9 @@ test('fifty-six research batches preserve original downloadable bytes and distri
 });
 
 test('accessibility, review and reproduction permissions are independent original fields',()=>{
- assert.equal(bundle.meta.candidateCount,bundle.items.filter(row=>row.candidate).length);assert.equal(bundle.meta.accessUnavailableCount,206);assert.equal(bundle.meta.downloadedPhotoCount,0);
- assert.equal(bundle.meta.previewLinkCount,bundle.items.filter(row=>row.previewUrl).length);assert.equal(bundle.meta.missingSourceUrlCount,bundle.items.filter(row=>!row.sourceUrl).length);
- assert.equal(bundle.meta.sourceUrlCount,new Set(bundle.items.filter(row=>row.sourceUrl).map(row=>row.sourceUrl)).size);
+ assert.equal(photoSummary.meta.candidateCount,bundle.items.filter(row=>row.candidate).length);assert.equal(photoSummary.meta.accessUnavailableCount,206);assert.equal(photoSummary.meta.downloadedPhotoCount,0);
+ assert.equal(photoSummary.meta.previewLinkCount,bundle.items.filter(row=>row.previewUrl).length);assert.equal(photoSummary.meta.missingSourceUrlCount,bundle.items.filter(row=>!row.sourceUrl).length);
+ assert.equal(photoSummary.meta.sourceUrlCount,new Set(bundle.items.filter(row=>row.sourceUrl).map(row=>row.sourceUrl)).size);
  for(const row of bundle.items){
   assert.equal(row.reviewStatus,row.values['검토상태']);assert.equal(row.relation,row.values['주소관계상태']||'미확인');assert.equal(row.scope,row.values['공간범위']);
   assert.ok(!('verifiedBuilding' in row));assert.ok(!('authorizedThumbnail' in row));
@@ -66,14 +67,14 @@ test('annotated search URLs are separated from source notes without inventing de
  assert.equal(photoResearchUrl(row.values['원문URL']),row.sourceUrl);
  assert.equal(photoResearchUrl('javascript:alert(1)'),null);assert.equal(photoResearchUrl('https://username:password@example.test/photo'),null);
  assert.equal(photoResearchUrl('미확인'),null);
- assert.equal(bundle.meta.sourceUrlCount,new Set(bundle.items.filter(r=>r.sourceUrl).map(r=>r.sourceUrl)).size);
+ assert.equal(photoSummary.meta.sourceUrlCount,new Set(bundle.items.filter(r=>r.sourceUrl).map(r=>r.sourceUrl)).size);
 });
 
 test('shared source pages and repeated preview URLs keep distinct research row identities',()=>{
  const crossBatch=bundle.items.find(r=>r.sourceLinkType==='record'&&bundle.items.some(other=>other.batchId!==r.batchId&&other.sourceKey===r.sourceKey));
  assert.ok(crossBatch);
  const related=filterPhotoResearch(bundle,{source:crossBatch.sourceKey});assert.equal(related.length,crossBatch.sameSourceCount);assert.ok(new Set(related.map(r=>r.batchId)).size>1);
- assert.equal(bundle.meta.repeatedPreviewGroupCount,129);
+ assert.equal(photoSummary.meta.repeatedPreviewGroupCount,129);
  assert.ok(bundle.items.some(r=>r.samePreviewCount>1));
  for(const row of related)assert.equal(row.values['자료ID'],row.id);
 });
@@ -104,22 +105,22 @@ test('photo API paginates, validates batch IDs, and exports complete filtered or
 test('district cumulative files retain missing sequence notices and stay separate from address matches',async()=>{
  const expected=[['YDP-HIST-001','영등포구',343,322,21],['JNR-HIST-001','종로구',1009,1009,0],['JNG-HIST-001','중구',828,828,0],['SDG-HIST-001','성동구',107,107,0]];
  for(const [batch,district,count,visual,cards] of expected){
-  const file=bundle.meta.files.find(f=>f.id===batch);assert.equal(file.headerLine,2);assert.match(file.sourceNote,/^#/);
+  const file=photoSummary.meta.files.find(f=>f.id===batch);assert.equal(file.headerLine,2);assert.match(file.sourceNote,/^#/);
   assert.equal(file.visualRecordCount,visual);assert.equal(file.buildingRecordCount,cards);
   const rows=filterPhotoResearch(bundle,{batch});assert.equal(rows.length,count);assert.ok(rows.every(r=>r.district===district&&r.dong===''&&r.collectionScope==='district'));
   const place=placePhotoResearch(bundle,district,['가상의법정동']);assert.equal(place.total,0);assert.equal(place.rows.length,0);assert.equal(place.districtTotal,count);assert.equal(place.districtBatches.length,1);
   assert.equal(filterPhotoResearch(bundle,{batch,district:'은평구'}).length,0);
   const download=await (await GET(new Request('https://example.test/api/archive/photo-research?batch='+batch+'&download=1'))).json();assert.equal(download.total,count);assert.equal(download.rows.length,count);
  }
- const ydp=bundle.meta.files.find(f=>f.id==='YDP-HIST-001');assert.match(ydp.sourceNote,/P001~P516/);assert.ok(!bundle.items.some(r=>r.id==='YDP-HIST-001-P001'));
+ const ydp=photoSummary.meta.files.find(f=>f.id==='YDP-HIST-001');assert.match(ydp.sourceNote,/P001~P516/);assert.ok(!bundle.items.some(r=>r.id==='YDP-HIST-001-P001'));
  const jongno=bundle.items.find(r=>r.id==='JNR-HIST-001-P001');assert.equal(jongno.sourceLinkType,'collection');assert.equal(jongno.values['기관자료ID'],'2016012504');assert.equal(jongno.mediaType,'사진(현재 모습)');assert.equal(jongno.values['원본보관가능여부'],'불가');assert.equal(jongno.previewUrl,null);
- assert.equal(bundle.meta.visualRecordCount,bundle.items.filter(row=>row.recordType==='visual').length);assert.equal(bundle.meta.buildingRecordCount,bundle.items.filter(row=>row.recordType==='building').length);
+ assert.equal(photoSummary.meta.visualRecordCount,bundle.items.filter(row=>row.recordType==='visual').length);assert.equal(photoSummary.meta.buildingRecordCount,bundle.items.filter(row=>row.recordType==='building').length);
 });
 
 test('building correction rows preserve original IDs and facts while type and media filters export independently',async()=>{
  const original=bundle.items.find(r=>r.id==='BLDG-004');const correction=bundle.items.find(r=>r.id==='BLDG-004 정정');
  assert.equal(correction.correctionOf,original.id);assert.deepEqual(original.correctionIds,[correction.id]);assert.equal(correction.values['자료ID'],'BLDG-004 정정');assert.notEqual(original.values['내용설명'],correction.values['내용설명']);
- assert.equal(bundle.meta.correctionCount,1);assert.equal(filterPhotoResearch(bundle,{recordType:'building'}).length,21);
+ assert.equal(photoSummary.meta.correctionCount,1);assert.equal(filterPhotoResearch(bundle,{recordType:'building'}).length,21);
  assert.ok(filterPhotoResearch(bundle,{recordType:'building'}).every(r=>r.recordType==='building'&&r.relation==='미확인'));
  const current=filterPhotoResearch(bundle,{mediaType:'사진(현재 모습)'});assert.equal(current.length,bundle.items.filter(r=>r.values['매체유형']==='사진(현재 모습)').length);assert.ok(current.every(r=>r.values['매체유형']==='사진(현재 모습)'));
  const download=await (await GET(new Request('https://example.test/api/archive/photo-research?type=building&batch=YDP-HIST-001&download=1'))).json();assert.equal(download.total,21);assert.equal(download.rows.length,21);assert.equal(download.filters.recordType,'building');
@@ -144,7 +145,7 @@ test('Nowon shares one unmodified CSV across five dong batches and preserves com
  const rows=bundle.items.filter(row=>row.id.startsWith('NOWON-'));
  assert.equal(rows.length,79);assert.equal(new Set(rows.map(row=>row.id)).size,79);
  assert.deepEqual(rows.map(row=>row.dataRow).sort((a,b)=>a-b),Array.from({length:79},(_,i)=>i+1));
- const files=bundle.meta.files.filter(file=>file.id.startsWith('NOWON-'));
+ const files=photoSummary.meta.files.filter(file=>file.id.startsWith('NOWON-'));
  assert.equal(new Set(files.map(file=>file.path)).size,1);assert.equal(new Set(files.map(file=>file.sha256)).size,1);
  assert.equal(new Set(files.map(file=>file.path)).size,1);
  for(const [dong,count] of expected){
