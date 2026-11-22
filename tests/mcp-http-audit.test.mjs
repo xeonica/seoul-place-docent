@@ -19,7 +19,7 @@ test('HTTP initialize/list, notifications, parse errors and stateless methods',a
  const r=await POST(request(envelope('initialize',{protocolVersion:'2025-11-25'})));
  assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/application\/json/);assert.equal(r.headers.has('mcp-session-id'),false);
  assert.equal((await r.json()).result.protocolVersion,'2025-11-25');
- assert.equal((await (await POST(request(envelope('tools/list')))).json()).result.tools.length,9);
+ assert.equal((await (await POST(request(envelope('tools/list')))).json()).result.tools.length,10);
  const n=await POST(request({jsonrpc:'2.0',method:'notifications/initialized'}));assert.equal(n.status,202);assert.equal(await n.text(),'');
  assert.equal((await POST(new Request('https://docent.test/mcp',{method:'POST',headers,body:'{'}))).status,400);
  for(const handler of [GET,DELETE])assert.equal(handler(new Request('https://docent.test/mcp')).status,405);
@@ -54,7 +54,8 @@ test('all eight actual MCP tools run without operator model calls; address and G
  delete process.env.CLOUDFLARE_ACCOUNT_ID;
  const address={roadAddr:'서울특별시 종로구 사직로 161',jibunAddr:'서울특별시 종로구 세종로 1-1',siNm:'서울특별시',sggNm:'종로구',emdNm:'세종로',admCd:'1111011900',bdMgtSn:'fixture',bdNm:'',lnbrMnnm:'1',lnbrSlno:'1',mtYn:'0',zipNo:'03045'};
  let candidates=[address],network=[],unexpected=[];
- globalThis.fetch=async input=>{const url=new URL(String(input));network.push(url.hostname);if(url.hostname!=='business.juso.go.kr'){unexpected.push(url.hostname);throw new Error('Forbidden external call');}return Response.json({results:{common:{errorCode:'0',totalCount:String(candidates.length)},juso:candidates}});};
+ // Archive photo hosts are fetched for MCP image blocks; answer them with a tiny JPEG instead of the network.
+ globalThis.fetch=async input=>{const url=new URL(String(input));network.push(url.hostname);if(['museum.seoul.go.kr','archive-file.sb.go.kr','archives-files.seoul.go.kr'].includes(url.hostname))return new Response(new Uint8Array([255,216,255,224]),{headers:{'Content-Type':'image/jpeg'}});if(url.hostname!=='business.juso.go.kr'){unexpected.push(url.hostname);throw new Error('Forbidden external call');}return Response.json({results:{common:{errorCode:'0',totalCount:String(candidates.length)},juso:candidates}});};
  try{
   const search=await invoke('search_place',{query:'사직로 161'});const token=data(search).candidates[0].token;
   assert.ok(search._meta.requestId);assert.equal(search._meta.auditPersisted,false);
