@@ -211,7 +211,7 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           evidence: scene.evidence,
         }));
         const nextOffset = input.offset + scenes.length;
-        const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive,point] = await Promise.all([
+        const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive] = await Promise.all([
           bigQueryPlaceCandidates(request,address,input.limit,input.offset),
           bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm,query:input.query,limit:input.limit,offset:input.offset}),
           bigQueryHansungArchive(request,{...input,roadAddr:address.roadAddr,district:address.sggNm}),

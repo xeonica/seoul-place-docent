@@ -14,7 +14,11 @@ test('deployable package resolves photo coordinates and prepares and validates e
   const request=new URL(String(url));calls.push(request.hostname);
   if(request.hostname==='files.oaiusercontent.com')return new Response(gpsJpeg({lat:[37,34,48],lon:[126,58,12]}));
   if(request.hostname==='business.juso.go.kr')return Response.json({results:{common:{errorCode:'0',totalCount:'1'},juso:[address]}});
+  // Archive photo hosts are fetched for MCP image blocks.
+  if(['museum.seoul.go.kr','archive-file.sb.go.kr','archives-files.seoul.go.kr'].includes(request.hostname))return new Response(new Uint8Array([255,216,255,224]),{headers:{'Content-Type':'image/jpeg'}});
   assert.equal(request.hostname,'dapi.kakao.com','only address providers are allowed');
+  // Road address -> coordinates for the roadview link.
+  if(request.pathname.endsWith('/search/address.json'))return Response.json({documents:[{x:'126.97',y:'37.58',address:{region_3depth_h_name:'사직동'}}]});
   assert.ok(Math.abs(Number(request.searchParams.get('x'))-126.97)<1e-9);
   assert.ok(Math.abs(Number(request.searchParams.get('y'))-37.58)<1e-9);
   if(request.pathname.endsWith('coord2address.json'))return Response.json({documents:[{address:{
@@ -55,6 +59,8 @@ test('deployable package resolves photo coordinates and prepares and validates e
   const record=packet.neighborhood.records[0];
   const validated=await call('validate_place_answer',{token,question,answer:{question_type:'동네 역사',paragraphs:[{heading:'기록',text:'자료가 남아 있어요.',evidence_ids:[record.id]}],held:[]}});
   assert.equal(validated.valid,true);
-  assert.deepEqual(calls.sort(),['business.juso.go.kr','business.juso.go.kr','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','files.oaiusercontent.com']);
+  const photoHosts=new Set(['museum.seoul.go.kr','archive-file.sb.go.kr','archives-files.seoul.go.kr']);
+  assert.ok(calls.filter(host=>photoHosts.has(host)).length<=2,'at most two archive previews are fetched');
+  assert.deepEqual(calls.filter(host=>!photoHosts.has(host)).sort(),['business.juso.go.kr','business.juso.go.kr','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','dapi.kakao.com','files.oaiusercontent.com']);
  }finally{process.chdir(originalCwd);globalThis.fetch=original;console.info=info;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);}
 });
