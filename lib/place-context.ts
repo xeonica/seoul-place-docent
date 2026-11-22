@@ -7,35 +7,45 @@ export const CLOSED_SOURCE = 'https://www.data.go.kr/data/15137093/openapi.do';
 export const PARCEL_SOURCE = 'https://www.vworld.kr/dev/v4dv_2ddataguide2_s002.do?svcIde=cadastral';
 export const PUBLICATIONS_SOURCE = 'https://data.seoul.go.kr/dataList/OA-23062/S/1/datasetView.do';
 const text = (r: Record<string, unknown>, k: string) => String(r[k] ?? '').trim();
-export type ClosedBuilding = {id: string; name: string; use: string; lotAddress: string; roadAddress: string; approved: string; area: string; above: string; below: string; closureType: string};
+export type ClosedBuilding = {id: string; name: string; use: string; lotAddress: string; roadAddress: string; approved: string; area: string; above: string; below: string; closureTypeCode: string; closureType: string; closedAt: string};
 export type Parcel = {pnu: string; address: string; jibun: string; referenceYear: string; polygons: number[][][][]; sourceUrl: string; queriedAt: string};
-export type ClosedResult = {items: ClosedBuilding[]; total: number; truncated: boolean; sourceUrl: string; queriedAt: string};
+export type ClosedResult = {items: ClosedBuilding[]; total: number; pages: number; pageRowCount:number; truncated: boolean; status:'ready'|'no_records'; sourceUrl: string; queriedAt: string};
 export type ContextSection<T> = {status: 'ok'; data: T} | {status: 'unavailable'; message: string; code: string};
 export type PlaceContext = {closed: ContextSection<ClosedResult>; parcel: ContextSection<Parcel>; queriedAt: string};
 
 export function normalizeClosedBuildings(body: Record<string, any>, address: Address): ClosedResult {
   const response = body.response;
+  if(!response?.header||typeof response.header.resultCode==='undefined')throw new ServiceError('CLOSED_SCHEMA','폐쇄말소대장 응답에 결과 코드가 없습니다.',503);
   const code = String(response?.header?.resultCode ?? body.OpenAPI_ServiceResponse?.cmmMsgHeader?.returnReasonCode ?? 'UNKNOWN');
   if (!['00', '0'].includes(code)) {
-    const reason = code === '31' ? '폐쇄말소대장 API 이용 기간이 만료되었습니다.' : ['20', '30'].includes(code) ? '폐쇄말소대장 API 활용신청·인증 상태를 확인해야 합니다.' : '폐쇄말소대장 제공기관의 응답을 확인하지 못했습니다.';
+    const unauthorized=['20','30','31','SERVICE_KEY_IS_NOT_REGISTERED_ERROR','SERVICE_KEY_IS_EXPIRED_ERROR'].includes(code);
+    const reason = code === '31' ? '폐쇄말소대장 API 이용 기간이 만료되었습니다.' : unauthorized ? '폐쇄말소대장 API 활용신청·인증 상태를 확인해야 합니다.' : '폐쇄말소대장 제공기관의 응답을 확인하지 못했습니다.';
     throw new ServiceError('CLOSED_' + code, reason, 503);
   }
+  const total=Number(response.body?.totalCount);
+  if(!response.body||!Number.isInteger(total)||total<0)throw new ServiceError('CLOSED_SCHEMA','폐쇄말소대장 응답의 페이지 정보가 올바르지 않습니다.',503);
   const p = parcelParams(address);
   const raw = response.body?.items?.item;
+  if(raw===undefined&&total>0)throw new ServiceError('CLOSED_SCHEMA','폐쇄말소대장 응답에 자료 행이 누락되었습니다.',503);
+  if(raw!==undefined&&raw!==''&&!Array.isArray(raw)&&(typeof raw!=='object'||raw===null))throw new ServiceError('CLOSED_SCHEMA','폐쇄말소대장 자료 행 형식이 올바르지 않습니다.',503);
   const rows: Record<string, unknown>[] = Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? [raw] : [];
+  if(rows.some(r=>!r||typeof r!=='object'||!text(r,'sigunguCd')||!text(r,'bjdongCd')||!text(r,'mgmBldrgstPk')))throw new ServiceError('CLOSED_SCHEMA','폐쇄말소대장 행의 필수 식별 필드가 누락되었습니다.',503);
   const items = rows.filter(r => text(r, 'sigunguCd') === p.sigunguCd && text(r, 'bjdongCd') === p.bjdongCd && text(r, 'platGbCd') === p.platGbCd && text(r, 'bun').padStart(4, '0') === p.bun && text(r, 'ji').padStart(4, '0') === p.ji)
-    .map(r => ({id: text(r, 'mgmBldrgstPk'), name: text(r, 'bldNm'), use: text(r, 'mainPurpsCdNm'), lotAddress: text(r, 'platPlc'), roadAddress: text(r, 'newPlatPlc'), approved: text(r, 'useAprDay'), area: text(r, 'totArea'), above: text(r, 'grndFlrCnt'), below: text(r, 'ugrndFlrCnt'), closureType: text(r, 'shtGbCdNm')}));
-  const total = Number(response.body?.totalCount ?? 0);
-  return {items, total, truncated: total > rows.length, sourceUrl: CLOSED_SOURCE, queriedAt: new Date().toISOString()};
+    .map(r => ({id: text(r, 'mgmBldrgstPk'), name: text(r, 'bldNm'), use: text(r, 'mainPurpsCdNm'), lotAddress: text(r, 'platPlc'), roadAddress: text(r, 'newPlatPlc'), approved: text(r, 'useAprDay'), area: text(r, 'totArea'), above: text(r, 'grndFlrCnt'), below: text(r, 'ugrndFlrCnt'), closureTypeCode: text(r,'shtGbCd'), closureType: text(r, 'shtGbCdNm'), closedAt: text(r,'shtDay')||text(r,'shtDt')||text(r,'shtDate')}));
+  return {items, total, pages:1, pageRowCount:rows.length, truncated:total>rows.length, status:total===0?'no_records':'ready', sourceUrl: CLOSED_SOURCE, queriedAt: new Date().toISOString()};
+}
+async function fetchClosedBody(address:Address,secrets:PlaceContextSecrets,page:number){
+  const u = new URL('https://apis.data.go.kr/1613000/ShtRgstHubService/getSrTitleInfo');
+  Object.entries({...parcelParams(address), serviceKey: secrets.CLOSED_BUILDING_API_KEY!, _type: 'json', pageNo: String(page), numOfRows: '100'}).forEach(([k,v]) => u.searchParams.set(k,v));
+  const raw = await (await checkedFetch(u, {redirect: 'error'})).text();
+  try {return raw.trim().startsWith('<') ? readProviderXml(raw) : JSON.parse(raw);} catch {throw new ServiceError('CLOSED_FORMAT', '폐쇄말소대장 응답 형식을 확인하지 못했습니다.',503);}
 }
 export async function closedBuildings(address: Address, secrets: PlaceContextSecrets) {
   if (!secrets.CLOSED_BUILDING_API_KEY) throw new ServiceError('CLOSED_KEY', '폐쇄말소대장 연결을 준비 중입니다.', 503);
-  const u = new URL('https://apis.data.go.kr/1613000/ShtRgstHubService/getSrTitleInfo');
-  Object.entries({...parcelParams(address), serviceKey: secrets.CLOSED_BUILDING_API_KEY, _type: 'json', pageNo: '1', numOfRows: '100'}).forEach(([k,v]) => u.searchParams.set(k,v));
-  const raw = await (await checkedFetch(u, {redirect: 'error'})).text();
-  let body: Record<string, any>;
-  try {body = raw.trim().startsWith('<') ? readProviderXml(raw) : JSON.parse(raw);} catch {throw new ServiceError('CLOSED_FORMAT', '폐쇄말소대장 응답 형식을 확인하지 못했습니다.');}
-  return normalizeClosedBuildings(body, address);
+  const maxPages=20, all:ClosedBuilding[]=[];let total=0,fetched=0,page=1,last:ClosedResult|undefined;
+  do {const body=await fetchClosedBody(address,secrets,page);last=normalizeClosedBuildings(body,address);all.push(...last.items);fetched+=last.pageRowCount;total=last.total;page++;}while((page-1)*100<total&&page<=maxPages);
+  if(!last)throw new ServiceError('CLOSED_SCHEMA','폐쇄말소대장 응답을 확인하지 못했습니다.',503);
+  return {...last,items:all,total,pages:page-1,truncated:fetched<total,status:total===0?'no_records':'ready'};
 }
 export function parcelNumber(address: Address) {
   assertSeoul(address); const p = parcelParams(address);

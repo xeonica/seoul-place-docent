@@ -62,16 +62,17 @@ export function buildDocentTourV2(packetValue:unknown):DocentTourV2{
  for(const s of scenes)add(s.id,s,'scene','source_metadata_only',false,[]);
  for(const c of candidates)add(c.evidenceId,c,c.mediaType,'candidate_only',false,[]);
  for(const v of videos)add(v.evidenceId||v.id,v,'video',Array.isArray(v.verifiedSegments)&&v.verifiedSegments.length?'source_metadata_only':'candidate_only',false,[]);
- for(const r of [...placeRecords,...registers])add(r.id,r,'building_register',r.status==='ok'||r.verified?'official_register':'not_checked',!!(r.status==='ok'||r.verified),[]);
+ for(const r of [...placeRecords,...registers]){const verified=!!(r.status==='ok'||r.status==='ready'||r.verified),verification=r.candidateOnly===true?'candidate_only':verified?'official_register':'not_checked';add(r.id,r,'building_register',verification,verified&&!r.candidateOnly,[]);}
  const sources=[...new Map(sourceRows.map(s=>[s.id,s])).values()].sort((a,b)=>scopePriority(a.relationScope)-scopePriority(b.relationScope)||a.id.localeCompare(b.id)).slice(0,100);
  const byId=new Map(sources.map(s=>[s.id,s])),findScenes=(re:RegExp)=>scenes.filter(s=>re.test(`${s.title} ${s.text}`)).map(s=>str(s.id)).filter(Boolean),findEvidence=(re:RegExp,directOnly=false)=>approved.filter(e=>(!directOnly||DIRECT_SCOPES.includes(rel(e.relationType)))&&re.test(`${e.title} ${arr(e.claims).map(c=>c.text).join(' ')}`)).map(e=>str(e.evidenceId)).filter(Boolean);
  const district=str(packet.district||asObj(packet.neighborhood).district),dong=str(packet.dong||asObj(packet.neighborhood).dong),address=str(packet.address),question=str(packet.question),questionType=str(asObj(packet.classification).questionType||'종합 도슨트'),placeName=str(place.name||packet.address),scope=requestScope(question,questionType);
   const historyIds=(...kinds:string[])=>approved.filter(e=>kinds.includes(String(e.historyKind))&&e.usableAsVerifiedEvidence===true).map(e=>str(e.evidenceId)).filter(Boolean);
-  const sectionSources:string[][]=[
-  uniq([...placeRecords.map(r=>str(r.id)),...registers.map(r=>str(r.id)),...findEvidence(/용도|연면적|층|사용승인|현황/i)]),
+ const currentRegisterIds=registers.filter(r=>r.recordType==='current_building_official_record'&&r.verified===true).map(r=>str(r.id)).filter(Boolean),historicalRegisterIds=registers.filter(r=>r.recordType==='historical_building_official_record').map(r=>str(r.id)).filter(Boolean);
+ const sectionSources:string[][]=[
+  uniq([...placeRecords.map(r=>str(r.id)),...currentRegisterIds,...findEvidence(/용도|연면적|층|사용승인|현황/i)]),
    uniq([...historyIds('toponymy'),...findScenes(/지명|동명|유래|기원|옛 이름/),...findEvidence(/지명|동명|유래|기원|옛 이름/)]),
    uniq([...historyIds('event','industrial_change','social_change'),...findScenes(/시장|공장|산업|사건|전쟁|운동|노동|철도|개통|변화/),...findEvidence(/시장|공장|산업|사건|전쟁|운동|노동|철도|개통|변화/)]),
-  uniq([...placeRecords.map(r=>str(r.id)),...registers.map(r=>str(r.id)),...findEvidence(/./,true)]),
+  uniq([...historicalRegisterIds,...placeRecords.filter(r=>!r.recordType).map(r=>str(r.id)),...findEvidence(/./,true)]),
    uniq([...historyIds('urban_space'),...findScenes(/사진|지도|도로|주거|공간|도시/),...findEvidence(/사진|지도|도로|주거|공간|도시/)]),
   uniq(findEvidence(/재개발|재건축|도시재생|보존|착공|정비사업/)),
   [],

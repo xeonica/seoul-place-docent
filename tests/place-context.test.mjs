@@ -4,12 +4,13 @@ import {normalizeClosedBuildings, normalizeParcel, normalizePublications, parcel
 import {photoResearchThumbnail, placePhotoResearch} from '../lib/photo-research.ts';
 import bundle from '../data/photo-research/bundle.json';
 const address = {siNm:'서울특별시',sggNm:'중구',emdNm:'태평로1가',admCd:'1114010300',roadAddr:'서울특별시 중구 세종대로 110',jibunAddr:'서울특별시 중구 태평로1가 31',bdMgtSn:'',bdNm:'서울시청',lnbrMnnm:'31',lnbrSlno:'0',mtYn:'0',zipNo:''};
-test('closed records keep current parcel matching separate from building identity, and reject expired authorization',()=>{
- const row={sigunguCd:'11140',bjdongCd:'10300',platGbCd:'0',bun:'0031',ji:'0000',mgmBldrgstPk:'closed-1',bldNm:'과거 대장'};
+test('closed records keep current parcel matching separate from building identity and retain closure category and date',()=>{
+ const row={sigunguCd:'11140',bjdongCd:'10300',platGbCd:'0',bun:'0031',ji:'0000',mgmBldrgstPk:'closed-1',bldNm:'과거 대장',shtGbCd:'4',shtGbCdNm:'합병에의한폐쇄',shtDay:'20010101'};
  const data=normalizeClosedBuildings({response:{header:{resultCode:'00'},body:{items:{item:[row,{...row,bun:'0032'}]},totalCount:2}}},address);
- assert.deepEqual(data.items.map(r=>r.id),['closed-1']);assert.equal(data.total,2);
+ assert.deepEqual(data.items.map(r=>r.id),['closed-1']);assert.equal(data.total,2);assert.equal(data.items[0].closureTypeCode,'4');assert.equal(data.items[0].closureType,'합병에의한폐쇄');assert.equal(data.items[0].closedAt,'20010101');
  assert.throws(()=>normalizeClosedBuildings({response:{header:{resultCode:'31'}}},address),e=>e.code==='CLOSED_31');
 });
+test('closed API success without page metadata is schema_mismatch, not no_records',()=>{assert.throws(()=>normalizeClosedBuildings({response:{header:{resultCode:'00'},body:{items:{}}}},address),e=>e.code==='CLOSED_SCHEMA');});
 test('parcel polygons require the exact PNU, finite Seoul coordinates, and preserve holes',()=>{
  const pnu=parcelNumber(address);assert.equal(pnu,'1114010300100310000');assert.equal(parcelNumber({...address,mtYn:'1'}),'1114010300200310000');
  const ring=[[126.97,37.56],[126.98,37.56],[126.98,37.57],[126.97,37.56]];
