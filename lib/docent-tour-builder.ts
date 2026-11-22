@@ -133,5 +133,15 @@ export function docentTourInstructions(plan:DocentTourV2){
  const integrity='승인된 claimIds는 확정 근거로 사용하세요. source_metadata_only 장면과 candidate_only 후보도 검토 전 자료로 해설에 사용할 수 있습니다. 소장기관과 함께 기록이 전하는 내용으로 서술하고 원문 링크를 붙이세요. 검토 상태는 본문에서 반복하지 말고 마지막 출처 및 검증 정보에 한 번만 적으세요. historicalNames는 옛 지명 조사 후보입니다. 공식 페이지·표제는 확인했어도 과거 경계와 현재 법정동·행정동의 일치가 미검증이므로, 특정 주소의 지명 유래나 건물 역사로 단정하지 마세요. 건축물대장의 사용승인일을 최초 건립일로 바꾸지 마세요. 사진은 plan에 연결된 ID(verified_display 또는 unverified_display)와 같은 자료의 제목·이미지·출처만 사용하고 주변 사진을 건물 직접 사진처럼 표시하지 마세요. unverified_display는 검토 전 참고 사진이므로 표시하되 캡션에 날짜·소장기관·장소 범위를 적고 사진만으로 역사 사실을 단정하지 마세요. 영상은 plan에 연결된 관련 후보만 소개하고 verifiedSegments가 있는 경우에만 구간 시각을 사용하세요. 의미 검증은 not_checked이며 검증 완료라고 표현하지 마세요.';
  if(plan.responseScope==='focused_question')return `사용자 질문의 좁은 범위에 집중하여 기존 answerSchema로 답하고 7부 전체를 강제하지 마세요. tourPlan은 관련성이 있는 경우에만 출처를 찾는 보조 자료입니다. 질문에 필요하지 않은 부를 채우지 마세요. ${integrity}`;
  const detail=plan.detailLevel==='brief'?'각 부를 짧게 한두 문장으로 요약하되 부와 순서는 모두 유지하세요.':plan.detailLevel==='full'?'근거가 충분한 부를 더 자세히 풀되 자료가 부족한 부는 짧은 미확인 안내로 남기세요.':'각 부를 근거에 비례한 보통 분량으로 설명하세요.';
- return `종합 역사 도슨트 요청입니다. 아래 순서를 도입부, 1부 장소의 이해, 2부 지명과 지역의 기원, 3부 역사적 사건과 변화, 4부 건물 및 부지의 역사, 5부 도시공간의 변화, 6부 현재 진행 중인 변화, 7부 역사적 의미와 마무리, 출처 및 검증 정보 순으로 모두 유지하세요. 자료가 없는 부도 생략하지 말고 미확인으로 표시하세요. brief·standard·full은 깊이와 분량만 다르고 이 구조는 같습니다. ${detail} ${integrity}`;
+ return `종합 역사 도슨트 요청입니다. 아래 순서를 도입부, 1부 장소의 이해, 2부 지명과 지역의 기원, 3부 역사적 사건과 변화, 4부 건물 및 부지의 역사, 5부 도시공간의 변화, 6부 현재 진행 중인 변화, 7부 역사적 의미와 마무리, 출처 및 검증 정보 순으로 모두 유지하세요. 자료가 없는 부도 생략하지 말고 미확인으로 표시하세요. brief·standard·full은 깊이와 분량만 다르고 이 구조는 같습니다. ${detail} ${integrity}${photoPlacementGuide(plan)}`;
+}
+
+/** Spells out which photos follow which part, so cards land between paragraphs instead of in one block. */
+export function photoPlacementGuide(plan:DocentTourV2){
+ const title=(id:string)=>plan.photoAssets.find(p=>p.id===id)?.title||id;
+ const steps=[{label:'도입부',ids:plan.opening.placeImageIds},...plan.sections.map(s=>({label:`${s.order}부`,ids:s.photoIds}))]
+  .filter(step=>step.ids.length>0)
+  .map(step=>`${step.label} 뒤: ${step.ids.map(id=>`${id}(${title(id)})`).join(', ')}`);
+ if(!steps.length)return '';
+ return ` 사진 배치: 각 부를 쓴 직후 해당 사진을 visuals.photos에서 찾아 show_place_photos로 호출하세요(한 번에 1~2장, 3장 이상이면 나눠서). ${steps.join(' / ')}. 이 목록에 없는 부에는 사진을 넣지 마세요.`;
 }

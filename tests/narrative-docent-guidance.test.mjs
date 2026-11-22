@@ -14,3 +14,8 @@ test('narrative guidance keeps client-side generation and mechanical evidence va
 test('archival images must retain their own evidence and source association',()=>{
   for(const phrase of ['사진·출처 일치 규칙','evidenceId','imageUrl·sourceUrl','서로 다른 검색 이미지와 MCP 기록 출처를 짝짓지 마세요','원본 sourceUrl','별도 검색 사진'])assert.ok(source.includes(phrase),phrase);
 });
+
+test('photo guidance interleaves cards after each part instead of capping or batching them',()=>{
+  for(const phrase of ['문단(부)을 하나 쓸 때마다','문단 쓰기 → show_place_photos → 다음 문단 쓰기','몰아서 보여 주지 말고','사진이 없는 부는 호출하지 마세요'])assert.ok(source.includes(phrase),phrase);
+  assert.ok(!source.includes('3~4회 이내'));
+});

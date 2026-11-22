@@ -148,3 +148,12 @@ test('unreviewed photos with an image and source page are shown as unverified re
  assert.equal(validateDocentTourV2(tour).valid,true);
  assert.match(docentTourInstructions(tour),/unverified_display는 검토 전 참고 사진/);
 });
+
+test('comprehensive instructions say which photos follow which part so cards land between paragraphs',()=>{
+ const tour=buildDocentTourV2(packet()),text=docentTourInstructions(tour);
+ assert.match(text,/사진 배치: 각 부를 쓴 직후/);
+ for(const section of tour.sections)for(const id of section.photoIds)assert.ok(text.includes(`${section.order}부 뒤: `)&&text.includes(id),`${section.order}부 ${id}`);
+ assert.match(text,/이 목록에 없는 부에는 사진을 넣지 마세요/);
+ const noPhotos=buildDocentTourV2(packet({photos:[],videos:[]}));
+ assert.ok(!docentTourInstructions(noPhotos).includes('사진 배치:'));
+});
