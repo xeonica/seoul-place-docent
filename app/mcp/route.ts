@@ -354,7 +354,7 @@ async function execute(request: Request, name: string, args: Record<string, unkn
 /** Bound streamed bodies as well as requests with Content-Length. */
 export async function POST(request: Request) {
   const rejected=originError(request,configuredMcpOrigins(env.MCP_ALLOWED_ORIGINS))??acceptError(request);
-  if(rejected)return rejected;
+  if(rejected){earlyLog(request,'transport',rejected.status);return rejected;}
   if(!allowMcpRequest())return Response.json(rpcError(null,-31000,'Too many requests'),{status:429,headers:{...headers,'Retry-After':'60'}});
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') ?? '')) {
     return Response.json(rpcError(null, -32600, 'Content-Type must be application/json'), {status: 415, headers});
@@ -393,16 +393,35 @@ export async function POST(request: Request) {
     return Response.json(rpcError(null, -32700, 'Parse error'), {status: 400, headers});
   }
   const invalidProtocol=protocolError(request,message);
-  if(invalidProtocol)return invalidProtocol;
+  if(invalidProtocol){earlyLog(request,'protocol',invalidProtocol.status,message);return invalidProtocol;}
   const gallery=galleryMode(request,(env as unknown as Record<string,string|undefined>).MCP_GALLERY);
   const response = await handleMcpMessage(message, tools, (name, args) => auditedCall(env.DB,name,clientHint(request),()=>execute(request, name, args)), {gallery,variant:galleryVariant(request)});
+  debugLog(request,message,response,gallery);
   if (response === undefined) return new Response(null, {status: 202, headers});
   // JSON-RPC errors travel in a 200 body. Streamable HTTP clients read HTTP 404 as
   // "session/endpoint gone", which made registration fail on an unknown probe method.
   return Response.json(response, {headers,status:200});
 }
 
-export function GET(request:Request){return unsupportedMcpMethod(request,configuredMcpOrigins(env.MCP_ALLOWED_ORIGINS));}
+function earlyLog(request:Request,stage:string,status:number,message?:unknown){
+  if(process.env.VERCEL_ENV!=='preview'&&process.env.MCP_DEBUG_LOG!=='1')return;
+  const m=(message&&typeof message==='object'?message:{}) as Record<string,unknown>;
+  console.log('[mcp-debug]',JSON.stringify({rejectedAt:stage,status,method:m.method??null,query:new URL(request.url).search,ua:request.headers.get('user-agent'),origin:request.headers.get('origin'),accept:request.headers.get('accept'),contentType:request.headers.get('content-type'),protocol:request.headers.get('mcp-protocol-version'),mcpMethod:request.headers.get('mcp-method'),mcpName:request.headers.get('mcp-name')}));
+}
+
+/** Preview-only trace of what a registering client sent and what it got back (no bodies, no tokens). */
+function debugLog(request:Request,message:unknown,response:unknown,gallery:string){
+  if(process.env.VERCEL_ENV!=='preview'&&process.env.MCP_DEBUG_LOG!=='1')return;
+  const m=(message&&typeof message==='object'?message:{}) as Record<string,unknown>;
+  const p=(m.params&&typeof m.params==='object'?m.params:{}) as Record<string,unknown>;
+  const r=(response&&typeof response==='object'?response:{}) as Record<string,unknown>;
+  const pick=(h:string)=>request.headers.get(h);
+  console.log('[mcp-debug]',JSON.stringify({method:m.method,id:m.id??null,uri:p.uri??null,tool:p.name??null,paramKeys:Object.keys(p),
+    query:new URL(request.url).search,gallery,ua:pick('user-agent'),protocol:pick('mcp-protocol-version'),mcpMethod:pick('mcp-method'),mcpName:pick('mcp-name'),session:pick('mcp-session-id'),accept:pick('accept'),
+    status:response===undefined?202:200,error:(r.error as Record<string,unknown>|undefined)??null,resultKeys:r.result&&typeof r.result==='object'?Object.keys(r.result as object):null,bytes:response===undefined?0:JSON.stringify(response).length}));
+}
+
+export function GET(request:Request){console.log('[mcp-debug]',JSON.stringify({httpMethod:request.method,query:new URL(request.url).search,ua:request.headers.get('user-agent'),accept:request.headers.get('accept')}));return unsupportedMcpMethod(request,configuredMcpOrigins(env.MCP_ALLOWED_ORIGINS));}
 export const DELETE=GET;
 export const HEAD=GET;
 export function OPTIONS(request:Request){return originError(request,configuredMcpOrigins(env.MCP_ALLOWED_ORIGINS))??new Response(null,{status:204,headers:{...headers,Allow:'POST, OPTIONS'}});}
