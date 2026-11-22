@@ -24,8 +24,9 @@ test('HTTP initialize/list, notifications, parse errors and stateless methods',a
  assert.equal((await POST(new Request('https://docent.test/mcp',{method:'POST',headers,body:'{'}))).status,400);
  for(const handler of [GET,DELETE])assert.equal(handler(new Request('https://docent.test/mcp')).status,405);
  assert.equal(OPTIONS(new Request('https://docent.test/mcp')).status,204);
- assert.equal((await POST(request(envelope('unknown')))).status,404);
- assert.equal((await POST(request(envelope('tools/call',{name:'unknown'})))).status,400);
+ const unknown=await POST(request(envelope('unknown')));assert.equal(unknown.status,200);assert.equal((await unknown.json()).error.code,-32601);
+ const unknownTool=await POST(request(envelope('tools/call',{name:'unknown'})));assert.equal(unknownTool.status,200);assert.equal((await unknownTool.json()).error.code,-32602);
+ const templates=await POST(request(envelope('resources/templates/list')));assert.equal(templates.status,200);assert.deepEqual((await templates.json()).result,{resourceTemplates:[]});
 });
 test('transport rejects origins, media types, oversized streams and invalid modern headers',async()=>{
  assert.equal((await POST(request(envelope('ping'),{origin:'https://evil.test'}))).status,403);
