@@ -10,7 +10,7 @@ import {getDocentVideoCandidates} from '@/lib/docent-videos';
 import {resolveMcpMapAddress as mapAddress} from '@/lib/mcp-map-address';
 import {readAttachedPhoto} from '@/lib/mcp-photo';
 import {photoResearchThumbnail} from '@/lib/photo-research';
-import {searchAddresses, ServiceError, verifyAddress} from '@/lib/providers';
+import {coordinates, searchAddresses, ServiceError, verifyAddress} from '@/lib/providers';
 import {parcelNumber} from '@/lib/place-context';
 import {guidePhotos,presentGuidePhoto, getPlaceRegisterContext, generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, sceneSource, logClientDocent, QUESTION_TYPES} from '@/lib/place-answer';
 import {handleMcpMessage, rpcError, textResult, type McpTool, type McpToolResult} from '@/lib/mcp-protocol';
@@ -207,7 +207,7 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           evidence: scene.evidence,
         }));
         const nextOffset = input.offset + scenes.length;
-        const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive] = await Promise.all([
+        const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive,point] = await Promise.all([
           bigQueryPlaceCandidates(request,address,input.limit,input.offset),
           bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm,query:input.query,limit:input.limit,offset:input.offset}),
           bigQueryHansungArchive(request,{...input,roadAddr:address.roadAddr,district:address.sggNm}),
@@ -261,17 +261,25 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           if(seenPhotos.has(key))return false;seenPhotos.add(key);return true;
         }).slice(0,8);
         const research=placeResearchCandidates(address.sggNm,address.emdNm,address.bdNm);
-        const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive] = await Promise.all([
+        const [bigQueryResearch,bigQueryGitHubResearch,hansungArchive,point] = await Promise.all([
           bigQueryPlaceCandidates(request,address),
           bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm}),
           bigQueryHansungArchive(request,{roadAddr:address.roadAddr,district:address.sggNm}),
+          coordinates(address,env).catch(() => null),
         ]);
-        const responsePacket={...packet,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,placeEvidenceLinks,regionalHistoryFacts,videos,registerDiagnostics:registerContext.diagnostics,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\nplaceEvidenceLinks의 usableAsDirectEvidence가 true인 항목만 승인된 직접 장소 근거로 사용하세요. false인 항목은 미승인 후보이며 relation 범위를 넘겨 설명하지 마세요.\nregisterDiagnostics의 current.status가 ready일 때만 현재 건물의 공식 대장정보로 설명하세요. 사용승인일을 최초 건립일로 말하지 마세요. closed.status가 ready여도 폐쇄말소대장은 같은 필지의 과거 대장 후보입니다. 폐쇄 유형·건물 PK·현재 건물의 PK와 명칭을 대조하기 전에는 철거, 동일 건물, 이전 부지라고 단정하지 마세요. same_parcel_historical_candidate와 identity_ambiguous는 후보 상태이며 건물 직접 이력으로 인용하지 마세요. key_missing, unauthorized, query_failed, schema_mismatch는 조회 실패 상태이지 자료 없음이 아닙니다.\nphotos의 imageMarkdown/imageUrl은 같은 evidenceId의 원문 자료에 연결된 참고 이미지입니다. 동네·주변 범위 사진은 입력한 건물 자체의 사진이나 직접 역사 근거가 아닙니다. formalEvidenceApproval 상태를 바꾸지 않으며 사진 자체만으로 역사 주장을 뒷받침하지 않습니다. 전달된 이미지 블록을 표시할 수 있으면 날짜·소장기관·장소 범위와 함께 사진을 보여주세요. 사진 표시가 불가능하면 sourceUrl의 기관 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색 결과는 사용하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'};
+        const roadview = {
+          provider: '카카오맵',
+          searchUrl: 'https://map.kakao.com/link/search/'+encodeURIComponent(address.roadAddr),
+          url: point?.status === 'verified' && point.x != null && point.y != null
+            ? `https://map.kakao.com/link/roadview/${point.y},${point.x}`
+            : null,
+        };
+        const responsePacket={...packet,roadview,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,placeEvidenceLinks,regionalHistoryFacts,videos,registerDiagnostics:registerContext.diagnostics,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\nplaceEvidenceLinks의 usableAsDirectEvidence가 true인 항목만 승인된 직접 장소 근거로 사용하세요. false인 항목은 미승인 후보이며 relation 범위를 넘겨 설명하지 마세요.\nregisterDiagnostics의 current.status가 ready일 때만 현재 건물의 공식 대장정보로 설명하세요. 사용승인일을 최초 건립일로 말하지 마세요. closed.status가 ready여도 폐쇄말소대장은 같은 필지의 과거 대장 후보입니다. 폐쇄 유형·건물 PK·현재 건물의 PK와 명칭을 대조하기 전에는 철거, 동일 건물, 이전 부지라고 단정하지 마세요. same_parcel_historical_candidate와 identity_ambiguous는 후보 상태이며 건물 직접 이력으로 인용하지 마세요. key_missing, unauthorized, query_failed, schema_mismatch는 조회 실패 상태이지 자료 없음이 아닙니다.\nphotos의 imageMarkdown/imageUrl은 같은 evidenceId의 원문 자료에 연결된 참고 이미지입니다. 동네·주변 범위 사진은 입력한 건물 자체의 사진이나 직접 역사 근거가 아닙니다. formalEvidenceApproval 상태를 바꾸지 않으며 사진 자체만으로 역사 주장을 뒷받침하지 않습니다. 전달된 이미지 블록을 표시할 수 있으면 날짜·소장기관·장소 범위와 함께 사진을 보여주세요. 사진 표시가 불가능하면 sourceUrl의 기관 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색 결과는 사용하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'};
         const tourPlan=buildPlaceDocentTourV2({packet:responsePacket,placeRecords,photos,videos,placeEvidenceLinks,regionalHistoryFacts});
-        responsePacket.instructions+='\n'+docentTourInstructions(tourPlan);
+        responsePacket.instructions+='\n'+docentTourInstructions(tourPlan)+'\n현재 모습에 roadview.url이 있으면 “카카오 로드뷰 열기” 링크를 제공하세요. 없으면 roadview.searchUrl을 “카카오맵에서 주소 확인” 링크로 제공하세요. 로드뷰 촬영일·촬영 가능 여부는 확인되지 않았으며 로드뷰를 과거 기록 사진으로 인용하지 마세요.';
         const result=textResult({...responsePacket,tourPlan});
         const imageBlocks=await archiveImageBlocks(photos);
-        return {...result,content:[...result.content,...imageBlocks],structuredContent:{photos,photoPreviews:photos,tourPlan,registerDiagnostics:registerContext.diagnostics}};
+        return {...result,content:[...result.content,...imageBlocks],structuredContent:{photos,photoPreviews:photos,tourPlan,roadview,registerDiagnostics:registerContext.diagnostics}};
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);
