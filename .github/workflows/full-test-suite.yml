@@ -24,16 +24,7 @@ jobs:
           set -o pipefail
           mkdir -p outputs/test-repair
           pnpm test 2>&1 | tee outputs/test-repair/baseline-test.log
-          if grep -Eq '^# fail [1-9][0-9]*
-      - name: Upload complete test log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: full-test-suite-log-${{ github.run_id }}
-          path: outputs/test-repair/baseline-test.log
-          if-no-files-found: warn
-          retention-days: 14
- outputs/test-repair/baseline-test.log; then
+          if grep -Eq '^# fail [1-9][0-9]*$' outputs/test-repair/baseline-test.log; then
             echo 'Node test runner reported failing tests.' >&2
             exit 1
           fi
@@ -45,3 +36,9 @@ jobs:
           path: outputs/test-repair/baseline-test.log
           if-no-files-found: warn
           retention-days: 14
+      - name: TypeScript typecheck
+        run: pnpm run typecheck
+      - name: Build public MCP package
+        run: pnpm run build:mcp-public
+      - name: Build Vercel public MCP package
+        run: pnpm run build:mcp-public:vercel
