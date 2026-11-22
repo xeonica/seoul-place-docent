@@ -21,6 +21,7 @@ import {buildPlaceDocentTourV2} from '@/lib/docent-tour-integration';
 import {LANDMARK_INSTRUCTIONS,landmarkStory} from '@/lib/landmark-docent';
 import {searchKakaoPlace} from '@/lib/kakao-place';
 import {galleryMode,galleryVariant} from '@/lib/docent-gallery';
+import {showPlacePhotosTool,showPlacePhotos,SHOW_PLACE_PHOTOS} from '@/lib/place-photo-card';
 
 export const dynamic = 'force-dynamic';
 const MAX_BODY_BYTES = 32768;
@@ -43,7 +44,7 @@ const tools: McpTool[] = [
   },
   {
     name:'prepare_place_answer',
-    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 도구의 기록 사진 갤러리에서 자동 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token·address·place 중 하나가 필요합니다. 다리·광장·공원처럼 도로명주소가 없는 곳은 place에 장소명을 넣으세요. 주소를 찾지 못하면 같은 이름으로 조사자료를 검색해 7부 도슨트 근거를 만듭니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
+    description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 해설 중 해당 문단 바로 뒤에서 show_place_photos로 1~2장씩 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token·address·place 중 하나가 필요합니다. 다리·광장·공원처럼 도로명주소가 없는 곳은 place에 장소명을 넣으세요. 주소를 찾지 못하면 같은 이름으로 조사자료를 검색해 7부 도슨트 근거를 만듭니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
     inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},place:{type:'string',minLength:2,maxLength:100,description:'도로명주소가 없는 다리·광장·공원 등의 장소명(예: 성수대교)'},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]}},oneOf:[{required:['token']},{required:['address']},{required:['place']}],additionalProperties:false},
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
   },
@@ -114,6 +115,7 @@ const tools: McpTool[] = [
     inputSchema: {type: 'object', properties: {}, additionalProperties: false},
     annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false},
   },
+  showPlacePhotosTool,
 ];
 
 const searchInput = z.object({
@@ -315,13 +317,15 @@ async function execute(request: Request, name: string, args: Record<string, unkn
             ? `https://map.kakao.com/link/roadview/${point.y},${point.x}`
             : null,
         };
-        const responsePacket={...packet,roadview,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,placeEvidenceLinks,regionalHistoryFacts,videos,registerDiagnostics:registerContext.diagnostics,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\nplaceEvidenceLinks의 usableAsDirectEvidence가 true인 항목만 승인된 직접 장소 근거로 사용하세요. false인 항목은 미승인 후보이며 relation 범위를 넘겨 설명하지 마세요.\nregisterDiagnostics의 current.status가 ready일 때만 현재 건물의 공식 대장정보로 설명하세요. 사용승인일을 최초 건립일로 말하지 마세요. closed.status가 ready여도 폐쇄말소대장은 같은 필지의 과거 대장 후보입니다. 폐쇄 유형·건물 PK·현재 건물의 PK와 명칭을 대조하기 전에는 철거, 동일 건물, 이전 부지라고 단정하지 마세요. same_parcel_historical_candidate와 identity_ambiguous는 후보 상태이며 건물 직접 이력으로 인용하지 마세요. key_missing, unauthorized, query_failed, schema_mismatch는 조회 실패 상태이지 자료 없음이 아닙니다.\nphotos의 imageUrl은 같은 evidenceId의 원문 자료에 연결된 참고 이미지입니다. 동네·주변 범위 사진은 입력한 건물 자체의 사진이나 직접 역사 근거가 아닙니다. formalEvidenceApproval 상태를 바꾸지 않으며 사진 자체만으로 역사 주장을 뒷받침하지 않습니다. 사진은 이미지 블록으로 이미 표시되므로 본문에 이미지 마크다운을 쓰지 말고 “사진 N”으로 가리키며 날짜·소장기관·장소 범위를 적으세요. 이미지 블록으로 오지 않은 사진은 sourceUrl의 기관 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색 결과는 사용하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'};
+        const responsePacket={...packet,roadview,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,placeEvidenceLinks,regionalHistoryFacts,videos,registerDiagnostics:registerContext.diagnostics,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\nplaceEvidenceLinks의 usableAsDirectEvidence가 true인 항목만 승인된 직접 장소 근거로 사용하세요. false인 항목은 미승인 후보이며 relation 범위를 넘겨 설명하지 마세요.\nregisterDiagnostics의 current.status가 ready일 때만 현재 건물의 공식 대장정보로 설명하세요. 사용승인일을 최초 건립일로 말하지 마세요. closed.status가 ready여도 폐쇄말소대장은 같은 필지의 과거 대장 후보입니다. 폐쇄 유형·건물 PK·현재 건물의 PK와 명칭을 대조하기 전에는 철거, 동일 건물, 이전 부지라고 단정하지 마세요. same_parcel_historical_candidate와 identity_ambiguous는 후보 상태이며 건물 직접 이력으로 인용하지 마세요. key_missing, unauthorized, query_failed, schema_mismatch는 조회 실패 상태이지 자료 없음이 아닙니다.\nphotos의 imageUrl은 같은 evidenceId의 원문 자료에 연결된 참고 이미지입니다. 동네·주변 범위 사진은 입력한 건물 자체의 사진이나 직접 역사 근거가 아닙니다. formalEvidenceApproval 상태를 바꾸지 않으며 사진 자체만으로 역사 주장을 뒷받침하지 않습니다. 이미지 블록은 AI가 사진을 확인하는 용도이며 사용자 화면에는 보이지 않습니다. 사용자에게 사진을 보여 주려면 사진을 다루는 문단 바로 뒤에서 show_place_photos를 호출하세요. 본문에 이미지 마크다운을 쓰지 말고, 사진을 언급할 때 날짜·소장기관·장소 범위와 sourceUrl 원문 링크를 함께 적으세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색 결과는 사용하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'};
         const tourPlan=buildPlaceDocentTourV2({packet:responsePacket,placeRecords,photos,videos,placeEvidenceLinks,regionalHistoryFacts});
         responsePacket.instructions+='\n'+docentTourInstructions(tourPlan)+'\n현재 모습에 roadview.url이 있으면 “카카오 로드뷰 열기” 링크를 제공하세요. 없으면 roadview.searchUrl을 “카카오맵에서 주소 확인” 링크로 제공하세요. 로드뷰 촬영일·촬영 가능 여부는 확인되지 않았으며 로드뷰를 과거 기록 사진으로 인용하지 마세요.';
         const result=textResult({...responsePacket,tourPlan});
         const imageBlocks=await archiveImageBlocks(photos);
         return {...result,content:[...result.content,...imageBlocks],structuredContent:{photos,photoPreviews:photos,tourPlan,roadview,registerDiagnostics:registerContext.diagnostics}};
       }
+      case SHOW_PLACE_PHOTOS:
+        return showPlacePhotos(args);
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);
         return textResult(await placeAnswerStats(env.DB, input.days));

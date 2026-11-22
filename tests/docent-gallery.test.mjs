@@ -4,7 +4,7 @@ import {handleMcpMessage, textResult} from '../lib/mcp-protocol.ts';
 import {galleryVariant, galleryMode, GALLERY_APP_URI, GALLERY_SKYBRIDGE_URI, GALLERY_APP_MIME, GALLERY_SKYBRIDGE_MIME, GALLERY_HTML} from '../lib/docent-gallery.ts';
 
 const tools = [
-  {name: 'prepare_place_answer', description: 'photos', inputSchema: {type: 'object'}},
+  {name: 'show_place_photos', description: 'photos', inputSchema: {type: 'object'}},
   {name: 'search_place', description: 'search', inputSchema: {type: 'object'}},
 ];
 const call = (method, params = {}, id = 1) => ({jsonrpc: '2.0', id, method, params});

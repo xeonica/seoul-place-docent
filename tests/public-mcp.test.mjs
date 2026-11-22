@@ -7,10 +7,12 @@ test('public entry requires no cookie or bearer and exposes only MCP and health'
  const init=await app.fetch(rpc('initialize',{protocolVersion:'2025-11-25'}));assert.equal(init.status,200);assert.equal(init.headers.has('www-authenticate'),false);
  assert.equal((await init.json()).result.protocolVersion,'2025-11-25');
  const list=await (await app.fetch(rpc('tools/list'))).json();assert.ok(list.result.tools.some(t=>t.name==='search_place'));assert.ok(list.result.tools.some(t=>t.name==='prepare_place_answer'));
- // The photo gallery is on by default (MCP Apps + ChatGPT keys); ?gallery=off removes it per connection.
- const prepare=list.result.tools.find(t=>t.name==='prepare_place_answer');assert.equal(prepare._meta?.ui?.resourceUri,'ui://seoul-docent/photo-gallery-v5.html');assert.equal(prepare._meta?.['openai/outputTemplate'],'ui://seoul-docent/photo-gallery-v5-skybridge.html');
+ // Photo cards are on by default (MCP Apps + ChatGPT keys) and hang off show_place_photos so they
+ // appear between paragraphs; prepare_place_answer itself no longer opens a gallery. ?gallery=off removes them.
+ const prepare=list.result.tools.find(t=>t.name==='prepare_place_answer');assert.equal(prepare._meta?.ui,undefined);
+ const card=list.result.tools.find(t=>t.name==='show_place_photos');assert.equal(card._meta?.ui?.resourceUri,'ui://seoul-docent/photo-gallery-v6.html');assert.equal(card._meta?.['openai/outputTemplate'],'ui://seoul-docent/photo-gallery-v6-skybridge.html');
  const offReq=new Request('https://public.test/mcp?gallery=off',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/list',params:{}})});
- const offPrepare=(await (await app.fetch(offReq)).json()).result.tools.find(t=>t.name==='prepare_place_answer');assert.equal(offPrepare._meta?.ui,undefined);assert.equal(offPrepare._meta?.['openai/outputTemplate'],undefined);
+ const offCard=(await (await app.fetch(offReq)).json()).result.tools.find(t=>t.name==='show_place_photos');assert.equal(offCard._meta?.ui,undefined);assert.equal(offCard._meta?.['openai/outputTemplate'],undefined);
  assert.equal((await app.fetch(new Request('https://public.test/mcp'))).status,405);
  assert.equal((await app.fetch(new Request('https://public.test/api/admin/mcp-stats'))).status,404);
  assert.equal((await app.fetch(rpc('ping',{}, {origin:'https://evil.test'}))).status,403);

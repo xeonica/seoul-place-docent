@@ -15,12 +15,16 @@ import {IMAGE_RESOURCE_DOMAINS, imageProxyOrigin} from './image-proxy';
 export type GalleryMode = 'off' | 'on' | 'app' | 'skybridge';
 const MODES: readonly GalleryMode[] = ['off', 'on', 'app', 'skybridge'];
 
-export const GALLERY_APP_URI = 'ui://seoul-docent/photo-gallery-v5.html';
-export const GALLERY_SKYBRIDGE_URI = 'ui://seoul-docent/photo-gallery-v5-skybridge.html';
+export const GALLERY_APP_URI = 'ui://seoul-docent/photo-gallery-v6.html';
+export const GALLERY_SKYBRIDGE_URI = 'ui://seoul-docent/photo-gallery-v6-skybridge.html';
 export const GALLERY_APP_MIME = 'text/html;profile=mcp-app';
 export const GALLERY_SKYBRIDGE_MIME = 'text/html+skybridge';
-/** Tools whose results carry structuredContent.photos for the gallery. */
-export const GALLERY_TOOLS = new Set(['prepare_place_answer', 'generate_place_answer']);
+/**
+ * Tools whose results carry structuredContent.photos for the photo card. Only show_place_photos:
+ * hosts render the card where the tool is called, so the AI places photos between paragraphs
+ * instead of one gallery above the whole answer.
+ */
+export const GALLERY_TOOLS = new Set(['show_place_photos']);
 
 function parseMode(value: string | null | undefined): GalleryMode | null {
   const normalized = (value ?? '').trim().toLowerCase();
@@ -89,8 +93,8 @@ export function readGalleryResource(uri: unknown, mode: GalleryMode, variant: Ga
 export function galleryToolMeta(mode: GalleryMode): Record<string, unknown> | undefined {
   if (mode === 'off') return undefined;
   const meta: Record<string, unknown> = {
-    'openai/toolInvocation/invoking': '기록 사진을 찾는 중…',
-    'openai/toolInvocation/invoked': '기록 사진을 불러왔습니다',
+    'openai/toolInvocation/invoking': '기록 사진을 놓는 중…',
+    'openai/toolInvocation/invoked': '기록 사진',
   };
   if (usesApp(mode)) {
     meta.ui = {resourceUri: GALLERY_APP_URI};
@@ -121,18 +125,20 @@ export const GALLERY_HTML = `<!doctype html>
 <style>
 :root{color-scheme:light dark}
 body{margin:0;padding:4px;font:14px/1.5 system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:inherit;background:transparent}
-main{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:12px}
+main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}
+main.single{grid-template-columns:1fr}
 figure{margin:0;min-width:0;display:flex;flex-direction:column;gap:6px}
-.frame{aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:rgba(127,127,127,.15);display:flex;align-items:center;justify-content:center}
+.frame{aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:rgba(127,127,127,.12);display:flex;align-items:center;justify-content:center}
+main.single .frame{aspect-ratio:auto;max-height:440px}
+main.single img{height:auto;max-height:440px;object-fit:contain}
 img{width:100%;height:100%;object-fit:cover;display:block}
 figcaption{font-size:12.5px;opacity:.85;overflow-wrap:anywhere}
 figcaption b{display:block;font-size:13.5px;opacity:1}
 a{color:inherit}
-.note{font-size:12px;opacity:.7;padding:2px 0 0}
+.scope{display:block;font-size:11.5px;opacity:.65;margin-top:2px}
 .empty{opacity:.7;padding:12px 0}
 </style></head>
 <body><main aria-label="해설 관련 기록 사진"><p class="empty">기록 사진을 불러오는 중입니다…</p></main>
-<p class="note">동네 범위 기록 사진은 입력한 건물 자체의 사진이 아닐 수 있습니다. 원문에서 촬영 범위를 확인해 주세요.</p>
 <script>
 (function(){
 var gallery=document.querySelector('main');
@@ -158,6 +164,7 @@ function render(data){
   if(!photos)return;
   rendered=true;
   gallery.replaceChildren();
+  gallery.className=photos.length===1?'single':'';
   var shown=0;
   photos.slice(0,12).forEach(function(photo){
     if(!photo||typeof photo!=='object')return;
@@ -177,6 +184,7 @@ function render(data){
     var meta=[photo.date,photo.credit].filter(Boolean).map(String).join(' · ');
     if(meta)caption.append(text('span',meta));
     if(original){var a=text('a','원문 보기');a.href=original;a.target='_blank';a.rel='noopener noreferrer';caption.append(document.createTextNode(' · '),a)}
+    if(photo.relationNote){var sc=text('span',String(photo.relationNote));sc.className='scope';caption.append(sc)}
     figure.append(frame,caption);gallery.append(figure);shown++;
   });
   if(!shown)gallery.replaceChildren(text('p','이 장소에 연결된 기록 사진이 없습니다.'));
@@ -198,7 +206,7 @@ window.addEventListener('message',function(event){
   if(m.method==='ui/notifications/tool-result')render(m.params);
   if(m.method==='ui/resource-teardown'&&m.id!==undefined)send({id:m.id,result:{}});
 });
-send({id:initId,method:'ui/initialize',params:{appInfo:{name:'seoul-docent-photos',version:'5.0.0'},appCapabilities:{},protocolVersion:'2026-01-26'}});
+send({id:initId,method:'ui/initialize',params:{appInfo:{name:'seoul-docent-photos',version:'6.0.0'},appCapabilities:{},protocolVersion:'2026-01-26'}});
 /* ChatGPT Apps SDK bridge. */
 window.addEventListener('openai:set_globals',function(e){var g=e&&e.detail&&e.detail.globals;if(g&&g.toolOutput)render(g.toolOutput)});
 try{if(window.openai&&window.openai.toolOutput)render(window.openai.toolOutput)}catch(e){}
