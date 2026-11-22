@@ -9,7 +9,6 @@ import {getDocentVideoCandidates} from '@/lib/docent-videos';
 import {resolveMcpMapAddress as mapAddress} from '@/lib/mcp-map-address';
 import {readAttachedPhoto} from '@/lib/mcp-photo';
 import {photoResearchThumbnail} from '@/lib/photo-research';
-import {galleryToolMeta} from '@/lib/docent-gallery';
 import {searchAddresses, ServiceError, verifyAddress} from '@/lib/providers';
 import {parcelNumber} from '@/lib/place-context';
 import {guidePhotos,presentGuidePhoto, getPlaceRegisterContext, generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, sceneSource, logClientDocent, QUESTION_TYPES} from '@/lib/place-answer';
@@ -42,7 +41,6 @@ const tools: McpTool[] = [
     name:'prepare_place_answer',
     description:'사용자 자신의 AI가 분류·도슨트 작성에 사용할 사진·영상 후보·역사·출처와 작성 지침을 반환합니다. 서버 AI 호출은 0회입니다. 먼저 질문 유형을 분류해 questionType에 넣고, 먼저 MCP 기록 사진의 장소 범위·출처·이용조건을 확인하고, 사진은 도구의 기록 사진 갤러리에서 자동 표시합니다. 해설에는 날짜·출처·원문 링크를 붙이세요. 일반 이미지 검색 결과는 MCP 원본 사진인 것처럼 표시하지 마세요. no_records여도 일반 해설을 완성하세요. token 또는 address 중 하나가 필요합니다. 장소와 동네를 구분하고 기록을 인용한 곳에 출처를 붙이세요.',
     inputSchema:{type:'object',properties:{token:{type:'string',minLength:1,maxLength:6000},address:{type:'string',minLength:2,maxLength:100},question:{type:'string',maxLength:300},questionType:{type:'string',enum:[...QUESTION_TYPES]}},oneOf:[{required:['token']},{required:['address']}],additionalProperties:false},
-    _meta:galleryToolMeta,
     annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:true}
   },
   {
