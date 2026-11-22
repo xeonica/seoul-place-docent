@@ -16,3 +16,4 @@
 "local_test","address_csv","공식 주소 검증 CSV","","data_validation","tests/seoul-125-address-validation.test.mjs","","not_applicable","pass","6","","","","125 슬롯 구조 및 73 yes / 52 no 상태 검증"
 "local_test","public_package","공개 MCP 패키지 통합","","package_integration","tests/public-mcp-package.integration.mjs","","not_applicable","pass","1","","","","Node 26 환경에서 이 테스트 단독 실행 통과"
 "local_test","runtime_limited","추가 로컬 통합 테스트","","local_runtime","Node 26.13.1","","not_applicable","blocked_environment","6","","","","전체 43개 assertion 중 37 pass, 6 fail; Node 22 전용 플래그와 TypeScript strip-only 제약 및 localhost bind EACCES"
+"repository_state","pr78","PR #78","","status_check","GitHub PR metadata","","not_applicable","merged_before_task_commit","","","","https://github.com/xeonica/seoul-place-docent/pull/78","GitHub에서 merge head 4317db7 확인; 이번 산출물 커밋은 병합 후 브랜치에 존재하며 merge commit에는 미포함"

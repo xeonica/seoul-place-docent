@@ -6,7 +6,7 @@
 
 확인일: 2026-11-22 (Asia/Seoul)
 
-Preview 런타임 재확인 시 PR 코드 HEAD는 `4317db7ebc218a5518bacf21c73ba8ae9e27f54a`였다. 이 커밋은 MCP 기록 사진 갤러리 메타데이터 자동 연결을 비활성화한 3줄 변경이다. 이 보고서는 지정된 기준 커밋 상태와 최신 코드 HEAD 상태를 구분한다.
+Preview 런타임 재확인 시 PR 코드 HEAD는 `4317db7ebc218a5518bacf21c73ba8ae9e27f54a`였다. 이 커밋은 MCP 기록 사진 갤러리 메타데이터 자동 연결을 비활성화한 3줄 변경이다. GitHub 조회 시 PR #78은 해당 HEAD에서 2026-11-22 16:51 KST에 이미 병합되어 있었다. 이 작업에서는 병합하지 않았다. 진단 파일 커밋은 병합 후 기존 브랜치에 추가되었으므로 PR 병합 커밋에는 포함되지 않는다.
 
 ## 판정 요약
 
@@ -71,4 +71,4 @@ Preview URL은 [Vercel 배포 상세](https://vercel.com/smn0365465-1518/seoul-p
 
 Vercel 프로젝트 소유자가 Preview에 JUSO 키와 D1 연결 환경변수를 설정하고 Preview D1이 Production과 다른 데이터베이스임을 확인한 뒤, 새 Preview 배포의 `/health`부터 확인해야 한다. 상세 절차는 [VERCEL_PREVIEW_D1_SETUP_KO.md](./VERCEL_PREVIEW_D1_SETUP_KO.md)를 참조한다. 원격 D1 migration은 이 보고서 작업 중 수행하지 않았다.
 
-**Production 병합 가능 여부: BLOCKED.** Preview의 실제 MCP 흐름, D1 격리, 네 장소의 실제 7부 응답 및 권리 상태가 확인되지 않았다. PR은 Draft로 유지한다.
+**검증 판정: BLOCKED.** Preview의 실제 MCP 흐름, D1 격리, 네 장소의 실제 7부 응답 및 권리 상태가 확인되지 않았다. PR #78은 확인 시점에 이미 병합되어 Draft로 유지할 수 없는 상태였다. 이 작업에서는 Production 배포나 DB 변경을 수행하지 않았으며, 병합된 코드의 Production 런타임 정상 여부도 별도 확인이 필요하다.
