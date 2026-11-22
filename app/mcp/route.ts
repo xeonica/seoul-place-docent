@@ -11,7 +11,7 @@ import {photoResearchThumbnail} from '@/lib/photo-research';
 import {galleryToolMeta} from '@/lib/docent-gallery';
 import {searchAddresses, ServiceError, verifyAddress} from '@/lib/providers';
 import {parcelNumber} from '@/lib/place-context';
-import {guidePhotos,presentGuidePhoto, placeRegisterRecords, generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, sceneSource, logClientDocent, QUESTION_TYPES} from '@/lib/place-answer';
+import {guidePhotos,presentGuidePhoto, getPlaceRegisterContext, generatePlaceAnswer, placeAnswerStats, pickScenes, validateAnswer, sceneSource, logClientDocent, QUESTION_TYPES} from '@/lib/place-answer';
 import {handleMcpMessage, rpcError, textResult, type McpTool, type McpToolResult} from '@/lib/mcp-protocol';
 import {auditedCall,clientHint} from '@/lib/mcp-audit';
 import {originError,configuredMcpOrigins,acceptError,protocolError,allowMcpRequest,unsupportedMcpMethod} from '@/lib/mcp-http';
@@ -210,9 +210,11 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           bigQueryHansungArchive(request,{...input,roadAddr:address.roadAddr,district:address.sggNm}),
         ]);
         const [placeEvidenceLinks,regionalHistoryFacts]=await Promise.all([archivePlaceEvidenceLinks(env.DB,{buildingManagementNumber:address.bdMgtSn,pnu:parcelNumber(address)}),archiveApprovedHistoricalFacts(env.DB,address.sggNm,address.emdNm)]);
+        const registerContext=await getPlaceRegisterContext(address,env);
         return textResult({
           address,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,placeEvidenceLinks,
-          place: {records: await placeRegisterRecords(address,env)},
+          place: {records: registerContext.records},
+          registerDiagnostics:registerContext.diagnostics,
           neighborhood: {
             district: story.district,
             dong: story.dong,
@@ -242,7 +244,8 @@ async function execute(request: Request, name: string, args: Record<string, unkn
         const address = await verifyAddress(token, env);
         const [placeEvidenceLinks,regionalHistoryFacts]=await Promise.all([archivePlaceEvidenceLinks(env.DB,{buildingManagementNumber:address.bdMgtSn,pnu:parcelNumber(address)}),archiveApprovedHistoricalFacts(env.DB,address.sggNm,address.emdNm)]);
         const story = getFullDocentStory(address.sggNm, address.emdNm);
-        const placeRecords=await placeRegisterRecords(address,env);
+        const registerContext=await getPlaceRegisterContext(address,env);
+        const placeRecords=registerContext.records;
         const packet=await generatePlaceAnswer({address,story,placeRecords,question:input.question,questionType:input.questionType});
         await logClientDocent(env.DB,{event:'retrieval',ms:Date.now()-startedAt,ok:packet.status==='ready',records:packet.neighborhood.selected,type:input.questionType});
         const videos=await getDocentVideoCandidates(address.sggNm,address.emdNm);
@@ -260,10 +263,10 @@ async function execute(request: Request, name: string, args: Record<string, unkn
           bigQueryGitHubCandidates(request,{district:address.sggNm,dong:address.emdNm,placeName:address.bdNm}),
           bigQueryHansungArchive(request,{roadAddr:address.roadAddr,district:address.sggNm}),
         ]);
-        const responsePacket={...packet,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,placeEvidenceLinks,regionalHistoryFacts,videos,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\nplaceEvidenceLinks의 usableAsDirectEvidence가 true인 항목만 승인된 직접 장소 근거로 사용하세요. false인 항목은 미승인 후보이며 relation 범위를 넘겨 설명하지 마세요.\n기록 사진은 이 도구의 MCP Apps 갤러리에서 자동 표시합니다. photos의 imageMarkdown/imageUrl은 같은 evidenceId의 원문 자료에 연결된 참고 이미지입니다. 동네·주변 범위 사진은 입력한 건물 자체의 사진이나 직접 역사 근거가 아닙니다. formalEvidenceApproval 상태를 바꾸지 않으며 사진 자체만으로 역사 주장을 뒷받침하지 않습니다. ChatGPT와 Claude에서는 사진을 MCP Apps 갤러리에서 보여주고, 답변 본문에는 캡션과 원문 링크를 사용하세요. 갤러리가 보이지 않는 환경에서는 날짜·소장기관·장소 범위와 함께 sourceUrl 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색 결과는 사용하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'};
+        const responsePacket={...packet,research,bigQueryResearch,bigQueryGitHubResearch,hansungArchive,placeEvidenceLinks,regionalHistoryFacts,videos,registerDiagnostics:registerContext.diagnostics,visuals:{photos,photoCount:photos.length,videoCount:videos.records.length,emptyNote:null},instructions:packet.instructions+(hansungArchive?.records.length ? ' hansungArchive는 한성대 공식 아카이브 원문 목록입니다. 관련 기록은 제목과 원문 링크로 안내하고, 기록 본문에서 확인한 사실만 해설에 인용하세요.' : '')+' bigQueryResearch와 bigQueryGitHubResearch에는 검토 후보와 원문 링크만 있습니다. 확정 근거나 시각자료로 사용하지 마세요.'+'\nplaceEvidenceLinks의 usableAsDirectEvidence가 true인 항목만 승인된 직접 장소 근거로 사용하세요. false인 항목은 미승인 후보이며 relation 범위를 넘겨 설명하지 마세요.\nregisterDiagnostics의 current.status가 ready일 때만 현재 건물의 공식 대장정보로 설명하세요. 사용승인일을 최초 건립일로 말하지 마세요. closed.status가 ready여도 폐쇄말소대장은 같은 필지의 과거 대장 후보입니다. 폐쇄 유형·건물 PK·현재 건물의 PK와 명칭을 대조하기 전에는 철거, 동일 건물, 이전 부지라고 단정하지 마세요. same_parcel_historical_candidate와 identity_ambiguous는 후보 상태이며 건물 직접 이력으로 인용하지 마세요. key_missing, unauthorized, query_failed, schema_mismatch는 조회 실패 상태이지 자료 없음이 아닙니다.\n기록 사진은 이 도구의 MCP Apps 갤러리에서 자동 표시합니다. photos의 imageMarkdown/imageUrl은 같은 evidenceId의 원문 자료에 연결된 참고 이미지입니다. 동네·주변 범위 사진은 입력한 건물 자체의 사진이나 직접 역사 근거가 아닙니다. formalEvidenceApproval 상태를 바꾸지 않으며 사진 자체만으로 역사 주장을 뒷받침하지 않습니다. ChatGPT와 Claude에서는 사진을 MCP Apps 갤러리에서 보여주고, 답변 본문에는 캡션과 원문 링크를 사용하세요. 갤러리가 보이지 않는 환경에서는 날짜·소장기관·장소 범위와 함께 sourceUrl 원문 링크를 제공하세요. 사진과 연결된 evidenceId를 확인하고 해당 건물·부지 사진과 동네 맥락 사진을 명확히 구별하세요. 사진의 표시 순서는 직접 장소 기록, 주변 기록, 동네 기록을 우선하되 시간 흐름과 설명 관련성을 고려하세요. 일반 이미지 검색 결과는 사용하지 마세요. 출처는 각 사진 캡션과 해당 역사 문단에 가깝게 연결하세요. 사진을 직접 볼 수 없는 독자도 이해하도록, 기록 본문에서 확인되는 구체적인 단서와 그 의미를 해설하세요. relatedEvidenceIds는 다른 시기나 생활 모습과 연결할 후보입니다. 실제 같은 장소·시점인지 확인하고, 맞는 자료가 없으면 일반 현장 해설을 이어가세요. 관련 영상은 이야기와 연결될 때 원문으로 안내하고 시간 링크는 verifiedSegments만 사용하세요. research는 GitHub 조사자료 후보로 확정 근거 ID가 아닙니다. 검토·권리·장소 상태를 내부적으로 확인하고 검증된 항목만 필요한 문단에 사용하세요.'};
         const tourPlan=buildPlaceDocentTourV2({packet:responsePacket,placeRecords,photos,videos,placeEvidenceLinks,regionalHistoryFacts});
         responsePacket.instructions+='\n'+docentTourInstructions(tourPlan);
-        return {...textResult({...responsePacket,tourPlan}),structuredContent:{photos,photoPreviews:photos,tourPlan}};
+        return {...textResult({...responsePacket,tourPlan}),structuredContent:{photos,photoPreviews:photos,tourPlan,registerDiagnostics:registerContext.diagnostics}};
       }
       case 'get_answer_stats': {
         const input = z.object({days: z.number().int().min(1).max(365).default(30)}).strict().parse(args);

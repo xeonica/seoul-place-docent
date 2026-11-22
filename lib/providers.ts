@@ -1,10 +1,10 @@
 export type Secrets = { JUSO_API_KEY?: string; BUILDING_API_KEY?: string; KAKAO_REST_API_KEY?: string; MCP_MAP_ADDRESS_URL?:string };
 export type Address = { roadAddr:string; jibunAddr:string; siNm:string; sggNm:string; emdNm:string; admCd:string; bdMgtSn:string; bdNm:string; lnbrMnnm:string; lnbrSlno:string; mtYn:string; zipNo:string };
 export type Candidate = Address & {token:string};
-export class ServiceError extends Error { constructor(public code:string, message:string,public status=502){super(message);} }
+export class ServiceError extends Error { constructor(public code:string, message:string,public status=502,public upstreamStatus?:number){super(message);} }
 export const checkedFetch = async(url:URL|string,init:RequestInit={}) => {
  const response=await fetch(url,{...init,signal:AbortSignal.timeout(12000)});
- if(!response.ok) throw new ServiceError('UPSTREAM_HTTP','자료 제공기관과 연결되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+ if(!response.ok) throw new ServiceError('UPSTREAM_HTTP','자료 제공기관과 연결되지 않았습니다. 잠시 후 다시 시도해 주세요.',502,response.status);
  return response;
 };
 export function normalizeAddress(x:Record<string,unknown>):Address {
@@ -49,17 +49,29 @@ export async function verifyAddress(token:string,secrets:Secrets):Promise<Addres
  }catch(e){if(e instanceof ServiceError)throw e;throw new ServiceError('INVALID_TOKEN','주소 선택이 만료되었거나 올바르지 않습니다. 다시 검색해 주세요.',400);}
 }
 export function parcelParams(a:Address) {assertSeoul(a);return {sigunguCd:a.admCd.slice(0,5),bjdongCd:a.admCd.slice(5),platGbCd:a.mtYn,bun:a.lnbrMnnm.padStart(4,'0'),ji:(a.lnbrSlno||'0').padStart(4,'0')};}
-export type Building = { id:string; name:string; dong:string; use:string; structure:string; area:string; landArea:string; above:string; below:string; approved:string; created:string; roadAddr:string; lotAddr:string };
+export type Building = { id:string; name:string; dong:string; use:string; structure:string; area:string; landArea:string; above:string; below:string; approved:string; permitDate:string; startDate:string; created:string; roadAddr:string; lotAddr:string };
 export type Floor = { buildingId:string; name:string; use:string; area:string; dong:string };
 const str=(x:Record<string,unknown>,k:string)=>String(x[k]??'').trim();
 export function normalizeRoad(address:string){return address.replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').trim();}
 export function splitBuildingMatches(rows:Building[],a:Address){const road=normalizeRoad(a.roadAddr);return {items:rows.filter(b=>!!b.roadAddr&&normalizeRoad(b.roadAddr)===road),parcelCandidates:rows.filter(b=>!b.roadAddr||normalizeRoad(b.roadAddr)!==road)};}
+function providerErrorCode(code:string, prefix:string){
+ if(['20','30','31','UNAUTHORIZED','SERVICE_KEY_IS_NOT_REGISTERED_ERROR','SERVICE_KEY_IS_EXPIRED_ERROR'].includes(code))return new ServiceError(prefix+'_UNAUTHORIZED','건축물대장 API 인증키 또는 활용신청 상태를 확인해야 합니다.',503);
+ return new ServiceError(prefix+'_PROVIDER','건축물대장 제공기관이 정상 결과를 반환하지 않았습니다.',503);
+}
 export function parseBuildingJson(body:Record<string,any>,a:Address) {
  const response=body.response;
- if(!response||!['00','0'].includes(String(response.header?.resultCode))) throw new ServiceError('BUILDING_PROVIDER','건축물대장 조회에 실패했습니다. 인증·활용신청 상태 또는 제공기관 응답을 확인해야 합니다.');
- const raw=response.body?.items?.item;const rows:Record<string,unknown>[]=Array.isArray(raw)?raw:raw&&typeof raw==='object'?[raw]:[];
+ if(!response||!response.header||typeof response.header.resultCode==='undefined')throw new ServiceError('BUILDING_SCHEMA','건축물대장 응답에 결과 코드가 없습니다.');
+ const resultCode=String(response.header.resultCode);
+ if(!['00','0'].includes(resultCode))throw providerErrorCode(resultCode,'BUILDING');
+ const page=response.body,total=Number(page?.totalCount);
+ if(!page||!Number.isInteger(total)||total<0)throw new ServiceError('BUILDING_SCHEMA','건축물대장 응답의 페이지 정보가 올바르지 않습니다.');
+ const raw=page.items?.item;
+ if(raw===undefined&&total>0)throw new ServiceError('BUILDING_SCHEMA','건축물대장 응답에 자료 행이 누락되었습니다.');
+ if(raw!==undefined&&raw!==''&&!Array.isArray(raw)&&(typeof raw!=='object'||raw===null))throw new ServiceError('BUILDING_SCHEMA','건축물대장 자료 행 형식이 올바르지 않습니다.');
+ const rows:Record<string,unknown>[]=Array.isArray(raw)?raw:raw&&typeof raw==='object'?[raw]:[];
+ if(rows.some(x=>!x||typeof x!=='object'||!str(x,'sigunguCd')||!str(x,'bjdongCd')||!str(x,'mgmBldrgstPk')))throw new ServiceError('BUILDING_SCHEMA','건축물대장 행의 필수 식별 필드가 누락되었습니다.');
  const p=parcelParams(a);
- return rows.filter(x=>str(x,'sigunguCd')===p.sigunguCd&&str(x,'bjdongCd')===p.bjdongCd&&str(x,'bun').padStart(4,'0')===p.bun&&str(x,'ji').padStart(4,'0')===p.ji&&str(x,'platGbCd')===p.platGbCd).map(x=>({id:str(x,'mgmBldrgstPk'),name:str(x,'bldNm'),dong:str(x,'dongNm'),use:str(x,'mainPurpsCdNm'),structure:str(x,'strctCdNm'),area:str(x,'totArea'),landArea:str(x,'platArea'),above:str(x,'grndFlrCnt'),below:str(x,'ugrndFlrCnt'),approved:str(x,'useAprDay'),created:str(x,'crtnDay'),roadAddr:str(x,'newPlatPlc'),lotAddr:str(x,'platPlc')}));
+ return rows.filter(x=>str(x,'sigunguCd')===p.sigunguCd&&str(x,'bjdongCd')===p.bjdongCd&&str(x,'bun').padStart(4,'0')===p.bun&&str(x,'ji').padStart(4,'0')===p.ji&&str(x,'platGbCd')===p.platGbCd).map(x=>({id:str(x,'mgmBldrgstPk'),name:str(x,'bldNm'),dong:str(x,'dongNm'),use:str(x,'mainPurpsCdNm'),structure:str(x,'strctCdNm'),area:str(x,'totArea'),landArea:str(x,'platArea'),above:str(x,'grndFlrCnt'),below:str(x,'ugrndFlrCnt'),approved:str(x,'useAprDay'),permitDate:str(x,'pmsDay'),startDate:str(x,'stcnsDay'),created:str(x,'crtnDay'),roadAddr:str(x,'newPlatPlc'),lotAddr:str(x,'platPlc')}));
 }
 async function fetchBuildingBody(a:Address,secrets:Secrets,op:string,page=1) {
  if(!secrets.BUILDING_API_KEY)throw new ServiceError('KEY_MISSING','건축물 정보 연결을 준비 중입니다.',503);
@@ -69,16 +81,16 @@ async function fetchBuildingBody(a:Address,secrets:Secrets,op:string,page=1) {
  try{return JSON.parse(text);}catch{throw new ServiceError('BUILDING_FORMAT','건축물대장 응답을 해석하지 못했습니다. 인증·활용신청 상태 또는 제공기관 응답을 확인해야 합니다.');}
 }
 export async function buildings(a:Address,secrets:Secrets){
- const rows:Building[]=[];let total=0;let page=1;
- do {const body=await fetchBuildingBody(a,secrets,'getBrTitleInfo',page);rows.push(...parseBuildingJson(body,a));total=Number(body.response.body?.totalCount??0);page++;}while((page-1)*100<total&&page<=5);
- return {...splitBuildingMatches(rows,a),total,truncated:total>500,sourceUrl:'https://www.data.go.kr/data/15134735/openapi.do',queriedAt:new Date().toISOString()};
+ const rows:Building[]=[];let total=0,fetched=0;let page=1;const maxPages=20;
+ do {const body=await fetchBuildingBody(a,secrets,'getBrTitleInfo',page),raw=body.response.body.items?.item;fetched+=Array.isArray(raw)?raw.length:raw&&typeof raw==='object'?1:0;rows.push(...parseBuildingJson(body,a));total=Number(body.response.body.totalCount);page++;}while((page-1)*100<total&&page<=maxPages);
+ return {...splitBuildingMatches(rows,a),total,pages:page-1,truncated:fetched<total,sourceUrl:'https://www.data.go.kr/data/15134735/openapi.do',queriedAt:new Date().toISOString()};
 }
 export async function floors(a:Address,secrets:Secrets,buildingId:string){
  const available=await buildings(a,secrets);if(!available.items.some(b=>b.id===buildingId))throw new ServiceError('BUILDING_MISMATCH','선택한 대장이 이 지번과 일치하지 않습니다.',400);
- const output:Floor[]=[];let total=0;let page=1;
+ const output:Floor[]=[];let total=0;let page=1;const maxPages=20;
  do {const data=await fetchBuildingBody(a,secrets,'getBrFlrOulnInfo',page);if(!['00','0'].includes(String(data.response?.header?.resultCode)))throw new ServiceError('FLOOR_PROVIDER','층별 정보를 조회하지 못했습니다.');const raw=data.response.body?.items?.item;const rows:Record<string,unknown>[]=Array.isArray(raw)?raw:raw&&typeof raw==='object'?[raw]:[];
- for(const x of rows)if(str(x,'mgmBldrgstPk')===buildingId)output.push({buildingId,name:str(x,'flrNoNm'),use:str(x,'mainPurpsCdNm'),area:str(x,'area'),dong:str(x,'dongNm')});total=Number(data.response.body?.totalCount??0);page++;}while((page-1)*100<total&&page<=5);
- return {items:output,truncated:total>500,queriedAt:new Date().toISOString()};
+ for(const x of rows)if(str(x,'mgmBldrgstPk')===buildingId)output.push({buildingId,name:str(x,'flrNoNm'),use:str(x,'mainPurpsCdNm'),area:str(x,'area'),dong:str(x,'dongNm')});total=Number(data.response.body?.totalCount??0);page++;}while((page-1)*100<total&&page<=maxPages);
+ return {items:output,total,pages:page-1,truncated:(page-1)*100<total,queriedAt:new Date().toISOString()};
 }
 export type CoordinateResult = {status:string;message?:string;x?:number;y?:number;administrativeDong?:string;queriedAt?:string;source?:string;sourceUrl?:string};
 export function parseCoordinates(documents:Record<string,any>[],a:Address):CoordinateResult {
