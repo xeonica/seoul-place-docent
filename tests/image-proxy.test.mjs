@@ -110,7 +110,7 @@ test('answer records and guide photos proxy allowlisted images and retain proven
     assert.equal(photo.sourceUrl, museumUrl);
   }
   const museum = photos.find(photo => photo.evidenceId === '박물관 사진');
-  assert.equal(museum.imageMarkdown, `![박물관 사진](<${museum.imageUrl}>)`);
+  assert.equal(museum.imageMarkdown, undefined, 'MCP photos must not invite markdown image links');
   const presented=presentGuidePhoto(museum,{district:'성동구',dong:'마장동',buildingName:'세림아파트'});
   assert.equal(presented.previewPurpose,'illustration_only');assert.equal(presented.formalEvidenceApproval,'unchanged');
   assert.match(presented.relationNote,/마장동 지역 역사 참고 사진/);assert.match(presented.relationNote,/세림아파트 자체의 사진이.*아닙니다/);
@@ -118,7 +118,7 @@ test('answer records and guide photos proxy allowlisted images and retain proven
   const archive = photos.find(photo => photo.evidenceId === '기록원 사진');
   assert.equal(new URL(archive.imageUrl).searchParams.get('u'), archiveUrl);
   assert.deepEqual(archive.alternateUrls, [archiveUrl]);
-  assert.equal(archive.imageMarkdown, `![기록원 사진](<${archive.imageUrl}>)`);
+  assert.equal(archive.imageMarkdown, undefined);
   assert.equal(archive.credit, '서울기록원');
   assert.equal(archive.terms, '공공누리 제1유형');
   assert.equal(archive.sourceUrl, archiveSource);
