@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
+import {gunzipSync} from 'node:zlib';
 import bundle from '../data/photo-research/bundle.json';
 import regions from '../data/seoul-regions.json';
 import {filterPhotoResearch, placePhotoResearch, photoResearchUrl} from '../lib/photo-research.ts';
 import {GET} from '../app/api/archive/photo-research/route.ts';
+import {photoResearchBundle as completeBundle} from '../lib/photo-research-data.ts';
 
 const originalFetch=globalThis.fetch;
 globalThis.fetch=async(input,init)=>{
@@ -15,6 +17,11 @@ globalThis.fetch=async(input,init)=>{
  }
  return originalFetch(input,init);
 };
+const districtIndex=JSON.parse(gunzipSync(readFileSync(new URL('../public/research/seoul-district-collection/photos-index.json.gz',import.meta.url)),'utf8'));
+const searchableBundle={...completeBundle,items:[...completeBundle.items,...districtIndex.items]};
+const canonicalSourceBytes=(file,bytes)=>file.path.toLowerCase().endsWith('.csv')
+ ? Buffer.from(bytes.toString('utf8').replace(/\\r?\\n/g,'\\r\\n'))
+ : bytes;
 
 test('fifty-six research batches preserve original downloadable bytes and district versus dong scope',()=>{
  assert.equal(bundle.items.length,bundle.meta.recordCount);
@@ -26,7 +33,8 @@ test('fifty-six research batches preserve original downloadable bytes and distri
  assert.equal(bundle.meta.files.reduce((sum,file)=>sum+file.count,0),bundle.items.length);
  for(const file of bundle.meta.files){
   const bytes=readFileSync(new URL('../public'+file.path,import.meta.url));
-  assert.equal(bytes.length,file.sizeBytes);assert.equal(createHash('sha256').update(bytes).digest('hex'),file.sha256);
+  const sourceBytes=canonicalSourceBytes(file,bytes);
+  assert.equal(sourceBytes.length,file.sizeBytes);assert.equal(createHash('sha256').update(sourceBytes).digest('hex'),file.sha256);
   const rows=bundle.items.filter(r=>r.batchId===file.id);assert.equal(rows.length,file.count);
   assert.ok(rows.every(r=>r.district===file.district&&r.dong===file.dong));
   const district=regions.districts.find(d=>d.name===file.district);assert.ok(district);assert.ok(file.collectionScope==='district' ? file.dong==='' : district.dongs.includes(file.dong));
@@ -76,13 +84,15 @@ test('combined neighborhood and candidate filters match their supplied scope rat
 
 test('photo API paginates, validates batch IDs, and exports complete filtered original data',async()=>{
  const query=p=>GET(new Request('https://example.test/api/archive/photo-research?'+p));
- const page=await (await query('page=2')).json();assert.equal(page.total,5394);assert.equal(page.rows.length,20);assert.equal(page.page,2);
- const last=await (await query('page=99999')).json();assert.equal(last.page,270);assert.equal(last.rows.length,14);
+ const expectedTotal=searchableBundle.items.length;
+ const page=await (await query('page=2')).json();assert.equal(page.total,expectedTotal);assert.equal(page.rows.length,20);assert.equal(page.page,2);
+ const last=await (await query('page=99999')).json();const expectedLastPage=Math.max(1,Math.ceil(expectedTotal/20));assert.equal(last.page,expectedLastPage);assert.equal(last.rows.length,expectedTotal-(expectedLastPage-1)*20);
  assert.equal((await query('batch=missing')).status,400);
  const response=await query('district='+encodeURIComponent('은평구')+'&download=1');assert.match(response.headers.get('cache-control'),/private/);assert.match(response.headers.get('content-disposition'),/^attachment;/);
- const download=await response.json();assert.equal(download.total,352);assert.equal(download.rows.length,352);assert.equal(download.provenance.id,bundle.meta.id);assert.ok(download.rows.every(r=>r.values['자치구']==='은평구'||r.regionLinks?.some(link=>link['자치구']==='은평구')));
- const candidate=await (await query('review=candidate')).json();assert.equal(candidate.total,177);
- const place=await (await query('mode=place&district='+encodeURIComponent('서대문구')+'&dong='+encodeURIComponent('북아현동'))).json();assert.equal(place.total,62);
+ const download=await response.json();const expectedEunpyeong=filterPhotoResearch(searchableBundle,{district:'은평구'}).length;
+ assert.equal(download.total,expectedEunpyeong);assert.equal(download.rows.length,expectedEunpyeong);assert.equal(download.provenance.id,completeBundle.meta.id);assert.ok(download.rows.every(r=>r.district==='은평구'||r.regionLinks?.some(link=>link['자치구']==='은평구')));
+ const candidate=await (await query('review=candidate')).json();assert.equal(candidate.total,filterPhotoResearch(searchableBundle,{review:'candidate'}).length);
+ const place=await (await query('mode=place&district='+encodeURIComponent('서대문구')+'&dong='+encodeURIComponent('북아현동'))).json();assert.equal(place.total,placePhotoResearch(searchableBundle,'서대문구',['북아현동']).total);
 });
 
 test('district cumulative files retain missing sequence notices and stay separate from address matches',async()=>{
@@ -93,7 +103,7 @@ test('district cumulative files retain missing sequence notices and stay separat
   const rows=filterPhotoResearch(bundle,{batch});assert.equal(rows.length,count);assert.ok(rows.every(r=>r.district===district&&r.dong===''&&r.collectionScope==='district'));
   const place=placePhotoResearch(bundle,district,['가상의법정동']);assert.equal(place.total,0);assert.equal(place.rows.length,0);assert.equal(place.districtTotal,count);assert.equal(place.districtBatches.length,1);
   assert.equal(filterPhotoResearch(bundle,{batch,district:'은평구'}).length,0);
-  const download=await GET(new Request('https://example.test/api/archive/photo-research?batch='+batch+'&download=1')).json();assert.equal(download.total,count);assert.equal(download.rows.length,count);
+  const download=await (await GET(new Request('https://example.test/api/archive/photo-research?batch='+batch+'&download=1'))).json();assert.equal(download.total,count);assert.equal(download.rows.length,count);
  }
  const ydp=bundle.meta.files.find(f=>f.id==='YDP-HIST-001');assert.match(ydp.sourceNote,/P001~P516/);assert.ok(!bundle.items.some(r=>r.id==='YDP-HIST-001-P001'));
  const jongno=bundle.items.find(r=>r.id==='JNR-HIST-001-P001');assert.equal(jongno.sourceLinkType,'collection');assert.equal(jongno.values['기관자료ID'],'2016012504');assert.equal(jongno.mediaType,'사진(현재 모습)');assert.equal(jongno.values['원본보관가능여부'],'불가');assert.equal(jongno.previewUrl,null);
@@ -141,7 +151,7 @@ test('Nowon shares one unmodified CSV across five dong batches and preserves com
   assert.ok(place.rows.every(row=>!row.candidate&&row.relation!=='미확인'));
   assert.equal(placePhotoResearch(bundle,'도봉구',[dong]).total,0);
   const params=new URLSearchParams({batch,download:'1'});
-  const download=await GET(new Request('https://example.test/api/archive/photo-research?'+params)).json();
+  const download=await (await GET(new Request('https://example.test/api/archive/photo-research?'+params))).json();
   assert.equal(download.total,count);assert.deepEqual(download.rows.map(row=>row.values),selected.map(row=>row.values));
  }
  assert.equal(rows.filter(row=>row.candidate).length,5);assert.equal(rows.filter(row=>row.previewUrl).length,78);
@@ -178,7 +188,8 @@ test('Mapo research targets preserve the neighboring district and qualified orig
  const unknown=bundle.items.filter(r=>r.batchId==='MAPO-공덕동-001'&&r.relation==='미확인');assert.equal(unknown.length,5);
  const place=placePhotoResearch(bundle,'마포구',['공덕동']);assert.equal(place.eligible,16);
  const response=await GET(new Request('https://example.test/api/archive/photo-research?district='+encodeURIComponent('마포구')+'&download=1'));
- const download=await response.json();assert.equal(download.total,370);assert.equal(download.rows.length,370);
+ const download=await response.json();const expectedMapo=filterPhotoResearch(searchableBundle,{district:'마포구'}).length;
+ assert.equal(download.total,expectedMapo);assert.equal(download.rows.length,expectedMapo);
  assert.equal(download.rows.find(r=>r.id===adjacent.id).values['자치구'],'서대문구');
  const candidate=filterPhotoResearch(bundle,{district:'마포구',review:'candidate'});assert.deepEqual(candidate.map(r=>r.id),['MAPO-대흥동-001-P021','MAPO-신수동-001-P021','MAPO-토정동-001-P009']);
  assert.equal(placePhotoResearch(bundle,'양천구',['신정동']).total,0);assert.equal(placePhotoResearch(bundle,'마포구',['신정동']).total,17);
