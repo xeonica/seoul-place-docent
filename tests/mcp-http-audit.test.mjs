@@ -58,7 +58,7 @@ test('all eight actual MCP tools run without operator model calls; address and G
  try{
   const search=await invoke('search_place',{query:'사직로 161'});const token=data(search).candidates[0].token;
   assert.ok(search._meta.requestId);assert.equal(search._meta.auditPersisted,false);
-  const packet=data(await invoke('prepare_place_answer',{token}));assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);
+  const packetResult=await invoke('prepare_place_answer',{token}),packet=data(packetResult);assert.equal(packet.generation.serverAiCalls,0);assert.ok(packet.neighborhood.records.length>0);assert.equal(packet.registerDiagnostics.current.status,'key_missing');assert.equal(packet.registerDiagnostics.closed.status,'key_missing');assert.equal(packet.registerDiagnostics.parcel.status,'key_missing');assert.equal(packet.tourPlan.sections[3].verificationStatus,'missing');assert.ok(packetResult.structuredContent.registerDiagnostics);
   assert.deepEqual(data(await invoke('generate_place_answer',{token})).neighborhood,packet.neighborhood);
   assert.ok(data(await invoke('get_place_history',{token})).neighborhood.scenes.length>0);
   const record=packet.neighborhood.records[0];
