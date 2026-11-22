@@ -190,6 +190,19 @@ export function guidePhotos(packet:ReturnType<typeof preparePlaceAnswer>) {
   }).slice(0,MAX_GUIDE_PHOTOS);
 }
 
+/** Display a source-linked image as an illustration without changing evidence approval. */
+export function presentGuidePhoto(photo:ReturnType<typeof guidePhotos>[number], place:{district:string;dong:string;buildingName?:string}) {
+  const explicitNote='relationNote' in photo&&typeof photo.relationNote==='string'?photo.relationNote:'';
+  const relationNote=explicitNote|| (photo.scope==='dong'
+    ? `${place.dong} 지역 역사 참고 사진입니다. ${place.buildingName ? `${place.buildingName} 자체의 사진이나 직접 역사 근거로 확인된 자료는 아닙니다.` : '검색한 건물·부지의 직접 사진이나 역사 근거로 확인된 자료는 아닙니다.'}`
+    : photo.scope==='district'
+      ? `${place.district} 지역 배경 참고 사진이며 검색한 건물·부지의 직접 사진이나 역사 근거가 아닙니다.`
+      : photo.scope==='nearby'
+        ? '주변 장소 참고 사진이며 검색한 건물·부지의 직접 사진이나 역사 근거가 아닙니다.'
+        : '원문 자료의 장소 범위 안에서 표시하는 참고 사진입니다.');
+  return {...photo,relationNote,previewPurpose:'illustration_only' as const,formalEvidenceApproval:'unchanged' as const};
+}
+
 /** Legacy tool name retained, but it can no longer call any model provider. */
 export async function generatePlaceAnswer(input:Parameters<typeof preparePlaceAnswer>[0],secrets:Secrets={}){
   const start=Date.now();const packet=preparePlaceAnswer(input);

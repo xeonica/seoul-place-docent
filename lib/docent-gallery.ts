@@ -34,14 +34,14 @@ function render(data){
     };
     if(src)image.src=src;
     else {image.hidden=true;const fallback=document.createElement('p');fallback.textContent='사진 주소를 표시할 수 없습니다. 아래 원문에서 확인해 주세요.';figure.append(fallback)}
-    caption.textContent=photo.caption;
+    caption.textContent=[photo.caption,photo.relationNote].filter(Boolean).join(' · ');
     if(original){const link=document.createElement('a');link.href=original;link.target='_blank';link.rel='noopener noreferrer';link.textContent='사진 원문 보기';caption.append(' · ',link)}
     figure.append(image,caption);gallery.append(figure);
   }
 }
 function renderToolResult(result){
-  if(Array.isArray(result?.structuredContent?.photos)){
-    render(result.structuredContent);
+  if(Array.isArray(result?.structuredContent?.photoPreviews)||Array.isArray(result?.structuredContent?.photos)){
+    render({photos:result.structuredContent.photoPreviews||result.structuredContent.photos});
     return;
   }
   for(const block of result?.content ?? []){

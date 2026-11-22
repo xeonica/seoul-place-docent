@@ -68,7 +68,14 @@ export function trustedImageHost(url: string) {
   try { const u = new URL(url); return u.protocol === 'https:' && u.hostname === 'archive-file.sb.go.kr' && /^\/files\/(?:service|upload)File\/archive\/item\//.test(u.pathname); } catch { return false; }
 }
 export function photoResearchImageCandidates(item: PhotoResearchItem) {
-  if (['사이트표시가능여부', '썸네일표시가능여부'].some(key => /^불가(?:$|[\s(（·:])/.test(item.values[key] || ''))) return [];
+  // An image URL or generic license label is not a display grant. If either
+  // display field is present, require both explicit permissions. Records from
+  // official indexes without those fields need item-level public-domain,
+  // Public Information Type 1, or unrestricted-use terms.
+  const sitePermission=item.values['사이트표시가능여부']||'',thumbnailPermission=item.values['썸네일표시가능여부']||'';
+  if(sitePermission||thumbnailPermission){
+    if(!/^가능(?:$|[\s(（·:])/.test(sitePermission)||!/^가능(?:$|[\s(（·:])/.test(thumbnailPermission))return [];
+  }else if(!/(?:공공누리\s*제?\s*1\s*유형|제한없음|public domain)/i.test(item.values['이용조건']||''))return [];
   const images: string[] = [];
   const supplied = photoResearchUrl(item.previewUrl || undefined);
   if (supplied?.startsWith('https://') && (/\.(?:avif|gif|jpe?g|png|webp|tmb)$/i.test(new URL(supplied).pathname) || trustedImageHost(supplied))) images.push(supplied);
