@@ -84,3 +84,13 @@ test('address wording still prioritizes Hanseong place records without upgrading
  assert.ok(records.every(r=>r.scope==='dong'||r.scope==='district'));
  assert.deepEqual(records.map(r=>r.id),pickScenes(story,question,14,address.bdNm).map(r=>r.id));
 });
+
+test('place narrative candidates preserve unverified building identity',()=>{
+ const named={...story.scenes[0],id:'named-place',title:'은평구청 준공식'};
+ const packet=preparePlaceAnswer({address:{...address,bdNm:'은평구청'},story:{...story,scenes:[named]},question:'은평구청 역사'});
+ assert.deepEqual(packet.narration.primaryEvidenceIds,['named-place']);
+ assert.equal(packet.place.status,'unverified');
+ assert.match(packet.place.statusMeaning,/공식 건축물대장 연결 상태/);
+ assert.match(packet.instructions,/문장 간 모순/);
+ assert.match(packet.instructions,/사진을 실제로 보았을 때만/);
+});
