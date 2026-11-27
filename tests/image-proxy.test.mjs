@@ -113,7 +113,7 @@ test('answer records and guide photos proxy allowlisted images and retain proven
   assert.equal(museum.imageMarkdown, undefined, 'MCP photos must not invite markdown image links');
   const presented=presentGuidePhoto(museum,{district:'성동구',dong:'마장동',buildingName:'세림아파트'});
   assert.equal(presented.previewPurpose,'illustration_only');assert.equal(presented.formalEvidenceApproval,'unchanged');
-  assert.match(presented.relationNote,/마장동 지역 역사 참고 사진/);assert.match(presented.relationNote,/세림아파트 자체의 사진이.*아닙니다/);
+  assert.match(presented.relationNote,/마장동 지역 역사 참고 사진/);assert.match(presented.relationNote,/세림아파트 건물·부지와의 일치 여부는 미검증/);
   assert.equal(presented.imageUrl,museum.imageUrl);assert.equal(presented.evidenceId,museum.evidenceId);assert.equal(presented.sourceUrl,museum.sourceUrl);
   const archive = photos.find(photo => photo.evidenceId === '기록원 사진');
   assert.equal(new URL(archive.imageUrl).searchParams.get('u'), archiveUrl);

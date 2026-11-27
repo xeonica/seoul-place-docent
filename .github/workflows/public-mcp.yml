@@ -1,7 +1,7 @@
 name: Public MCP deployment contract
 on:
   pull_request:
-    paths: ['deploy/public-mcp/**', 'scripts/build-public-mcp*.mjs', 'scripts/probe-public-mcp.mjs', 'lib/mcp-*.ts', 'app/mcp/**', 'tests/public-mcp*', 'tests/research-catalog.test.mjs', '.github/workflows/public-mcp.yml', '.github/workflows/full-test-suite.yml']
+    paths: ['deploy/public-mcp/**', 'scripts/build-public-mcp*.mjs', 'scripts/probe-public-mcp.mjs', 'lib/mcp-*.ts', 'lib/place-answer.ts', 'lib/place-photo-card.ts', 'app/mcp/**', 'tests/public-mcp*', 'tests/research-catalog.test.mjs', '.github/workflows/public-mcp.yml', '.github/workflows/full-test-suite.yml']
 permissions:
   contents: read
 jobs:
