@@ -30,7 +30,7 @@ const inputSchema = z.object({photos: z.array(photoSchema).min(1).max(MAX_PHOTOS
 
 export const showPlacePhotosTool: McpTool = {
   name: SHOW_PLACE_PHOTOS,
-  description: '해설 본문 중간에 기록 사진 카드를 넣습니다. 사진을 설명하는 문단을 쓴 직후 호출하면 그 자리에 사진이 표시됩니다. 해설을 다 쓴 뒤 한꺼번에 호출하지 말고 문단(부)마다 그 뒤에서 호출하세요. prepare_place_answer 결과의 visuals.photos 항목(imageUrl·title·sourceUrl·date·credit·relationNote·evidenceId)을 바꾸지 말고 그대로 1~2장씩 넘기세요. 같은 사진을 두 번 넣지 말고, 본문에 이미지 마크다운을 쓰지 마세요. 이 도구는 MCP 기록 사진 전용입니다. 웹 검색으로 찾은 사진은 넘기지 말고 해설 끝의 \'웹 검색 참고 사진\' 별도 섹션에 따로 표시하세요.',
+  description: '해설 본문 중간에 기록 사진 카드를 넣습니다. 사진을 설명하는 문단을 쓴 직후 호출하면 그 자리에 사진이 표시됩니다. 해설을 다 쓴 뒤 한꺼번에 호출하지 말고 문단(부)마다 그 뒤에서 호출하세요. prepare_place_answer 결과의 visuals.photos 항목(imageUrl·title·sourceUrl·date·credit·relationNote·evidenceId)을 바꾸지 말고 그대로 1~2장씩 넘기세요. 같은 사진을 두 번 넣지 말고, 사진 카드 도구를 사용할 수 없는 클라이언트에서는 imageUrl로 마크다운 이미지를 표시하고 날짜·출처·relationNote·원문 링크를 붙이세요. 이 도구는 MCP 기록 사진 전용입니다. 웹 검색으로 찾은 사진은 넘기지 말고 해설 끝의 \'웹 검색 참고 사진\' 별도 섹션에 따로 표시하세요.',
   inputSchema: {
     type: 'object',
     properties: {
