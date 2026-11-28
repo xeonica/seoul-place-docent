@@ -2,6 +2,7 @@ import {sendMcpAudit} from './mcp-audit-remote';
 import {isObject, type McpToolResult} from './mcp-protocol';
 
 export type AuditRow = {requestId:string; tool:string; at:number; ok:boolean; records:number; ms:number; errorType:string|null; client:string; validation:boolean};
+export type McpDiagnosticContext={requestId:string;tool:string;stage:string};
 const schema = `CREATE TABLE IF NOT EXISTS mcp_tool_call_log (
  request_id TEXT PRIMARY KEY, tool TEXT NOT NULL, at INTEGER NOT NULL,
  ok INTEGER NOT NULL, records INTEGER NOT NULL, ms INTEGER NOT NULL,
@@ -43,18 +44,39 @@ export async function recordMcpCall(db:D1Database|undefined,row:AuditRow) {
   return true;
  }catch { return false; }
 }
-export async function auditedCall(db:D1Database|undefined,tool:string,client:string,execute:()=>Promise<McpToolResult>) {
+function safeExceptionCode(error:unknown){
+ const candidate=error&&typeof error==='object'&&'code'in error?String((error as {code:unknown}).code):'';
+ if(/^[A-Z][A-Z0-9_]{1,63}$/.test(candidate))return candidate;
+ if(error instanceof Error&&error.name==='ZodError')return 'SCHEMA_VALIDATION';
+ if(error instanceof Error&&/^DocentTourV2 validation failed: [a-z0-9_,]+$/.test(error.message))return 'DOCENT_TOUR_VALIDATION';
+ if(error instanceof Error&&/^ZodError: /.test(error.message))return 'SCHEMA_VALIDATION';
+ return 'UNEXPECTED_EXCEPTION';
+}
+function safeExceptionName(error:unknown){const name=error&&typeof error==='object'&&'name'in error?String((error as {name:unknown}).name):'';return /^[A-Za-z][A-Za-z0-9]{0,39}$/.test(name)?name:'UnknownError';}
+function safeValidationCodes(error:unknown){if(!(error instanceof Error))return undefined;const match=error.message.match(/^DocentTourV2 validation failed: ([a-z0-9_,]+)$/);return match?match[1].split(',').slice(0,20):undefined;}
+/** Emit stage timing only; never include inputs, URLs, exception messages, or credentials. */
+export async function withMcpStage<T>(context:McpDiagnosticContext,stage:string,execute:()=>Promise<T>|T):Promise<T>{
+ context.stage=stage;const started=Date.now();
+ try{const result=await execute();console.info(JSON.stringify({event:'mcp_stage',requestId:context.requestId,tool:context.tool,stage,ok:true,ms:Math.max(0,Date.now()-started)}));return result;}
+ catch(error){console.error(JSON.stringify({event:'mcp_stage',requestId:context.requestId,tool:context.tool,stage,ok:false,ms:Math.max(0,Date.now()-started),errorCode:safeExceptionCode(error),errorName:safeExceptionName(error),...(safeValidationCodes(error)?{validationCodes:safeValidationCodes(error)}:{})}));throw error;}
+}
+export async function auditedCall(db:D1Database|undefined,tool:string,client:string,execute:(context:McpDiagnosticContext)=>Promise<McpToolResult>) {
  const requestId=crypto.randomUUID(),at=Date.now();
+ const diagnostic:McpDiagnosticContext={requestId,tool,stage:'tool_execute'};
  let result:McpToolResult;
- try { result=await execute(); }
- catch { result={content:[{type:'text',text:'자료 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.'}],isError:true,errorType:'internal_error'}; }
+ try { result=await execute(diagnostic); }
+ catch(error) {
+  console.error(JSON.stringify({event:'mcp_tool_exception',requestId,tool,stage:diagnostic.stage,errorCode:safeExceptionCode(error),errorName:safeExceptionName(error),...(safeValidationCodes(error)?{validationCodes:safeValidationCodes(error)}:{})}));
+  result={content:[{type:'text',text:'자료 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.'}],isError:true,errorType:'internal_error',errorCode:'INTERNAL_ERROR'};
+ }
  const failure=resultFailure(result);
  const row:AuditRow={requestId,tool,at,ok:failure===null,records:returnedRecords(result),ms:Math.max(0,Date.now()-at),errorType:failure,client,validation:tool==='validate_place_answer'&&failure===null};
  const persisted=await recordMcpCall(db,row);
  // Structured fallback contains no inputs, exception messages, IP or raw client headers.
  if(!persisted)console.info(JSON.stringify({event:'mcp_tool_call',...row,persisted:false}));
  const {errorType: _errorType,...publicResult}=result;
- const receipt={requestId,auditPersisted:persisted,clientIdentityVerified:false};
+ const publicErrorCode=typeof result.errorCode==='string'&&/^[A-Z][A-Z0-9_]{1,63}$/.test(result.errorCode)?result.errorCode:null;
+ const receipt={requestId,auditPersisted:persisted,clientIdentityVerified:false,...(result.isError?{errorCode:publicErrorCode||failure||'TOOL_ERROR'}:{})};
  return {...publicResult,content:[...publicResult.content,{type:'text' as const,text:JSON.stringify({serverReceipt:receipt})}],_meta:receipt};
 }
 export async function mcpUsageStats(db:D1Database|undefined,now=Date.now()) {

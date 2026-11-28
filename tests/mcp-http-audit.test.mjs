@@ -80,11 +80,66 @@ test('all eight actual MCP tools run without operator model calls; address and G
   assert.equal(unexpected.length,0);assert.ok(network.length>0);
  }finally{globalThis.fetch=original;console.info=info;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);}
 });
+
+test('Songjeong 4-gil and Majang-ro answer retrieval tolerate optional service states and preserve neighborhood scope',async()=>{
+ const original=globalThis.fetch,saved={...process.env},info=console.info,error=console.error;const diagnostics=[];
+ process.env.JUSO_API_KEY='fixture-only';
+ for(const key of ['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_D1_DATABASE_ID','CLOUDFLARE_D1_API_TOKEN','BUILDING_API_KEY','CLOSED_BUILDING_API_KEY','VWORLD_API_KEY','KAKAO_REST_API_KEY'])delete process.env[key];
+ const addresses=[
+  {roadAddr:'서울특별시 성동구 송정4길 5 (송정동)',jibunAddr:'서울특별시 성동구 송정동 66-163',siNm:'서울특별시',sggNm:'성동구',emdNm:'송정동',admCd:'1120011800',bdMgtSn:'1120011800100660163003160',bdNm:'',lnbrMnnm:'66',lnbrSlno:'163',mtYn:'0',zipNo:'04801'},
+  {roadAddr:'서울특별시 성동구 마장로42길 16 (마장동, 세림아파트)',jibunAddr:'서울특별시 성동구 마장동 784 세림아파트',siNm:'서울특별시',sggNm:'성동구',emdNm:'마장동',admCd:'1120010500',bdMgtSn:'1120010500100210000021801',bdNm:'세림아파트',lnbrMnnm:'784',lnbrSlno:'0',mtYn:'0',zipNo:'04757'},
+ ];
+ process.env.BUILDING_API_KEY='fixture-only';process.env.CLOSED_BUILDING_API_KEY='fixture-only';
+ console.info=(line)=>diagnostics.push(String(line));console.error=(line)=>diagnostics.push(String(line));
+ globalThis.fetch=async input=>{
+  const url=new URL(String(input));
+  if(url.hostname==='business.juso.go.kr'){
+   const address=addresses.find(item=>url.searchParams.get('keyword')===item.roadAddr);
+   return Response.json({results:{common:{errorCode:'0',totalCount:address?'1':'0'},juso:address?[address]:[]}});
+  }
+  if(url.hostname==='apis.data.go.kr'&&url.pathname.endsWith('/getBrTitleInfo')){
+   const row={sigunguCd:url.searchParams.get('sigunguCd'),bjdongCd:url.searchParams.get('bjdongCd'),platGbCd:url.searchParams.get('platGbCd'),bun:url.searchParams.get('bun'),ji:url.searchParams.get('ji'),mgmBldrgstPk:'fixture-building-candidate',bldNm:'공식 대장 후보',newPlatPlc:addresses.find(item=>item.admCd.startsWith(url.searchParams.get('sigunguCd')+url.searchParams.get('bjdongCd')))?.roadAddr||'',platPlc:'서울특별시 성동구 확인 후보'};
+   return new Response(JSON.stringify({response:{header:{resultCode:'00'},body:{totalCount:1,items:{item:[row]}}}}),{headers:{'Content-Type':'application/json'}});
+  }
+  if(url.hostname==='apis.data.go.kr'&&url.pathname.endsWith('/getSrTitleInfo'))return new Response(JSON.stringify({response:{header:{resultCode:'00'},body:{totalCount:0,items:{item:''}}}}),{headers:{'Content-Type':'application/json'}});
+  throw new Error('Unexpected external request');
+ };
+ try{
+  for(const address of addresses){
+   const search=await invoke('search_place',{query:address.roadAddr});const candidate=data(search).candidates;
+   assert.equal(candidate.length,1,address.emdNm+' address should resolve uniquely');
+   const token=candidate[0].token;
+   const history=await invoke('get_place_history',{token});assert.ok(data(history).neighborhood.scenes.length>0,address.emdNm+' history should be available');
+   const prepared=await invoke('prepare_place_answer',{token});
+   assert.equal(prepared.isError,undefined,address.emdNm+' prepare_place_answer must not fail; stage diagnostics: '+JSON.stringify(diagnostics));
+   const packet=data(prepared);
+   assert.equal(packet.neighborhood.dong,address.emdNm);
+   assert.equal(packet.placeEvidenceLinks.status,'database_unavailable');
+   assert.equal(packet.registerDiagnostics.current.status,'identity_ambiguous');
+   assert.equal(packet.registerDiagnostics.closed.status,'no_records');
+   assert.equal(packet.registerDiagnostics.parcel.status,'key_missing');
+   assert.equal(packet.tourPlan.sections.length,7);
+   assert.equal(packet.tourPlan.sections[3].verificationStatus,'missing','dong history must not become direct building history');
+   const outputPhotos=packet.visuals.photos,photoIds=outputPhotos.map(photo=>photo.evidenceId||photo.mediaId);
+   assert.deepEqual(prepared.structuredContent.photos,outputPhotos,'structured photos must match the normalized visuals list');
+   assert.deepEqual(prepared.structuredContent.photoPreviews,outputPhotos,'photo previews must match the normalized visuals list');
+   assert.deepEqual(packet.tourPlan.provenance.returnedPhotoIds,packet.tourPlan.photoAssets.map(photo=>photo.id));
+   assert.deepEqual(packet.tourPlan.photoAssets.map(photo=>photo.id),photoIds,'tour assets and MCP photos must share the same candidate IDs');
+   const imageCaptions=prepared.content.filter(item=>item.type==='text'&&item.text.startsWith('사진 ')).map(item=>item.text.match(/\(evidenceId: ([^)]+)\)/)?.[1]).filter(Boolean);
+   assert.ok(imageCaptions.every(id=>photoIds.includes(id)),'inline images must come only from the normalized photo candidates');
+   assert.ok(prepared._meta.requestId);
+  }
+  const stageEvents=diagnostics.filter(line=>line.includes('"event":"mcp_stage"'));
+  assert.ok(stageEvents.some(line=>line.includes('"stage":"build_place_docent_tour_v2"')&&line.includes('"ok":true')));
+  assert.equal(diagnostics.filter(line=>line.includes('"event":"mcp_stage"')&&line.includes('"ok":false')).length,0);
+ }finally{globalThis.fetch=original;console.info=info;console.error=error;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);}
+});
+
 test('SQLite audit persists generated IDs, counts evidence, hides private data and computes KST/P95',async()=>{
  const db=sqliteD1();const result=await auditedCall(db,'search_place','unknown',async()=>({content:[{type:'text',text:JSON.stringify({candidates:[{roadAddr:'PRIVATE ADDRESS',token:'SECRET TOKEN'}]})}]}));
  assert.equal(result._meta.auditPersisted,true);assert.match(result._meta.requestId,/^[a-f0-9-]{36}$/);
  const stored=db.sqlite.prepare('SELECT * FROM mcp_tool_call_log').all();assert.equal(stored[0].records,1);assert.doesNotMatch(JSON.stringify(stored),/PRIVATE|SECRET/);
- const bad=await auditedCall(db,'prepare_place_answer','unknown',async()=>{throw new Error('PRIVATE KEY');});assert.equal(bad.isError,true);assert.doesNotMatch(JSON.stringify(bad),/PRIVATE KEY/);
+ const bad=await auditedCall(db,'prepare_place_answer','unknown',async()=>{throw new Error('PRIVATE KEY');});assert.equal(bad.isError,true);assert.equal(bad._meta.errorCode,'INTERNAL_ERROR');assert.doesNotMatch(JSON.stringify(bad),/PRIVATE KEY/);
  const now=Date.parse('2026-11-07T01:00:00Z');
  for(let i=1;i<=20;i++)await recordMcpCall(db,{requestId:'sample-'+i,tool:i===20?'validate_place_answer':'search_place',at:now-i,ok:i!==1,records:i===1?0:2,ms:i,errorType:i===1?'invalid_input':null,client:'unknown',validation:i===20});
  await recordMcpCall(db,{requestId:'yesterday',tool:'search_place',at:Date.parse('2026-11-06T14:59:59Z'),ok:true,records:0,ms:900,errorType:null,client:'unknown',validation:false});

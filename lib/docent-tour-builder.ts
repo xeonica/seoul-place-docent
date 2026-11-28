@@ -31,6 +31,19 @@ const purposes=['검색 장소의 현재 정보와 확인된 관찰 지점을 �
 const photoTopics=[['건물','장소','아파트','현재 모습'],['지명','동명','유래','옛 이름','고지도','옛 지도','지도'],['시장','산업','사건','공장','축산','상업','철도','전쟁','운동','노동','교통','개통','변화'],['건물','부지','필지','아파트','건축','공사','준공','철거','옛 모습'],['도시공간','도시 공간','거리','도로','주거','항공사진','지도','도시','공간','골목'],['재개발','재건축','도시재생','정비','착공','보존','현재 변화'],['대표','상징','기억','의미','마무리','장소의 역사']];
 const videoTopics=[['건물','장소','아파트'],['지명','동명','유래','옛 이름'],['시장','산업','사건','공장','축산','철도','전쟁','운동','노동','교통','도시 변화'],['건물','부지','필지','아파트','건축','재건축'],['도시공간','도시 공간','거리','도로','주거','항공','지도','도시 변화'],['재개발','재건축','도시재생','정비','착공','보존']];
 const DIRECT_SCOPES=['exact_building','exact_parcel'];
+/** Keep one photo row per evidence ID. Conflicting IDs are omitted rather
+ * than choosing an arbitrary image and attaching it to another record. */
+export function normalizeDocentPhotoRows(rows:Obj[]):Obj[]{
+ const groups=new Map<string,Obj[]>();
+ for(const row of rows){const id=str(row.evidenceId||row.mediaId);if(!id)continue;const group=groups.get(id)||[];group.push(row);groups.set(id,group);}
+ const result:Obj[]=[];
+ for(const group of groups.values()){
+  const first=group[0],identity=(row:Obj)=>JSON.stringify([str(row.mediaId),str(row.sourceRecordId),str(row.sourceUrl||row.sourcePageUrl),str(row.title)]);
+  if(group.some(row=>identity(row)!==identity(first)))continue;
+  result.push(first);
+ }
+ return result;
+}
 const linkablePhoto=(p:Obj)=>p.verificationStatus!=='REJECTED'&&!!(p.sourceUrl||p.sourcePageUrl);
 // Photos with an image and an institution source page are shown as reference images even before review.
 // Explicit rejections and rights refusals (displayable:false) stay hidden.
@@ -56,7 +69,7 @@ function requestScope(question:string,questionType:string):'comprehensive_tour'|
 
 /** Build a deterministic, source-linked outline. It never writes historical prose. */
 export function buildDocentTourV2(packetValue:unknown):DocentTourV2{
- const packet=asObj(packetValue),evidence=asObj(packet.evidence),approved=arr(evidence.records),candidates=arr(evidence.candidates),scenes=arr(asObj(packet.neighborhood).records),allPhotos=arr(asObj(packet.visuals).photos),allVideos=arr(asObj(packet.videos).records),place=asObj(packet.place),placeRecords=arr(place.records),registers=arr(asObj(packet.registerDiagnostics).records);
+ const packet=asObj(packetValue),evidence=asObj(packet.evidence),approved=arr(evidence.records),candidates=arr(evidence.candidates),scenes=arr(asObj(packet.neighborhood).records),allPhotos=normalizeDocentPhotoRows(arr(asObj(packet.visuals).photos)),allVideos=arr(asObj(packet.videos).records),place=asObj(packet.place),placeRecords=arr(place.records),registers=arr(asObj(packet.registerDiagnostics).records);
  const detailLevel=['brief','full'].includes(String(packet.detailLevel))?String(packet.detailLevel) as 'brief'|'full':'standard';
  const videos=detailLevel==='brief'?allVideos.slice(0,2):allVideos;
  const sourceRows:SourceRow[]=[];
